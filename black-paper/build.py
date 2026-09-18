@@ -76,7 +76,7 @@ def main():
 <meta property="og:url" content="{SITE}/black-paper/">
 <meta property="og:title" content="{_html.escape(TITLE)}">
 <meta property="og:description" content="{_html.escape(DESC)}">
-<meta property="og:image" content="{SITE}/card.png">
+<meta property="og:image" content="{SITE}/black-paper/card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Perception Chamber — Black Paper 01">
@@ -84,7 +84,7 @@ def main():
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{_html.escape(TITLE)}">
 <meta name="twitter:description" content="{_html.escape(DESC)}">
-<meta name="twitter:image" content="{SITE}/card.png">
+<meta name="twitter:image" content="{SITE}/black-paper/card.png">
 
 <meta name="theme-color" content="#39ff88">
 <style>
