@@ -13,6 +13,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from md import convert  # noqa: E402
 from token_embed import embed  # noqa: E402
+from footer import CSS as FOOT_CSS, footer  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -24,6 +25,9 @@ DESC = ("Sixty-four rooms, one frozen Commodore 64 program, and a room the "
 # in the header is that room, so the live token is the same one
 TOKEN = "0x75FD5A9c4440c38561A0099B216F825b7C6db924"
 TOKEN_ID = 23
+
+
+CURRENT = "bp00"
 
 
 def main():
@@ -105,12 +109,14 @@ code{{overflow-wrap:anywhere;word-break:break-word}}
   .token-stage:has(.token-load){{padding:26px 18px;min-height:210px}}
   .token-frame{{aspect-ratio:auto;height:68vh;max-height:680px}}
 }}
+{FOOT_CSS}
 </style>
 </head>
 <body>
 <main>
 <p class="kicker">THE CHAMBER · BLACK PAPER 00</p>
 {body}
+{footer(CURRENT)}
 </main>
 </body>
 </html>

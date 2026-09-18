@@ -14,6 +14,7 @@ import pathlib
 import re
 
 from md import convert
+from footer import CSS as FOOT_CSS, footer  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -22,6 +23,9 @@ DESC = ("A series of Commodore 64 works that live on Ethereum, built one "
         "capability at a time.")
 
 ETHERSCAN = "https://etherscan.io/address/"
+
+
+CURRENT = "home"
 
 
 def main():
@@ -97,6 +101,7 @@ blockquote{{font-size:1.06rem}}
   .cta{{flex-direction:column}}
   .cta a{{text-align:center}}
 }}
+{FOOT_CSS}
 </style>
 </head>
 <body>
@@ -104,6 +109,7 @@ blockquote{{font-size:1.06rem}}
 {hero}
 <hr>
 {body}
+{footer(CURRENT)}
 </main>
 </body>
 </html>

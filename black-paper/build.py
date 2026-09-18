@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from md import convert, inline  # noqa: E402
 from token_embed import embed  # noqa: E402
+from footer import CSS as FOOT_CSS, footer  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -25,6 +26,9 @@ SITE = "https://demedpit.github.io/the-chamber"
 TITLE = "Perception Chamber — Black Paper 01"
 DESC = ("A human teaches a perceptron inside a Commodore 64 program; Ethereum "
         "replays the same lessons and accepts the new mind only if the bytes agree.")
+
+
+CURRENT = "bp01"
 
 
 def main():
@@ -133,12 +137,14 @@ pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:norma
 code{{overflow-wrap:anywhere;word-break:break-word}}
 .mindprint-banner img{{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px;background:#0a0a0a}}
 .mindprint-banner figcaption{{margin-top:12px;color:var(--muted);font-size:.86rem}}
+{FOOT_CSS}
 </style>
 </head>
 <body>
 <main>
 <p class="kicker">THE CHAMBER · BLACK PAPER 01</p>
 {body}
+{footer(CURRENT)}
 </main>
 </body>
 </html>
