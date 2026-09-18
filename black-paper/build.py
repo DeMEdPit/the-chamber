@@ -13,6 +13,10 @@ Standard library only.
 import html as _html
 import pathlib
 import re
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from md import convert, inline  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -22,95 +26,16 @@ DESC = ("A human teaches a perceptron inside a Commodore 64 program; Ethereum "
         "replays the same lessons and accepts the new mind only if the bytes agree.")
 
 
-def inline(t):
-    """Inline markdown: code, bold, italic, links, bare URLs."""
-    out, parts = [], re.split(r"(`[^`]+`)", t)
-    for part in parts:
-        if part.startswith("`") and part.endswith("`") and len(part) > 1:
-            out.append("<code>" + _html.escape(part[1:-1]) + "</code>")
-            continue
-        p = _html.escape(part)
-        p = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)",
-                   r'<a href="\2" target="_blank" rel="noopener">\1</a>', p)
-        p = re.sub(r"(?<![\"=>])\b(https?://[^\s<)]+)",
-                   r'<a href="\1" target="_blank" rel="noopener">\1</a>', p)
-        p = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", p)
-        p = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", p)
-        out.append(p)
-    return "".join(out)
-
-
-def convert(md):
-    lines, out, i = md.split("\n"), [], 0
-    fence_seen = 0
-    while i < len(lines):
-        ln = lines[i]
-
-        if ln.startswith("```"):
-            fence_seen += 1
-            i += 1
-            buf = []
-            while i < len(lines) and not lines[i].startswith("```"):
-                buf.append(lines[i]); i += 1
-            i += 1
-            # the cross-runtime tree is shipped as the designed figure instead
-            if fence_seen == 1:
-                out.append((HERE / "conformance.html").read_text(encoding="utf-8"))
-            else:
-                out.append("<pre><code>" + _html.escape("\n".join(buf)) + "</code></pre>")
-            continue
-
-        if ln.startswith("#"):
-            lvl = len(ln) - len(ln.lstrip("#"))
-            out.append(f"<h{lvl}>{inline(ln[lvl:].strip())}</h{lvl}>")
-            i += 1
-            continue
-
-        if ln.strip() == "---":
-            out.append("<hr>"); i += 1; continue
-
-        if ln.startswith(">"):
-            buf = []
-            while i < len(lines) and lines[i].startswith(">"):
-                buf.append(lines[i].lstrip(">").strip()); i += 1
-            out.append("<blockquote>" + inline(" ".join(buf).strip()) + "</blockquote>")
-            continue
-
-        m = re.match(r"^(\d+)\.\s+(.*)", ln)
-        if ln.startswith("- ") or m:
-            ordered = bool(m)
-            tag = "ol" if ordered else "ul"
-            items = []
-            while i < len(lines):
-                cur = lines[i]
-                mm = re.match(r"^(\d+)\.\s+(.*)", cur)
-                if cur.startswith("- "):
-                    items.append(cur[2:].rstrip()); i += 1
-                elif mm and ordered:
-                    items.append(mm.group(2).rstrip()); i += 1
-                elif cur.startswith("   ") and cur.strip() and items:
-                    items[-1] += "<br>" + cur.strip(); i += 1
-                else:
-                    break
-            body = "".join("<li>" + inline(x) + "</li>" for x in items)
-            out.append(f"<{tag}>{body}</{tag}>")
-            continue
-
-        if not ln.strip():
-            i += 1; continue
-
-        buf = []
-        while i < len(lines) and lines[i].strip() and not lines[i].startswith(
-                ("#", ">", "- ", "```", "---")) and not re.match(r"^\d+\.\s", lines[i]):
-            buf.append(lines[i].strip()); i += 1
-        out.append("<p>" + inline(" ".join(buf)) + "</p>")
-    return "\n".join(out)
-
-
 def main():
     md = (HERE / "paper.md").read_text(encoding="utf-8")
     css = (HERE / "paper.css").read_text(encoding="utf-8")
-    body = convert(md)
+    # the cross-runtime tree ships as the designed figure instead of a <pre>
+    def fence(n, _text):
+        if n == 1:
+            return (HERE / "conformance.html").read_text(encoding="utf-8")
+        return None
+
+    body = convert(md, fence)
 
     # the banner: the owner's original mindprint field, kept at his direction
     # (2026-09-18). It is the decorative grid, not a rendering of this token's
@@ -135,7 +60,7 @@ def main():
     body = body[:cut] + token + "\n" + body[cut:]
 
     # place it directly after the opening h1/h2 pair
-    body = re.sub(r"(</h2>)", r"\1\n" + banner.replace("\\", "\\\\"), body, count=1)
+    body = re.sub(r"(</h1>)", r"\1\n" + banner.replace("\\", "\\\\"), body, count=1)
 
     doc = f"""<!doctype html>
 <html lang="en">
@@ -165,7 +90,7 @@ def main():
 <style>
 {css}
 .mindprint-banner{{margin:26px 0 44px;padding:0}}
-h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word}}
+h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word;margin-bottom:0}}
 hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 .token-live{{margin:34px 0 44px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px}}
 .token-head{{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:16px}}
@@ -193,9 +118,6 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
   /* the subtitle runs to three lines at desktop size. 16px gives two balanced
      lines and stays above body-text size; one line would need 11px, which is
      smaller than the body and fills the column with no slack */
-  /* one line on a phone, never stacked: 15px keeps slack down to a 320px
-     screen, and nowrap makes a regression visible rather than silent */
-  h1+h2{{font-size:15px;line-height:1.35;white-space:nowrap}}
 }}
 pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Chamber</title>
+<meta name="description" content="A series of Commodore 64 works that live on Ethereum, built one capability at a time.">
+<link rel="canonical" href="https://demedpit.github.io/the-chamber/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The Chamber">
+<meta property="og:url" content="https://demedpit.github.io/the-chamber/">
+<meta property="og:title" content="The Chamber">
+<meta property="og:description" content="A series of Commodore 64 works that live on Ethereum, built one capability at a time.">
+<meta property="og:image" content="https://demedpit.github.io/the-chamber/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Chamber">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Chamber">
+<meta name="twitter:description" content="A series of Commodore 64 works that live on Ethereum, built one capability at a time.">
+<meta name="twitter:image" content="https://demedpit.github.io/the-chamber/card.png">
+
+<meta name="theme-color" content="#39ff88">
+<style>
+
+:root{--bg:#000;--panel:#0b0b0b;--ink:#f4f4ef;--muted:#aaa9a3;--line:#262626;--accent:#39ff88;--accent2:#9dffd0}
+*{box-sizing:border-box}
+html,body{background:#000}
+body{margin:0;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}
+main{width:min(900px,calc(100% - 36px));margin:auto;padding:72px 0 120px}
+.kicker{font:700 .76rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);letter-spacing:.16em;margin-bottom:20px}
+h1{font-size:clamp(1.8rem,9vw,6.4rem);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;white-space:nowrap;width:100%}
+h1+h2{border:0;margin-top:0;padding-top:0;color:var(--muted);font-size:1.45rem;font-weight:450}
+h2{margin:70px 0 18px;padding-top:12px;border-top:1px solid var(--line);font-size:1.9rem;letter-spacing:-.025em}
+h3{margin:34px 0 12px}
+p{font-size:1.04rem;color:#deded9;margin:0 0 18px}
+a{color:var(--accent2);text-decoration:none;border-bottom:1px solid #35545b;word-break:break-word}
+blockquote{margin:34px 0;padding:20px 24px;border-left:3px solid var(--accent);background:linear-gradient(90deg,#121212,#070707);font-size:1.2rem;color:#fff}
+ul,ol{color:#d8d8d4;padding-left:1.35rem} li{margin:.38rem 0}
+hr{border:0;border-top:1px solid var(--line);margin:56px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#111;border:1px solid #222;border-radius:4px;padding:.08rem .28rem}
+pre{overflow:auto;background:#060606;border:1px solid #232323;border-radius:10px;padding:22px;margin:28px 0}
+pre code{border:0;background:none;padding:0}
+.figure{margin:28px 0 42px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px;display:flex;flex-direction:column;align-items:stretch}
+.figlabel{font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent);margin-bottom:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:stretch}
+.node{min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #333;background:#0c0c0c;padding:14px;text-align:center}
+.node b,.pill,.timeline b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em}
+.node span{color:var(--muted);margin-top:5px;font-size:.82rem}
+.down{text-align:center;color:var(--accent);font-size:1.8rem;margin:8px 0}
+.result{max-width:560px;margin:auto;border-color:#526329}
+.lineage,.timeline{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;margin-inline:auto;text-align:center}
+.pill{border:1px solid #333;background:#0b0b0b;padding:12px 16px}
+.arrow{color:var(--accent);font-size:1.2rem}
+.caption{margin-top:16px;color:var(--muted);text-align:center;font-size:.88rem}
+.timeline>div:not(.arrow){display:flex;flex-direction:column;text-align:center;min-width:100px}
+.timeline span{color:var(--muted);font-size:.78rem;margin-top:4px}
+@media(max-width:700px){main{padding-top:42px}.grid3{grid-template-columns:1fr}h2{margin-top:56px}}
+
+.conformance-diagram{
+  width:100%;
+  max-width:760px;
+  margin:28px auto;
+  padding:26px 18px 18px;
+  border:1px solid #262626;
+  border-radius:12px;
+  background:#050505;
+  overflow:hidden;
+}
+.conformance-svg{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.conformance-svg .frame,
+.conformance-svg .runtime-box,
+.conformance-svg .brain-box{
+  fill:#0b0b0b;
+  stroke:#333;
+  stroke-width:1.25;
+}
+.conformance-svg .brain-box{
+  stroke:color-mix(in srgb,var(--accent) 48%,#333);
+}
+.conformance-svg .connector,
+.conformance-svg .plus-mark{
+  stroke:var(--accent);
+  fill:none;
+  stroke-width:2;
+  stroke-linecap:square;
+}
+.conformance-svg .plus-mark{stroke-width:3}
+.conformance-svg .title-text,
+.conformance-svg .label-text,
+.conformance-svg .body-text{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  text-anchor:middle;
+}
+.conformance-svg .title-text{
+  fill:#f4f4ef;
+  font-size:18px;
+  letter-spacing:1.2px;
+}
+.conformance-svg .label-text{
+  fill:#f4f4ef;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:1.5px;
+}
+.conformance-svg .body-text{
+  fill:#aaa9a3;
+  font-size:11px;
+}
+@media(max-width:600px){
+  .conformance-diagram{padding:18px 10px 12px}
+}
+
+
+.mindprint-strip{
+  width:89%;
+  max-width:820px;
+  aspect-ratio:2004 / 220;
+  margin:14px 0 20px;
+  overflow:hidden;
+  background:#0a0a0a;
+}
+.mindprint-strip-svg{
+  display:block;
+  width:100%;
+  height:100%;
+}
+@media(max-width:700px){
+  .mindprint-strip{
+    width:100%;
+    max-width:none;
+    margin:12px 0 18px;
+  }
+}
+
+
+h1{font-size:clamp(2.2rem,11vw,5.6rem);margin-bottom:18px}
+.lead{font-size:1.3rem;line-height:1.5;color:var(--ink);max-width:30ch;margin:0 0 30px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 8px}
+.cta a{font:700 .76rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+  border-radius:6px;padding:15px 22px;border:1px solid var(--line);text-decoration:none}
+.cta-main{background:var(--accent);color:#050505;border-color:var(--accent)}
+.cta-main:hover{background:var(--accent2);border-color:var(--accent2)}
+.cta-alt{color:var(--ink);background:#0b0b0b}
+.cta-alt:hover{border-color:#3d3d3d}
+h3{font-size:1.28rem;margin-top:40px}
+.addr{border:0}
+.addr code{font-size:.82rem;word-break:break-all}
+.addr:hover code{border-color:var(--accent);color:var(--accent2)}
+blockquote{font-size:1.06rem}
+@media(max-width:700px){
+  .lead{font-size:1.06rem;max-width:none}
+  .cta{flex-direction:column}
+  .cta a{text-align:center}
+}
+</style>
+</head>
+<body>
+<main>
+<p class="kicker">THE CHAMBER</p>
+<h1>The Chamber</h1>
+<p class="lead">A series of Commodore 64 works that live on Ethereum, built one capability at a time. </p>
+<p class="cta"><a class="cta-main" href="https://demedpit.github.io/the-chamber/black-paper/">READ THE BLACK PAPER</a><a class="cta-alt" href="https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127" target="_blank" rel="noopener">THE CANARY ON CHAIN</a></p>
+<hr>
+<p>Each generation isolates a single question about behaviour and answers it in the smallest system that can. The sequence is not a larger model each time. It is a sequence of capability boundaries, each one earned experimentally before the next is attempted.</p>
+<p>Every work runs on <strong>minimal64</strong>, the Commodore 64 emulator nopsta stored on Ethereum in 2022 — written to run new C64 software rather than the back catalogue, cycle-accurate by design, carrying its own 252-byte Kernal and no BASIC or Character ROM. The programs, their state and their pages are assembled from chain state: no server, no IPFS and no hosted asset is required to view, play or reconstruct them.</p>
+<h2>The series</h2>
+<h3>1. The Chamber — released</h3>
+<p>Sixty-four tokens over one frozen program — but not one behaviour. Eight behaviour systems are distributed across the collection, so the clone Tonys do not all do the same thing; one of the eight appears on a single token.</p>
+<p>Each token&#x27;s wall, bats and candle are fixed traits of that token. The room around them is drawn from the chain at every read: the render folds the previous block&#x27;s hash into the seed, so the wall&#x27;s pattern, and where the bats and the candle fall, differ every time the token is viewed. The traits never change. Their arrangement never repeats.</p>
+<p>Behaviour here is <strong>authored</strong>. There is no learner and nothing is trained: the characters do what the program says they do. This is the genesis of the series, and the baseline everything after it is measured against.</p>
+<p><a class="addr" href="https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924" target="_blank" rel="noopener"><code>0x75FD5A9c4440c38561A0099B216F825b7C6db924</code></a> — mainnet, 8 September 2026, locked.</p>
+<h3>2. Perception Chamber — canary released</h3>
+<p>A Tony whose clone has a mind: a one-layer perceptron with 80 inputs, 10 actions and 800 signed weights, held in an 834-byte slot inside the running C64 program.</p>
+<p>A person teaches it by hand. Press TRAIN and play as Tony; the clone watches, and the machine corrects its weights from the difference between what you did and what it would have done, one lesson at a time. Nothing is trained elsewhere and loaded in.</p>
+<p>The weights are on chain, and they change on chain. Each save sends the lessons of a sitting in the order the machine accepted them; the contract replays them itself and records the new mind only if it arrives at the same bytes. Nothing is overwritten — every save adds a new immutable revision and advances the token to it, so a mind keeps its whole ancestry.</p>
+<p>That replay is the point of the work: the same learner exists in 6502 machine code and in Solidity, and the two are required to agree byte for byte.</p>
+<p><a class="addr" href="https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127" target="_blank" rel="noopener"><code>0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127</code></a> — mainnet, 17 September 2026.</p>
+<p>This one token is a <strong>canary</strong>: an engineering sample, deployed on its own ahead of the full collection so that the entire path — deployment, teaching, saving, replay, export — is proven on real mainnet before sixty-four minds depend on it. It is named <em>Perception Chamber Canary</em> on chain, and it is a complete work, not a test that gets thrown away.</p>
+<h3>More chambers — in research</h3>
+<p>Further generations follow, each isolating a single capability the Perception Chamber deliberately does not have. What they are, and what they will be called, will be said when they are real.</p>
+<hr>
+<h2>What is deliberately absent</h2>
+<p>Perception Chamber has no consolidation, no episodic or spatial memory, no planning, no intrinsic objectives, no reinforcement learning and no autonomous self-training. Those absences are the series: each one is a later Chamber&#x27;s question, and adding them early would make it impossible to say which mechanism produced which behaviour.</p>
+<hr>
+<h2>Lineage and prior work</h2>
+<p>Four strands this work stands on and does not claim to have originated.</p>
+<p><strong>Frank Rosenblatt</strong> (1958) described the perceptron and its learning rule — the class of learner the Perception Chamber uses. <em>The perceptron: a probabilistic model for information storage and organization in the brain.</em> Psychological Review 65(6), 386–408. <a href="https://doi.org/10.1037/h0042519" target="_blank" rel="noopener">https://doi.org/10.1037/h0042519</a></p>
+<p><strong>John Walker</strong> (1987) published <strong>BrainSim</strong>, a neural network on a Commodore 64: an associative-memory pattern recogniser in fewer than 250 lines of Commodore BASIC, trainable and able to recall noisy patterns. A different mechanism from this learner&#x27;s supervised rule, and thirty-nine years earlier. <a href="https://www.fourmilab.ch/documents/commodore/BrainSim/" target="_blank" rel="noopener">https://www.fourmilab.ch/documents/commodore/BrainSim/</a></p>
+<p><strong>Justin D. Harris and Bo Waggoner</strong> (2019, Microsoft Research) demonstrated state-changing perceptron updates inside Ethereum transactions, with working open-source Solidity. <em>Decentralized &amp; Collaborative AI on Blockchain</em>, arXiv:1907.07247. <a href="https://github.com/microsoft/0xDeCA10B" target="_blank" rel="noopener">https://github.com/microsoft/0xDeCA10B</a></p>
+<p><strong>Perceptrons</strong> (Fingerprints DAO × Generative, 2023) placed functioning neural-network models and their weights fully <strong>on Bitcoin</strong>, as collectible artworks — a model living entirely on a public chain, on a different chain from this work and without on-chain training.</p>
+<p>The Chamber series uses no code from any of these and makes no claim to first on-chain perceptron training, to first machine learning on a Commodore 64, or to first fully on-chain neural-network artwork.</p>
+<hr>
+<h2>Acknowledgement</h2>
+<p>None of this would exist without <strong>nopsta</strong>. In 2022 he stored a working Commodore 64 — the emulator <strong>minimal64</strong> — inside Ethereum contracts, and in doing so made it possible to treat a C64 runtime itself as reusable on-chain infrastructure. Every Chamber boots from those contracts, read in place, exactly where he left them.</p>
+<p>He has since passed away. The Chamber series was created independently afterward, as an exploration of—and tribute to—the open computational infrastructure he left for others to use.</p>
+<hr>
+<h2>Credits and licences</h2>
+<p><strong>Tony: Born for Adventure</strong> — game code Maciej Małecki, graphics Rafał Dudek, music Sami Juntunen. MIT. <a href="https://github.com/maciejmalecki/tony-demo" target="_blank" rel="noopener">https://github.com/maciejmalecki/tony-demo</a></p>
+<p><strong>minimal64</strong> — the C64 emulator, by nopsta. GPL-2.0. <a href="https://github.com/nopsta/minimal64" target="_blank" rel="noopener">https://github.com/nopsta/minimal64</a></p>
+<p><strong>Character set</strong> — the OpenROMs character ROM, LGPL-3.0-or-later. <a href="https://github.com/MEGA65/open-roms" target="_blank" rel="noopener">https://github.com/MEGA65/open-roms</a></p>
+<p>The Chamber series, its learner, its contracts and its pages are by CypherDAO, 2026, and are released under the MIT licence. See <a href="LICENSE">LICENSE</a>.</p>
+</main>
+</body>
+</html>

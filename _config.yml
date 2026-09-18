@@ -1,6 +1,0 @@
-# Placeholder presentation only. GitHub Pages renders README.md with this
-# theme until index.html exists; once it does, index.html is served instead
-# and this file stops mattering.
-theme: jekyll-theme-hacker
-title: The Chamber
-description: A series of Commodore 64 works that live on Ethereum.
