@@ -143,6 +143,17 @@ pre code{border:0;background:none;padding:0}
 .mindprint-banner{margin:26px 0 44px;padding:0}
 h1{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word}
 hr+h2{border-top:0;padding-top:0;margin-top:30px}
+.token-live{margin:34px 0 44px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px}
+.token-head{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:16px}
+.token-label{font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent)}
+.token-note{color:var(--muted);font-size:.84rem}
+.token-stage{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border:1px solid #232323;border-radius:10px;background:#060606;padding:26px 20px}
+.token-load{font:700 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;color:#050505;background:var(--accent);border:0;border-radius:6px;padding:14px 26px;cursor:pointer}
+.token-load:hover{background:var(--accent2)}
+.token-load:disabled{background:#2a2a2a;color:var(--muted);cursor:default}
+.token-sub{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}
+.token-frame{width:100%;aspect-ratio:4/3;border:0;border-radius:8px;display:block;background:#000}
+.token-foot{margin:16px 0 0;color:var(--muted);font-size:.84rem}
 pre{max-width:100%;overflow-x:auto}
 pre code{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}
 code{overflow-wrap:anywhere;word-break:break-word}
@@ -258,6 +269,96 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <p>The deployment was rehearsed against a mainnet fork and then executed against nopsta&#x27;s existing emulator contracts. The contracts were source-verified. The token was transferred, taught, and saved on mainnet. Its first canonical revision contains 32 accepted lessons and a new learned brain.</p>
 <p>That brain was independently verified, read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum.</p>
 <p>This is why <strong>canary</strong> is the right word: it is not a mock-up or a description of a future system. It is a live specimen proving the complete path.</p>
+<figure class="token-live" id="token-live">
+  <figcaption class="token-head">
+    <span class="token-label">THE LIVE TOKEN</span>
+    <span class="token-note">read from Ethereum mainnet at the moment you press it</span>
+  </figcaption>
+  <div class="token-stage" id="token-stage">
+    <button type="button" class="token-load" id="token-load">LOAD THE TOKEN</button>
+    <p class="token-sub" id="token-sub">About 580 KB: the emulator, the program and the current mind, assembled from chain state. Nothing is fetched from a server.</p>
+  </div>
+  <p class="token-foot">You can play and teach Tony here. <strong>You cannot save from this frame</strong> &mdash; a browser wallet cannot reach inside it, so teaching done here is not written to the chain. Saving happens on the token&rsquo;s own page.</p>
+</figure>
+<script>
+(function () {
+  var TOKEN = "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127";
+  var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
+  var ARG = "0".repeat(63) + "1";                     // token id 1, 32 bytes
+  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"];
+
+  var stage = document.getElementById("token-stage");
+  var btn = document.getElementById("token-load");
+  var sub = document.getElementById("token-sub");
+  var say = function (t) { sub.textContent = t; };
+
+  // ABI-decode one returned string: [offset][length][bytes]
+  function decodeString(hex) {
+    var b = hex.slice(2);
+    var len = parseInt(b.slice(64, 128), 16);
+    var body = b.slice(128, 128 + len * 2);
+    var out = new Uint8Array(len);
+    for (var i = 0; i < len; i++) out[i] = parseInt(body.substr(i * 2, 2), 16);
+    return new TextDecoder().decode(out);
+  }
+
+  // a base64 data: URI to a Blob, so nothing depends on data-URI length limits
+  function toBlob(uri) {
+    var comma = uri.indexOf(",");
+    var type = uri.slice(5, comma).split(";")[0] || "text/plain";
+    var bin = atob(uri.slice(comma + 1));
+    var buf = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return new Blob([buf], { type: type });
+  }
+
+  function call(rpc) {
+    return fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1, method: "eth_call",
+        params: [{ to: TOKEN, data: SELECTOR + ARG }, "latest"]
+      })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.error) throw new Error(j.error.message || "the provider refused the call");
+      if (!j.result || j.result === "0x") throw new Error("the provider returned nothing");
+      return j.result;
+    });
+  }
+
+  function run() {
+    btn.disabled = true;
+    btn.textContent = "READING THE CHAIN…";
+    say("Calling tokenURI on mainnet. The full render is about 31 million gas as a read, so give it a few seconds.");
+
+    var p = Promise.reject();
+    RPCS.forEach(function (rpc) { p = p.catch(function () { return call(rpc); }); });
+
+    p.then(function (hex) {
+      return toBlob(decodeString(hex)).text();
+    }).then(function (jsonText) {
+      var meta = JSON.parse(jsonText);
+      if (!meta.animation_url) throw new Error("the token returned no animation_url");
+      var frame = document.createElement("iframe");
+      frame.className = "token-frame";
+      frame.setAttribute("sandbox", "allow-scripts");
+      frame.setAttribute("title", "Perception Chamber Canary, live from Ethereum");
+      frame.src = URL.createObjectURL(toBlob(meta.animation_url));
+      stage.innerHTML = "";
+      stage.appendChild(frame);
+    })["catch"](function (e) {
+      btn.disabled = false;
+      btn.textContent = "TRY AGAIN";
+      say("Could not read the token: " + ((e && e.message) || "unknown error") +
+          ". Public providers sometimes decline a read this large. The token is always readable on Etherscan at " + TOKEN + ".");
+    });
+  }
+
+  btn.addEventListener("click", run);
+})();
+</script>
+
 <hr>
 <h2>What is being claimed</h2>
 <p>Perception Chamber demonstrates:</p>

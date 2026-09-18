@@ -122,6 +122,18 @@ def main():
         'of cells flashing and settling" width="2004" height="220" decoding="async">'
         '</figure>'
     )
+    # the live token, at the end of "The mainnet canary": the section states the
+    # address and claims the token was deployed, taught and saved, so the machine
+    # that proves it belongs directly under the claim. Loads only on a press.
+    token = (HERE / "token.html").read_text(encoding="utf-8")
+    h = body.find("<h2>The mainnet canary</h2>")
+    if h == -1:
+        raise SystemExit("build: the mainnet canary section is gone; token embed has no home")
+    cut = body.find("<hr>", h)
+    if cut == -1:
+        raise SystemExit("build: no section end found after the mainnet canary")
+    body = body[:cut] + token + "\n" + body[cut:]
+
     # place it directly after the opening h1/h2 pair
     body = re.sub(r"(</h2>)", r"\1\n" + banner.replace("\\", "\\\\"), body, count=1)
 
@@ -155,6 +167,17 @@ def main():
 .mindprint-banner{{margin:26px 0 44px;padding:0}}
 h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word}}
 hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
+.token-live{{margin:34px 0 44px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px}}
+.token-head{{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:16px}}
+.token-label{{font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent)}}
+.token-note{{color:var(--muted);font-size:.84rem}}
+.token-stage{{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border:1px solid #232323;border-radius:10px;background:#060606;padding:26px 20px}}
+.token-load{{font:700 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;color:#050505;background:var(--accent);border:0;border-radius:6px;padding:14px 26px;cursor:pointer}}
+.token-load:hover{{background:var(--accent2)}}
+.token-load:disabled{{background:#2a2a2a;color:var(--muted);cursor:default}}
+.token-sub{{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}}
+.token-frame{{width:100%;aspect-ratio:4/3;border:0;border-radius:8px;display:block;background:#000}}
+.token-foot{{margin:16px 0 0;color:var(--muted);font-size:.84rem}}
 pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}
 code{{overflow-wrap:anywhere;word-break:break-word}}
