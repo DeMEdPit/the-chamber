@@ -166,8 +166,6 @@ code{{overflow-wrap:anywhere;word-break:break-word}}
 <main>
 <p class="kicker">THE CHAMBER · BLACK PAPER 01</p>
 {body}
-<hr>
-<p class="kicker"><a href="{SITE}/">← THE CHAMBER</a></p>
 </main>
 </body>
 </html>
