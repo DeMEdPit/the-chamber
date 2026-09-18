@@ -112,15 +112,15 @@ def main():
     css = (HERE / "paper.css").read_text(encoding="utf-8")
     body = convert(md)
 
-    # the banner: the true mindprint, a separate cacheable file rather than
-    # 800 KB inlined; every cell is the nearest of the canary's real 800 weights
+    # the banner: the owner's original mindprint field, kept at his direction
+    # (2026-09-18). It is the decorative grid, not a rendering of this token's
+    # weights, so nothing here claims that it is. Served as its own cacheable
+    # file rather than inlined, which keeps the document itself small.
     banner = (
         '<figure class="mindprint-banner">'
-        '<img src="mindprint.svg" alt="Mindprint of the '
-        'Perception Chamber Canary at revision 1: the 800 learned weights as a field" '
-        'width="2004" height="220" decoding="async">'
-        '<figcaption>The canary’s mind at revision 1. Every cell reports the '
-        'nearest of its 800 learned weights.</figcaption></figure>'
+        '<img src="mindprint.svg" alt="The Perception Chamber mindprint: a field '
+        'of cells flashing and settling" width="2004" height="220" decoding="async">'
+        '</figure>'
     )
     # place it directly after the opening h1/h2 pair
     body = re.sub(r"(</h2>)", r"\1\n" + banner.replace("\\", "\\\\"), body, count=1)
