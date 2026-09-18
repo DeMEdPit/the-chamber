@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perception Chamber — Black Paper 01</title>
+<meta name="description" content="A human teaches a perceptron inside a Commodore 64 program; Ethereum replays the same lessons and accepts the new mind only if the bytes agree.">
+<link rel="canonical" href="https://demedpit.github.io/the-chamber/black-paper/">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="The Chamber">
+<meta property="og:url" content="https://demedpit.github.io/the-chamber/black-paper/">
+<meta property="og:title" content="Perception Chamber — Black Paper 01">
+<meta property="og:description" content="A human teaches a perceptron inside a Commodore 64 program; Ethereum replays the same lessons and accepts the new mind only if the bytes agree.">
+<meta property="og:image" content="https://demedpit.github.io/the-chamber/card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Perception Chamber — Black Paper 01">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Perception Chamber — Black Paper 01">
+<meta name="twitter:description" content="A human teaches a perceptron inside a Commodore 64 program; Ethereum replays the same lessons and accepts the new mind only if the bytes agree.">
+<meta name="twitter:image" content="https://demedpit.github.io/the-chamber/card.png">
+
+<meta name="theme-color" content="#39ff88">
+<style>
+
+:root{--bg:#000;--panel:#0b0b0b;--ink:#f4f4ef;--muted:#aaa9a3;--line:#262626;--accent:#39ff88;--accent2:#9dffd0}
+*{box-sizing:border-box}
+html,body{background:#000}
+body{margin:0;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}
+main{width:min(900px,calc(100% - 36px));margin:auto;padding:72px 0 120px}
+.kicker{font:700 .76rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);letter-spacing:.16em;margin-bottom:20px}
+h1{font-size:clamp(1.8rem,9vw,6.4rem);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;white-space:nowrap;width:100%}
+h1+h2{border:0;margin-top:0;padding-top:0;color:var(--muted);font-size:1.45rem;font-weight:450}
+h2{margin:70px 0 18px;padding-top:12px;border-top:1px solid var(--line);font-size:1.9rem;letter-spacing:-.025em}
+h3{margin:34px 0 12px}
+p{font-size:1.04rem;color:#deded9;margin:0 0 18px}
+a{color:var(--accent2);text-decoration:none;border-bottom:1px solid #35545b;word-break:break-word}
+blockquote{margin:34px 0;padding:20px 24px;border-left:3px solid var(--accent);background:linear-gradient(90deg,#121212,#070707);font-size:1.2rem;color:#fff}
+ul,ol{color:#d8d8d4;padding-left:1.35rem} li{margin:.38rem 0}
+hr{border:0;border-top:1px solid var(--line);margin:56px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#111;border:1px solid #222;border-radius:4px;padding:.08rem .28rem}
+pre{overflow:auto;background:#060606;border:1px solid #232323;border-radius:10px;padding:22px;margin:28px 0}
+pre code{border:0;background:none;padding:0}
+.figure{margin:28px 0 42px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px;display:flex;flex-direction:column;align-items:stretch}
+.figlabel{font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent);margin-bottom:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:stretch}
+.node{min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #333;background:#0c0c0c;padding:14px;text-align:center}
+.node b,.pill,.timeline b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em}
+.node span{color:var(--muted);margin-top:5px;font-size:.82rem}
+.down{text-align:center;color:var(--accent);font-size:1.8rem;margin:8px 0}
+.result{max-width:560px;margin:auto;border-color:#526329}
+.lineage,.timeline{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;margin-inline:auto;text-align:center}
+.pill{border:1px solid #333;background:#0b0b0b;padding:12px 16px}
+.arrow{color:var(--accent);font-size:1.2rem}
+.caption{margin-top:16px;color:var(--muted);text-align:center;font-size:.88rem}
+.timeline>div:not(.arrow){display:flex;flex-direction:column;text-align:center;min-width:100px}
+.timeline span{color:var(--muted);font-size:.78rem;margin-top:4px}
+@media(max-width:700px){main{padding-top:42px}.grid3{grid-template-columns:1fr}h2{margin-top:56px}}
+
+.conformance-diagram{
+  width:100%;
+  max-width:760px;
+  margin:28px auto;
+  padding:26px 18px 18px;
+  border:1px solid #262626;
+  border-radius:12px;
+  background:#050505;
+  overflow:hidden;
+}
+.conformance-svg{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.conformance-svg .frame,
+.conformance-svg .runtime-box,
+.conformance-svg .brain-box{
+  fill:#0b0b0b;
+  stroke:#333;
+  stroke-width:1.25;
+}
+.conformance-svg .brain-box{
+  stroke:color-mix(in srgb,var(--accent) 48%,#333);
+}
+.conformance-svg .connector,
+.conformance-svg .plus-mark{
+  stroke:var(--accent);
+  fill:none;
+  stroke-width:2;
+  stroke-linecap:square;
+}
+.conformance-svg .plus-mark{stroke-width:3}
+.conformance-svg .title-text,
+.conformance-svg .label-text,
+.conformance-svg .body-text{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  text-anchor:middle;
+}
+.conformance-svg .title-text{
+  fill:#f4f4ef;
+  font-size:18px;
+  letter-spacing:1.2px;
+}
+.conformance-svg .label-text{
+  fill:#f4f4ef;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:1.5px;
+}
+.conformance-svg .body-text{
+  fill:#aaa9a3;
+  font-size:11px;
+}
+@media(max-width:600px){
+  .conformance-diagram{padding:18px 10px 12px}
+}
+
+
+.mindprint-strip{
+  width:89%;
+  max-width:820px;
+  aspect-ratio:2004 / 220;
+  margin:14px 0 20px;
+  overflow:hidden;
+  background:#0a0a0a;
+}
+.mindprint-strip-svg{
+  display:block;
+  width:100%;
+  height:100%;
+}
+@media(max-width:700px){
+  .mindprint-strip{
+    width:100%;
+    max-width:none;
+    margin:12px 0 18px;
+  }
+}
+
+
+.mindprint-banner{margin:26px 0 44px;padding:0}
+h1{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word}
+hr+h2{border-top:0;padding-top:0;margin-top:30px}
+pre{max-width:100%;overflow-x:auto}
+pre code{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}
+code{overflow-wrap:anywhere;word-break:break-word}
+.mindprint-banner img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px;background:#0a0a0a}
+.mindprint-banner figcaption{margin-top:12px;color:var(--muted);font-size:.86rem}
+</style>
+</head>
+<body>
+<main>
+<p class="kicker">THE CHAMBER · BLACK PAPER 01</p>
+<h1>Perception Chamber</h1>
+<h2>Portable Learned Identity Across a Commodore 64 and Ethereum</h2>
+<figure class="mindprint-banner"><img src="mindprint.svg" alt="Mindprint of the Perception Chamber Canary at revision 1: the 800 learned weights as a field" width="2004" height="220" decoding="async"><figcaption>The canary’s mind at revision 1. Every cell reports the nearest of its 800 learned weights.</figcaption></figure>
+<blockquote><strong>1958 intelligence, inside a 1982 machine, persisting through a 2015 computational substrate.</strong></blockquote>
+<p><strong>Perception Chamber Canary</strong> is a one-of-one mainnet experiment in portable learned identity. A human teaches a small learner inside a Commodore 64 program. The learned state can then be saved to Ethereum, where the same learning transition is independently replayed under consensus before a new canonical brain revision is accepted.</p>
+<p>The model is deliberately simple: a single-layer perceptron with 80 inputs, 10 outputs, and 800 signed learned weights. The technical ambition is elsewhere. Perception Chamber asks whether the <em>same learned mind</em> can move between radically different computational environments—a 6510/C64 runtime, a reference implementation, and the EVM—without approximation, model conversion, or trust in a server.</p>
+<p>The mainnet canary demonstrates that it can.</p>
+<hr>
+<h2>A small brain with a large integrity boundary</h2>
+<p>Perception Chamber uses a frozen learner called <strong>BRAIN025</strong>. Its canonical brain is an 834-byte serialized object:</p>
+<ul><li>24 bytes of header and state metadata</li><li>800 signed 8-bit learned weights</li><li>10 mood/bias bytes, required to remain zero in canonical state</li></ul>
+<p>There is no hidden layer. The system is a multiclass linear perceptron: 80 binary/thresholded features feed 10 action outputs. During teaching, the current prediction is compared with the human-demonstrated action. If the prediction is correct, the weights do not change. If it is wrong, active inputs move the taught action row by <code>+1</code> and the predicted row by <code>-1</code>, saturating at signed 8-bit limits.</p>
+<p>This is not deep learning. It is deliberately minimal: small enough to inspect completely, yet genuinely capable of learning from examples and changing future behavior.</p>
+<p>The important point is that the brain is not merely represented by a hash. The full serialized state is preserved. Every one of the 800 weights of every saved revision can be recovered.</p>
+<hr>
+<h2>Learning in the C64; verification on Ethereum</h2>
+<p>Interactive learning happens inside the Commodore 64 program itself.</p>
+<p>When TRAIN is active, the C64 program reads world/body-derived signals, converts them into the learner&#x27;s 80 inputs, computes a prediction, observes the human-demonstrated action, and applies the perceptron correction when needed. Future inference immediately uses the changed weights.</p>
+<p>The browser hosts the emulator and instrumentation; it does not secretly implement Tony&#x27;s cognition.</p>
+<p>Saving a mind crosses a second computational boundary.</p>
+<p>A SAVE MIND transaction names the canonical parent revision, provides the ordered education stream, and includes the child-brain hash produced locally. Ethereum does not simply trust the claimed result. The contract reads the canonical parent brain, recomputes the predictions lesson by lesson, applies the same integer update rule, and derives the child brain itself.</p>
+<p>Only if the EVM-derived 834 bytes produce the claimed canonical hash can the new revision be committed.</p>
+<div class="conformance-diagram">
+  <svg class="conformance-svg" viewBox="0 0 720 420" role="img" aria-label="Cross-runtime conformance diagram showing the C64, a reference implementation, and the EVM deriving the same learned brain from the same starting brain and ordered education.">
+    <rect class="frame" x="1" y="1" width="718" height="418" rx="12" ry="12" fill="none" stroke="#262626"/>
+
+    <text class="title-text" x="360" y="42">same starting brain B0</text>
+    <line class="plus-mark" x1="350" y1="74" x2="370" y2="74"/>
+    <line class="plus-mark" x1="360" y1="64" x2="360" y2="84"/>
+    <text class="title-text" x="360" y="116">same ordered education L</text>
+    <line class="connector" x1="360" y1="134" x2="360" y2="178"/>
+    <line class="connector" x1="150" y1="178" x2="570" y2="178"/>
+    <line class="connector" x1="150" y1="178" x2="150" y2="190"/>
+    <line class="connector" x1="360" y1="178" x2="360" y2="190"/>
+    <line class="connector" x1="570" y1="178" x2="570" y2="190"/>
+
+    <rect class="runtime-box" x="64" y="190" width="172" height="100"/>
+    <rect class="runtime-box" x="274" y="190" width="172" height="100"/>
+    <rect class="runtime-box" x="484" y="190" width="172" height="100"/>
+
+    <text class="label-text" x="150" y="244">C64 / 6510</text>
+    <text class="body-text" x="150" y="280">interactive learner</text>
+
+    <text class="label-text" x="360" y="244">REFERENCE</text>
+    <text class="body-text" x="360" y="280">independent oracle</text>
+
+    <text class="label-text" x="570" y="244">EVM</text>
+    <text class="body-text" x="570" y="280">consensus replay</text>
+
+    <line class="connector" x1="150" y1="290" x2="150" y2="325"/>
+    <line class="connector" x1="360" y1="290" x2="360" y2="325"/>
+    <line class="connector" x1="570" y1="290" x2="570" y2="325"/>
+    <line class="connector" x1="150" y1="325" x2="570" y2="325"/>
+    <line class="connector" x1="360" y1="325" x2="360" y2="342"/>
+
+    <rect class="brain-box" x="165" y="342" width="390" height="58"/>
+    <text class="label-text" x="360" y="375">IDENTICAL BRAIN B1</text>
+    <text class="body-text" x="360" y="392">byte-for-byte serialized learned state</text>
+  </svg>
+</div>
+<p>The standard is stronger than behavioral similarity:</p>
+<blockquote><strong>the resulting serialized brain must agree byte-for-byte.</strong></blockquote>
+<p>Each canonical save is therefore also a live cross-runtime conformance test.</p>
+<hr>
+<h2>Learned-state lineage</h2>
+<p>Perception Chamber does not overwrite a mutable brain. Each accepted save creates a new immutable revision:</p>
+<pre><code>GENESIS → REV 1 → REV 2 → REV 3 → …</code></pre>
+<p>A revision records or points to its parent, its immutable brain blob, the immutable education that produced it, lesson and education counts, its canonical SHA-256, the block in which it was saved, and the address that committed it. Only the token&#x27;s current holder can commit a revision; the address proves who saved, not who held the joystick for every lesson.</p>
+<p>The brain bytes and education bytes are persisted as immutable Ethereum data contracts. They do not depend on a private database or API server.</p>
+<p>If a token is saved seven times, all seven historical brains remain recoverable. Revision four has its own complete 800-weight matrix. A future tool can compare two revisions weight by weight, identify what changed, retrieve the exact education responsible for the transition, and independently replay it.</p>
+<p>This turns learning history into something closer to biography:</p>
+<blockquote><strong>learned identity can have provenance, ancestry, and a reconstructible past.</strong></blockquote>
+<hr>
+<h2>A mind above the runtime</h2>
+<p>The frozen C64 program is itself on-chain. The contract exposes the learned brain and can derive a PRG with the canonical brain inserted into the correct slot.</p>
+<p>A saved mind can therefore be:</p>
+<ul><li>read directly from Ethereum;</li><li>inspected as raw weights;</li><li>visualized as a mindprint;</li><li>replayed from its education history;</li><li>inserted into the original PRG;</li><li>run again under another C64 emulator such as VICE.</li></ul>
+<p>The mainnet canary demonstrated this round trip. Its learned brain was read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum with the learned behavior intact.</p>
+<p>The identity is therefore not confined to Ethereum, the browser, or one emulator.</p>
+<blockquote><strong>The learned identity lives in the serialized state, not in the runtime that happens to execute it.</strong></blockquote>
+<hr>
+<h2>Art, research, and historical layering</h2>
+<p>Perception Chamber is intentionally both an artwork and a research object.</p>
+<p>Its chronology is part of the work:</p>
+<ul><li><strong>1958</strong> — Frank Rosenblatt publishes the perceptron.</li><li><strong>1982</strong> — the Commodore 64 arrives.</li><li><strong>2015</strong> — Ethereum launches as a general programmable blockchain.</li><li><strong>2022</strong> — nopsta creates <strong>minimal64</strong>, a compact C64 emulator designed for new software and preserved on Ethereum.</li><li><strong>2026</strong> — Perception Chamber gives a C64-native learner a persistent, Ethereum-verifiable biography.</li></ul>
+<p>The project is deeply indebted to <strong>nopsta</strong>, who stored the machine on Ethereum in 2022 and has since passed away. Minimal64 made it possible to treat a C64 runtime itself as reusable on-chain infrastructure. Perception Chamber was created independently afterward, as an exploration of—and tribute to—the open computational infrastructure he left for others to use, and extends the idea one layer upward: the learned state itself becomes public, inspectable infrastructure for later tools and artworks.</p>
+<p>The <strong>mindprint</strong> makes that state visible. It is a deterministic visual field derived from the 800 learned weights. As Tony learns, changed cells flash and settle into the standing structure of the brain. It is both instrumentation and artwork: an image whose marks are grounded in actual learned state.</p>
+<hr>
+<h2>Prior work and the boundary of the contribution</h2>
+<p>Perception Chamber does <strong>not</strong> claim to invent perceptrons, learning on a Commodore 64, or machine-learning models trained in Ethereum contracts.</p>
+<p>Those histories matter.</p>
+<p><strong>Frank Rosenblatt (1958)</strong> provides the learning-rule lineage. His perceptron work is a foundational reference for trainable linear systems.</p>
+<p><strong>John Walker&#x27;s BrainSim (1987)</strong> demonstrated a genuine trainable neural-network/associative-memory system on a Commodore 64, implemented in fewer than 250 lines of BASIC. BrainSim is not the same learning mechanism as BRAIN025, but it is important prior art for machine learning on the C64.</p>
+<p><strong>Justin D. Harris and Bo Waggoner (2019)</strong> proposed continuously updated public machine-learning models hosted in Ethereum smart contracts. Their open-source Microsoft project <strong>0xDeCA10B</strong> includes perceptron contracts and establishes clear prior art for state-changing perceptron training under Ethereum consensus.</p>
+<p><strong>Perceptrons (Fingerprints DAO × Generative, 2023)</strong> placed functioning neural-network models and their weights fully on Bitcoin as collectible artworks: prior art for a learned model kept whole on a public chain as an artwork.</p>
+<p><strong>nopsta&#x27;s minimal64 (2022)</strong> provides the portable C64 runtime substrate on which the Chamber project is built.</p>
+<p>The contribution of Perception Chamber is therefore not “a perceptron on Ethereum” or “AI on a C64.” It is the combination:</p>
+<blockquote><strong>a portable learned-state specification, byte-exact implementations across heterogeneous runtimes, consensus replay of education, immutable learned-state lineage, and reconstruction of the learned mind back into its original executable embodiment.</strong></blockquote>
+<hr>
+<h2>The mainnet canary</h2>
+<p>The one-of-one <strong>Perception Chamber Canary</strong> was deployed on Ethereum mainnet in September 2026:</p>
+<p><code>0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127</code></p>
+<p>The deployment was rehearsed against a mainnet fork and then executed against nopsta&#x27;s existing emulator contracts. The contracts were source-verified. The token was transferred, taught, and saved on mainnet. Its first canonical revision contains 32 accepted lessons and a new learned brain.</p>
+<p>That brain was independently verified, read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum.</p>
+<p>This is why <strong>canary</strong> is the right word: it is not a mock-up or a description of a future system. It is a live specimen proving the complete path.</p>
+<hr>
+<h2>What is being claimed</h2>
+<p>Perception Chamber demonstrates:</p>
+<ul><li>genuine online weight updates in a C64-native learner;</li><li>a completely inspectable 800-weight model;</li><li>deterministic cross-runtime replay;</li><li>EVM verification of learning transitions;</li><li>immutable preservation of brain and education history;</li><li>public access to every canonical historical revision;</li><li>reconstruction of a learned brain into the original executable PRG.</li></ul>
+<p>It does <strong>not</strong> claim modern deep-learning capability, that every C64 CPU cycle executes on Ethereum, that Ethereum proves a human physically performed every submitted lesson, or that perceptron training on Ethereum is unprecedented.</p>
+<p>The smallness of the learner is a feature of the experiment. A brain under one kilobyte is simple enough for a person to inspect, for a C64 to train, and for Ethereum to replay directly.</p>
+<p>The intelligence is deliberately small. The integrity boundary around it is deliberately large.</p>
+<hr>
+<h2>From one canary to a population of minds</h2>
+<p>The canary is the first specimen, not the endpoint.</p>
+<p>A planned 64-token Perception Chamber collection can begin with initially equivalent BRAIN025 learners and allow each token to develop its own education, weight history, mindprint, and lineage under its holder.</p>
+<p>That creates a population of comparable learned individuals and raises new questions: How far do identical learners diverge under different teachers? Can different educational histories converge on similar policies? Do recognizable teaching styles appear in weight histories? What happens when stewardship of a learned individual changes?</p>
+<p>Later Chambers may introduce hidden representation, retention, memory, and more autonomous forms of agency. The intention is not to silently upgrade one work forever, but to make each new cognitive boundary legible as its own Chamber.</p>
+<hr>
+<h2>Conclusion</h2>
+<p>Perception Chamber begins with an old and deliberately modest learning rule, but places it inside an unusual chain of custody.</p>
+<p>A human teaches a learner inside a Commodore 64 program. The C64 changes real weights. Ethereum independently replays the same education. A new brain is accepted only if the machines agree. The brain and education remain on-chain as immutable history. The learned brain can leave Ethereum, return to the PRG, and run again.</p>
+<p>The experiment asks:</p>
+<blockquote><strong>Can learned identity survive the runtime?</strong></blockquote>
+<p>The mainnet canary is an affirmative first answer.</p>
+<hr>
+<h2>References and prior art</h2>
+<ol><li>Rosenblatt, F. (1958). “The perceptron: A probabilistic model for information storage and organization in the brain.” <em>Psychological Review</em>, 65(6), 386–408. DOI: 10.1037/h0042519.&lt;br&gt;<a href="https://doi.org/10.1037/h0042519" target="_blank" rel="noopener">https://doi.org/10.1037/h0042519</a></li></ol>
+<ol><li>Walker, J. (1987). “Neural Network on a Commodore 64.” BrainSim / Fourmilab.&lt;br&gt;<a href="https://www.fourmilab.ch/documents/commodore/BrainSim/" target="_blank" rel="noopener">https://www.fourmilab.ch/documents/commodore/BrainSim/</a></li></ol>
+<ol><li>Harris, J. D., &amp; Waggoner, B. (2019). “Decentralized &amp; Collaborative AI on Blockchain.” arXiv:1907.07247.&lt;br&gt;<a href="https://arxiv.org/abs/1907.07247" target="_blank" rel="noopener">https://arxiv.org/abs/1907.07247</a></li></ol>
+<ol><li>Harris, J. D. (2020). “Analysis of Models for Decentralized and Collaborative AI on Blockchain.” arXiv:2009.06756.&lt;br&gt;<a href="https://arxiv.org/abs/2009.06756" target="_blank" rel="noopener">https://arxiv.org/abs/2009.06756</a></li></ol>
+<ol><li>Microsoft / 0xDeCA10B. “Sharing Updatable Models (SUM) on Blockchain.”&lt;br&gt;<a href="https://github.com/microsoft/0xDeCA10B" target="_blank" rel="noopener">https://github.com/microsoft/0xDeCA10B</a></li></ol>
+<ol><li>nopsta. <strong>minimal64</strong>. 2022. GPL-2.0.&lt;br&gt;<a href="https://github.com/nopsta/minimal64" target="_blank" rel="noopener">https://github.com/nopsta/minimal64</a></li></ol>
+<ol><li>ethereum.org. “The history of Ethereum.”&lt;br&gt;<a href="https://ethereum.org/en/history/" target="_blank" rel="noopener">https://ethereum.org/en/history/</a></li></ol>
+<hr>
+<h3>Project note</h3>
+<p>Perception Chamber builds on the open computational infrastructure of minimal64. The Chamber learner, lineage contracts, page, and associated tooling were developed independently by CypherDAO. Component licenses remain with their respective authors and projects: minimal64 by nopsta (GPL-2.0); the OpenROMs character ROM (LGPL-3.0-or-later, github.com/MEGA65/open-roms); the Tony demo&#x27;s art and music (MIT).</p>
+<hr>
+<p class="kicker"><a href="https://demedpit.github.io/the-chamber/">← THE CHAMBER</a></p>
+</main>
+</body>
+</html>
