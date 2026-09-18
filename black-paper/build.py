@@ -114,7 +114,11 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 .token-load:hover{{background:var(--accent2)}}
 .token-load:disabled{{background:#2a2a2a;color:var(--muted);cursor:default}}
 .token-sub{{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}}
-.token-frame{{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;display:block;background:#000}}
+/* the page inside lays out for a portrait-ish viewport - it fills one on a
+   phone and renders small and top-aligned in a wide short box - so on desktop
+   the frame is given that shape and centred rather than stretched wide */
+.token-frame{{width:min(100%,660px);height:min(78vh,820px);margin-inline:auto;
+  border:0;border-radius:8px;display:block;background:#000}}
 .token-foot{{margin:16px 0 0;color:var(--muted);font-size:.84rem}}
 @media(max-width:700px){{
   /* the machine gets the whole width of the phone: the figure escapes the text
