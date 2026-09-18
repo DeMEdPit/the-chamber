@@ -299,7 +299,7 @@ code{overflow-wrap:anywhere;word-break:break-word}
 (function () {
   var TOKEN = "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127";
   var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
-  var ARG = "0".repeat(63) + "1";                     // token id 1, 32 bytes
+  var ARG = "0000000000000000000000000000000000000000000000000000000000000001";                     // the token id, 32 bytes
   var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"];
 
   var stage = document.getElementById("token-stage");

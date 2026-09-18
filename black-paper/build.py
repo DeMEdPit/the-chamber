@@ -17,6 +17,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from md import convert, inline  # noqa: E402
+from token_embed import embed  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -50,7 +51,15 @@ def main():
     # the live token, at the end of "The mainnet canary": the section states the
     # address and claims the token was deployed, taught and saved, so the machine
     # that proves it belongs directly under the claim. Loads only on a press.
-    token = (HERE / "token.html").read_text(encoding="utf-8")
+    token = embed(
+        "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127", 1,
+        "Perception Chamber Canary, live from Ethereum",
+        "read from Ethereum mainnet at the moment you press it",
+        "About 580 KB: the emulator, the program and the current mind, assembled "
+        "from chain state. Nothing is fetched from a server.",
+        "You can play and teach Tony here. <strong>You cannot save from this frame"
+        "</strong> &mdash; a browser wallet cannot reach inside it, so teaching done "
+        "here is not written to the chain. Saving happens on the token&rsquo;s own page.")
     h = body.find("<h2>The mainnet canary</h2>")
     if h == -1:
         raise SystemExit("build: the mainnet canary section is gone; token embed has no home")
