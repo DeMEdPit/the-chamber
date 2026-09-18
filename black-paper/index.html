@@ -158,11 +158,18 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
   /* the machine gets the whole width of the phone: the figure escapes the text
      column and both rings of padding come off the frame, which was costing it
      about 80 of 390 pixels */
-  .token-live{margin-inline:calc(50% - 50vw);padding:16px 0;border-left:0;border-right:0;border-radius:0}
-  .token-head,.token-foot{padding-inline:18px}
+  .token-live{margin-inline:calc(50% - 50vw);padding:8px 0;border-left:0;border-right:0;border-radius:0}
+  .token-head{padding-inline:18px;margin-bottom:10px}
+  .token-foot{padding-inline:18px;margin-top:10px}
   .token-stage{padding:0;border-left:0;border-right:0;border-radius:0;min-height:0}
   .token-stage:has(.token-load){padding:26px 18px;min-height:210px}
-  .token-frame{aspect-ratio:auto;height:78vh;max-height:760px}
+  /* 68vh, not 78: the C64 and its controls do not fill a taller box, and the
+     remainder reads as dead space under the buttons */
+  .token-frame{aspect-ratio:auto;height:68vh;max-height:680px}
+  /* the subtitle runs to three lines at desktop size. 16px gives two balanced
+     lines and stays above body-text size; one line would need 11px, which is
+     smaller than the body and fills the column with no slack */
+  h1+h2{font-size:1rem;line-height:1.35;text-wrap:balance}
 }
 pre{max-width:100%;overflow-x:auto}
 pre code{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}
