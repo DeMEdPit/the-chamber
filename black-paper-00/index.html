@@ -163,6 +163,8 @@ code{overflow-wrap:anywhere;word-break:break-word}
 .token-frame{width:min(100%,660px);height:min(78vh,820px);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}
 .token-foot{margin:16px 0 0;color:var(--muted);font-size:.84rem}
+.token-out{font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.11em;color:var(--ink);background:#0b0b0b;border:1px solid var(--line);border-radius:6px;padding:13px 20px;text-decoration:none}
+.token-out:hover{border-color:var(--accent);color:var(--accent2)}
 @media(max-width:700px){
   .token-live{margin-inline:calc(50% - 50vw);padding:8px 0;border-left:0;border-right:0;border-radius:0}
   .token-head{padding-inline:18px;margin-bottom:10px}
@@ -251,7 +253,9 @@ the Sleeper   12        the Shy       8</code></pre>
   var TOKEN = "0x75FD5A9c4440c38561A0099B216F825b7C6db924";
   var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
   var ARG = "0000000000000000000000000000000000000000000000000000000000000017";                     // the token id, 32 bytes
-  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"];
+  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com",
+              "https://eth.drpc.org", "https://rpc.ankr.com/eth",
+              "https://eth.merkle.io", "https://1rpc.io/eth"];
 
   var stage = document.getElementById("token-stage");
   var btn = document.getElementById("token-load");
@@ -316,8 +320,19 @@ the Sleeper   12        the Shy       8</code></pre>
     })["catch"](function (e) {
       btn.disabled = false;
       btn.textContent = "TRY AGAIN";
-      say("Could not read the token: " + ((e && e.message) || "unknown error") +
-          ". Public providers sometimes decline a read this large. The token is always readable on Etherscan at " + TOKEN + ".");
+      say("No public provider would serve this read (" + ((e && e.message) || "unknown error") +
+          "). Rendering this token is a very large call, and free providers cap how much " +
+          "work a read may do. Nothing is wrong with the token: it renders in full on " +
+          "Etherscan and on marketplaces, which do not use those caps.");
+      if (!document.getElementById("token-out")) {
+        var a = document.createElement("a");
+        a.id = "token-out";
+        a.className = "token-out";
+        a.href = "https://etherscan.io/address/" + TOKEN + "#readContract";
+        a.target = "_blank"; a.rel = "noopener";
+        a.textContent = "OPEN THE TOKEN ON ETHERSCAN";
+        stage.appendChild(a);
+      }
     });
   }
 

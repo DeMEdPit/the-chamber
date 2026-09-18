@@ -105,6 +105,8 @@ code{{overflow-wrap:anywhere;word-break:break-word}}
 .token-frame{{width:min(100%,660px);height:min(78vh,820px);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}}
 .token-foot{{margin:16px 0 0;color:var(--muted);font-size:.84rem}}
+.token-out{{font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.11em;color:var(--ink);background:#0b0b0b;border:1px solid var(--line);border-radius:6px;padding:13px 20px;text-decoration:none}}
+.token-out:hover{{border-color:var(--accent);color:var(--accent2)}}
 @media(max-width:700px){{
   .token-live{{margin-inline:calc(50% - 50vw);padding:8px 0;border-left:0;border-right:0;border-radius:0}}
   .token-head{{padding-inline:18px;margin-bottom:10px}}

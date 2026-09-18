@@ -21,7 +21,9 @@ TEMPLATE = """<figure class="token-live" id="token-live">
   var TOKEN = "{ADDRESS}";
   var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
   var ARG = "{TOKEN_ID_HEX}";                     // the token id, 32 bytes
-  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"];
+  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com",
+              "https://eth.drpc.org", "https://rpc.ankr.com/eth",
+              "https://eth.merkle.io", "https://1rpc.io/eth"];
 
   var stage = document.getElementById("token-stage");
   var btn = document.getElementById("token-load");
@@ -86,8 +88,19 @@ TEMPLATE = """<figure class="token-live" id="token-live">
     })["catch"](function (e) {
       btn.disabled = false;
       btn.textContent = "TRY AGAIN";
-      say("Could not read the token: " + ((e && e.message) || "unknown error") +
-          ". Public providers sometimes decline a read this large. The token is always readable on Etherscan at " + TOKEN + ".");
+      say("No public provider would serve this read (" + ((e && e.message) || "unknown error") +
+          "). Rendering this token is a very large call, and free providers cap how much " +
+          "work a read may do. Nothing is wrong with the token: it renders in full on " +
+          "Etherscan and on marketplaces, which do not use those caps.");
+      if (!document.getElementById("token-out")) {
+        var a = document.createElement("a");
+        a.id = "token-out";
+        a.className = "token-out";
+        a.href = "https://etherscan.io/address/" + TOKEN + "#readContract";
+        a.target = "_blank"; a.rel = "noopener";
+        a.textContent = "OPEN THE TOKEN ON ETHERSCAN";
+        stage.appendChild(a);
+      }
     });
   }
 

@@ -120,6 +120,8 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 .token-frame{{width:min(100%,660px);height:min(78vh,820px);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}}
 .token-foot{{margin:16px 0 0;color:var(--muted);font-size:.84rem}}
+.token-out{{font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.11em;color:var(--ink);background:#0b0b0b;border:1px solid var(--line);border-radius:6px;padding:13px 20px;text-decoration:none}}
+.token-out:hover{{border-color:var(--accent);color:var(--accent2)}}
 @media(max-width:700px){{
   /* the machine gets the whole width of the phone: the figure escapes the text
      column and both rings of padding come off the frame, which was costing it
