@@ -119,7 +119,7 @@ def main():
     banner = (
         '<figure class="mindprint-banner">'
         '<img src="mindprint.svg" alt="The Perception Chamber mindprint: a field '
-        'of cells flashing and settling" width="2004" height="220" decoding="async">'
+        'of cells flashing and settling" width="1996" height="216" decoding="async">'
         '</figure>'
     )
     # the live token, at the end of "The mainnet canary": the section states the
