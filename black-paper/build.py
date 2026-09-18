@@ -178,6 +178,16 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 .token-sub{{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}}
 .token-frame{{width:100%;aspect-ratio:4/3;border:0;border-radius:8px;display:block;background:#000}}
 .token-foot{{margin:16px 0 0;color:var(--muted);font-size:.84rem}}
+@media(max-width:700px){{
+  /* the machine gets the whole width of the phone: the figure escapes the text
+     column and both rings of padding come off the frame, which was costing it
+     about 80 of 390 pixels */
+  .token-live{{margin-inline:calc(50% - 50vw);padding:16px 0;border-left:0;border-right:0;border-radius:0}}
+  .token-head,.token-foot{{padding-inline:18px}}
+  .token-stage{{padding:0;border-left:0;border-right:0;border-radius:0;min-height:0}}
+  .token-stage:has(.token-load){{padding:26px 18px;min-height:210px}}
+  .token-frame{{aspect-ratio:auto;height:78vh;max-height:760px}}
+}}
 pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}
 code{{overflow-wrap:anywhere;word-break:break-word}}
