@@ -152,7 +152,7 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
 .token-load:hover{background:var(--accent2)}
 .token-load:disabled{background:#2a2a2a;color:var(--muted);cursor:default}
 .token-sub{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}
-.token-frame{width:100%;aspect-ratio:4/3;border:0;border-radius:8px;display:block;background:#000}
+.token-frame{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;display:block;background:#000}
 .token-foot{margin:16px 0 0;color:var(--muted);font-size:.84rem}
 @media(max-width:700px){
   /* the machine gets the whole width of the phone: the figure escapes the text
@@ -169,7 +169,9 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
   /* the subtitle runs to three lines at desktop size. 16px gives two balanced
      lines and stays above body-text size; one line would need 11px, which is
      smaller than the body and fills the column with no slack */
-  h1+h2{font-size:1rem;line-height:1.35;text-wrap:balance}
+  /* one line on a phone, never stacked: 15px keeps slack down to a 320px
+     screen, and nowrap makes a regression visible rather than silent */
+  h1+h2{font-size:15px;line-height:1.35;white-space:nowrap}
 }
 pre{max-width:100%;overflow-x:auto}
 pre code{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}
@@ -182,7 +184,7 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <main>
 <p class="kicker">THE CHAMBER · BLACK PAPER 01</p>
 <h1>Perception Chamber</h1>
-<h2>Portable Learned Identity Across a Commodore 64 and Ethereum</h2>
+<h2>Learned identity above the runtime</h2>
 <figure class="mindprint-banner"><img src="mindprint.svg" alt="The Perception Chamber mindprint: a field of cells flashing and settling" width="2004" height="220" decoding="async"></figure>
 <blockquote><strong>1958 intelligence, inside a 1982 machine, persisting through a 2015 computational substrate.</strong></blockquote>
 <p><strong>Perception Chamber Canary</strong> is a one-of-one mainnet experiment in portable learned identity. A human teaches a small learner inside a Commodore 64 program. The learned state can then be saved to Ethereum, where the same learning transition is independently replayed under consensus before a new canonical brain revision is accepted.</p>

@@ -1,5 +1,5 @@
 # Perception Chamber
-## Portable Learned Identity Across a Commodore 64 and Ethereum
+## Learned identity above the runtime
 
 > **1958 intelligence, inside a 1982 machine, persisting through a 2015 computational substrate.**
 

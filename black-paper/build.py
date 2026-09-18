@@ -176,7 +176,7 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 .token-load:hover{{background:var(--accent2)}}
 .token-load:disabled{{background:#2a2a2a;color:var(--muted);cursor:default}}
 .token-sub{{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}}
-.token-frame{{width:100%;aspect-ratio:4/3;border:0;border-radius:8px;display:block;background:#000}}
+.token-frame{{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;display:block;background:#000}}
 .token-foot{{margin:16px 0 0;color:var(--muted);font-size:.84rem}}
 @media(max-width:700px){{
   /* the machine gets the whole width of the phone: the figure escapes the text
@@ -193,7 +193,9 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
   /* the subtitle runs to three lines at desktop size. 16px gives two balanced
      lines and stays above body-text size; one line would need 11px, which is
      smaller than the body and fills the column with no slack */
-  h1+h2{{font-size:1rem;line-height:1.35;text-wrap:balance}}
+  /* one line on a phone, never stacked: 15px keeps slack down to a 320px
+     screen, and nowrap makes a regression visible rather than silent */
+  h1+h2{{font-size:15px;line-height:1.35;white-space:nowrap}}
 }}
 pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}
