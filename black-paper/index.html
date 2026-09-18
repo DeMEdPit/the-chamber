@@ -152,11 +152,20 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
 .token-load:hover{background:var(--accent2)}
 .token-load:disabled{background:#2a2a2a;color:var(--muted);cursor:default}
 .token-sub{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}
-/* the page inside lays out for a portrait-ish viewport - it fills one on a
-   phone and renders small and top-aligned in a wide short box - so on desktop
-   the frame is given that shape and centred rather than stretched wide */
-.token-frame{width:min(100%,660px);height:min(78vh,820px);margin-inline:auto;
+/* The page inside sizes the machine from the AVAILABLE HEIGHT, not the width -
+   measured across three frames, content width stays about 0.68 of frame height -
+   and it top-aligns, so a short frame starves it and leaves a void underneath.
+   Desktop therefore gives the iframe far more height than it shows and clips the
+   remainder: --frame-h grows the machine, --show-h is how much is kept. Tune the
+   two independently. Mobile keeps its own rules below. */
+.token-stage{--frame-h:960px;--show-h:660px}
+.token-frame{width:min(100%,680px);height:var(--frame-h);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}
+@media(min-width:701px){
+  .token-stage:not(:has(.token-load)){height:var(--show-h);padding:0;overflow:hidden;
+    display:block;position:relative}
+  .token-stage:not(:has(.token-load)) .token-frame{border-radius:10px}
+}
 .token-foot{margin:16px 0 0;color:var(--muted);font-size:.84rem}
 .token-out{font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.11em;color:var(--ink);background:#0b0b0b;border:1px solid var(--line);border-radius:6px;padding:13px 20px;text-decoration:none}
 .token-out:hover{border-color:var(--accent);color:var(--accent2)}
