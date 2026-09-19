@@ -12,8 +12,9 @@ It began as a question about two machines. In 2022 nopsta stored a working
 Commodore 64 — the emulator **minimal64** — inside Ethereum contracts, and
 built **ORAAND** on it: 1,024 generative artworks, each a real C64 program,
 running from chain in a browser and on 1982 hardware. He had already shown
-that the machine could boot from Ethereum and run, and he was not the last
-to build there.
+that the machine could boot from Ethereum and run. Besides this series, the
+only other person we know of who has built on that machine is
+**hashrunner**.
 
 The question The Chamber asked was a narrower one. Could the chain reach
 **inside** the running program — not boot it and step back, but stay in the
@@ -47,6 +48,36 @@ arrangement moves.
 
 That distinction is the whole trick, and it is the reason the block can be
 allowed anywhere near the artwork at all.
+
+---
+
+## The number in the floor
+
+Which block, though? The render says so itself. Eight digits are carved into
+the right end of the floor: the number of the block whose hash arranged the
+bricks, the bats and the candle. The wall is what that hash looked like. The
+floor says which hash it was.
+
+That is not decoration, because the render cannot be checked afterwards. A
+contract can only reach the last 256 block hashes, so a wall seen at block N
+cannot be recomputed on chain an hour later. The renders are impressions,
+not a series — each one is a photograph of the chain at one moment, and the
+number in the floor is the only record of which moment it was.
+
+And the photograph is portable. `prg(id)` is a public view that hands back
+the program with its forty-two-byte parameter block written in: thirty-two
+bytes of seed, eight digits of block number, one byte of behaviour, one of
+colour. That is a file. Save it, load it on a real Commodore 64 — the actual
+machine, not the emulator — and the same room comes up with the same number
+in the floor. The block you pulled it at travels in the bytes, off the chain
+and onto 1982 hardware.
+
+The contract says as much itself, in the description every marketplace
+shows:
+
+> Rendered from block *N*, whose last eight digits are carved in the floor.
+> The program can be pulled out with `prg(N)` and run on real hardware; the
+> copy you take is stamped with the block you took it at.
 
 ---
 

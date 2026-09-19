@@ -148,53 +148,35 @@ code{overflow-wrap:anywhere;word-break:break-word}
 .room-banner{margin:26px 0 44px;padding:0}
 .room-banner img{width:100%;height:auto;display:block;border:1px solid var(--line);
   border-radius:10px;background:#000;image-rendering:pixelated}
-.token-live{margin:34px 0 44px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px}
-.token-head{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:16px}
-.token-label{font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent)}
-.token-note{color:var(--muted);font-size:.84rem}
-.token-stage{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border:1px solid #232323;border-radius:10px;background:#060606;padding:26px 20px}
-.token-load{font:700 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;color:#050505;background:var(--accent);border:0;border-radius:6px;padding:14px 26px;cursor:pointer}
-.token-load:hover{background:var(--accent2)}
-.token-load:disabled{background:#2a2a2a;color:var(--muted);cursor:default}
-.token-sub{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}
-/* The page inside sizes the machine from the AVAILABLE HEIGHT, not the width -
-   measured across three frames, content width stays about 0.68 of frame height -
-   and it top-aligns, so a short frame starves it and leaves a void underneath.
-   Desktop therefore gives the iframe far more height than it shows and clips the
-   remainder: --frame-h grows the machine, --show-h is how much is kept. Tune the
-   two independently. Mobile keeps its own rules below. */
-/* Deriving --lift from --show-h was tried and is wrong: what the page centres
-   is a content box TALLER than the visible machine, because it carries its own
-   padding below the controls. Centring the window on the iframe therefore
-   centres that box, not the machine, and leaves the void under the buttons.
-   So the two are set by eye instead: --lift is where the machine starts (the
-   owner approved 105), --show-h must clear the controls with REAL margin, not a calculated
-   hair. Anything below an overflow:hidden boundary is unclickable as well as
-   invisible, so a window sized to just reach the buttons makes their lower
-   half dead - which is what "TRAIN does not always register" was. The floor
-   lands at 450 and the buttons run about 85px below it, so they end near 535;
-   600 leaves ~65px of clearance under them. Never trim this to fit.
-   --frame-h sizes the machine; the other two frame it. */
-.token-stage{--frame-h:960px;--lift:105px;--show-h:600px}
-.token-frame{width:min(100%,680px);height:var(--frame-h);margin-inline:auto;
-  border:0;border-radius:8px;display:block;background:#000}
-@media(min-width:701px){
-  .token-stage:not(:has(.token-load)){height:var(--show-h);padding:0;overflow:hidden;
-    display:block;position:relative}
-  .token-stage:not(:has(.token-load)) .token-frame{border-radius:10px;
-    margin-top:calc(-1 * var(--lift))}
-}
-.token-foot{margin:16px 0 0;color:var(--muted);font-size:.84rem}
-.token-out{font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.11em;color:var(--ink);background:#0b0b0b;border:1px solid var(--line);border-radius:6px;padding:13px 20px;text-decoration:none}
-.token-out:hover{border-color:var(--accent);color:var(--accent2)}
+
+.ch-wrap{margin:34px 0 44px;padding:22px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px}
+.ch-head{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:16px}
+.ch-label{font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.14em;color:var(--accent)}
+.ch-note{color:var(--muted);font-size:.84rem}
+.ch-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.ch-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.ch-grid{grid-template-columns:repeat(2,1fr)}}
+.ch-card{display:flex;flex-direction:column;gap:5px;padding:13px;border:1px solid #232323;
+  border-radius:10px;background:#060606;text-decoration:none;color:inherit;
+  transition:border-color .15s,transform .15s}
+.ch-card:hover,.ch-card:focus-visible{border-color:var(--accent);transform:translateY(-2px)}
+.ch-card img{width:100%;height:auto;display:block;border-radius:6px;background:#000;margin-bottom:5px}
+.ch-name{font-weight:700;font-size:.86rem;letter-spacing:.02em;color:var(--ink)}
+.ch-card:hover .ch-name,.ch-card:focus-visible .ch-name{color:var(--accent2)}
+.ch-count{font:700 .64rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.12em;color:var(--accent)}
+.ch-say{color:var(--muted);font-size:.75rem;line-height:1.45}
+.ch-foot{margin:18px 0 0;color:var(--muted);font-size:.84rem}
+.ch-foot a{color:var(--ink)}
+.ch-foot a:hover{color:var(--accent2)}
 @media(max-width:700px){
-  .token-live{margin-inline:calc(50% - 50vw);padding:8px 0;border-left:0;border-right:0;border-radius:0}
-  .token-head{padding-inline:18px;margin-bottom:10px}
-  .token-foot{padding-inline:18px;margin-top:10px}
-  .token-stage{padding:0;border-left:0;border-right:0;border-radius:0;min-height:0}
-  .token-stage:has(.token-load){padding:26px 18px;min-height:210px}
-  .token-frame{aspect-ratio:auto;height:68vh;max-height:680px}
+  .ch-wrap{margin-inline:calc(50% - 50vw);padding:18px;border-left:0;border-right:0;border-radius:0}
+  .ch-grid{gap:10px}
+  .ch-card{padding:10px}
 }
+
 
 .site-foot{margin:72px 0 0;padding-top:26px;border-top:1px solid var(--line)}
 .site-foot ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
@@ -217,7 +199,7 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <figure class="room-banner"><img src="room.svg" alt="A Chamber room: stone pillars either side, a brick back wall, and a lit candle at the centre" width="320" height="66" decoding="async"></figure>
 <blockquote><strong>Sixty-four rooms. One program. No learning at all — on purpose.</strong></blockquote>
 <p><strong>The Chamber</strong> is the first collection in the Chamber series: sixty-four ERC-721 tokens over one frozen Commodore 64 program, deployed to Ethereum mainnet on 8 September 2026 and locked. Each token is a room with a character in it. The program is the same for all sixty-four. What differs is who stands in the room, and what the room looks like when you open it.</p>
-<p>It began as a question about two machines. In 2022 nopsta stored a working Commodore 64 — the emulator <strong>minimal64</strong> — inside Ethereum contracts, and built <strong>ORAAND</strong> on it: 1,024 generative artworks, each a real C64 program, running from chain in a browser and on 1982 hardware. He had already shown that the machine could boot from Ethereum and run, and he was not the last to build there.</p>
+<p>It began as a question about two machines. In 2022 nopsta stored a working Commodore 64 — the emulator <strong>minimal64</strong> — inside Ethereum contracts, and built <strong>ORAAND</strong> on it: 1,024 generative artworks, each a real C64 program, running from chain in a browser and on 1982 hardware. He had already shown that the machine could boot from Ethereum and run. Besides this series, the only other person we know of who has built on that machine is <strong>hashrunner</strong>.</p>
 <p>The question The Chamber asked was a narrower one. Could the chain reach <strong>inside</strong> the running program — not boot it and step back, but stay in the loop, so that what the machine draws depends on the state of the chain at the moment you look at it?</p>
 <p>The Chamber is that experiment, and it is deliberately the simplest version of it: behaviour that a person wrote, running on a machine that boots from chain state, in a room the chain redraws at every read.</p>
 <hr>
@@ -228,6 +210,13 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <blockquote><strong>The room is never the same twice, and the metadata never lies.</strong></blockquote>
 <p>That distinction is the whole trick, and it is the reason the block can be allowed anywhere near the artwork at all.</p>
 <hr>
+<h2>The number in the floor</h2>
+<p>Which block, though? The render says so itself. Eight digits are carved into the right end of the floor: the number of the block whose hash arranged the bricks, the bats and the candle. The wall is what that hash looked like. The floor says which hash it was.</p>
+<p>That is not decoration, because the render cannot be checked afterwards. A contract can only reach the last 256 block hashes, so a wall seen at block N cannot be recomputed on chain an hour later. The renders are impressions, not a series — each one is a photograph of the chain at one moment, and the number in the floor is the only record of which moment it was.</p>
+<p>And the photograph is portable. <code>prg(id)</code> is a public view that hands back the program with its forty-two-byte parameter block written in: thirty-two bytes of seed, eight digits of block number, one byte of behaviour, one of colour. That is a file. Save it, load it on a real Commodore 64 — the actual machine, not the emulator — and the same room comes up with the same number in the floor. The block you pulled it at travels in the bytes, off the chain and onto 1982 hardware.</p>
+<p>The contract says as much itself, in the description every marketplace shows:</p>
+<blockquote>Rendered from block <em>N</em>, whose last eight digits are carved in the floor. The program can be pulled out with <code>prg(N)</code> and run on real hardware; the copy you take is stamped with the block you took it at.</blockquote>
+<hr>
 <h2>Eight behaviours, not one</h2>
 <p>Sixty-four tokens run one program, but they do not all do the same thing. Eight authored behaviour systems are distributed across the collection as a ladder rather than a matrix:</p>
 <pre><code>the Shadow    12        the Echo      8        the Dancer   3
@@ -237,6 +226,7 @@ the Sleeper   12        the Shy       8</code></pre>
 <p>Two rules were applied to the table by hand, and they are the kind of thing that only matters if you care: <strong>the darkest ordinary room — dense wall, no bats, dim — exists exactly once in the collection, and it belongs to a Dancer. No two Dancers share a wall.</strong> A token without a candle is a dim room for life.</p>
 <p>The Glitch is one of one: a blackout wall, no bats, no candle, a colour that will not settle, and it is the only character that plays the intro tune.</p>
 <hr>
+<section class="ch-wrap" aria-label="The eight characters"><div class="ch-head"><span class="ch-label">THE EIGHT</span><span class="ch-note">one program, eight authored behaviours</span></div><div class="ch-grid"><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/4" target="_blank" rel="noopener noreferrer"><img src="characters/the-shadow.svg" alt="The Shadow: Tony&#x27;s double in blue, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Shadow</span><span class="ch-count">12 of 64</span><span class="ch-say">Tony&#x27;s blue double keeps his distance, faces you, and jumps and crouches when you do.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/2" target="_blank" rel="noopener noreferrer"><img src="characters/the-wanderer.svg" alt="The Wanderer: Tony&#x27;s double in green, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Wanderer</span><span class="ch-count">12 of 64</span><span class="ch-say">Tony&#x27;s green double lives here and ignores you: he strolls, pauses, sits and jumps now and then, on dice seeded from the block.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/5" target="_blank" rel="noopener noreferrer"><img src="characters/the-sleeper.svg" alt="The Sleeper: Tony&#x27;s double in purple, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Sleeper</span><span class="ch-count">12 of 64</span><span class="ch-say">Tony&#x27;s purple double dozes crouched until you come close, follows a while, and dozes off again.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/6" target="_blank" rel="noopener noreferrer"><img src="characters/the-echo.svg" alt="The Echo: Tony&#x27;s double in yellow, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Echo</span><span class="ch-count">8 of 64</span><span class="ch-say">Tony&#x27;s yellow double replays you exactly, four seconds behind: every step, jump and duck.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/10" target="_blank" rel="noopener noreferrer"><img src="characters/the-mirror.svg" alt="The Mirror: Tony&#x27;s double in light blue, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Mirror</span><span class="ch-count">8 of 64</span><span class="ch-say">Tony&#x27;s light blue double is your reflection about the room&#x27;s centre line: he crouches while you jump and bounces while you crouch.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/1" target="_blank" rel="noopener noreferrer"><img src="characters/the-shy.svg" alt="The Shy: Tony&#x27;s double in light red, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Shy</span><span class="ch-count">8 of 64</span><span class="ch-say">Tony&#x27;s light red double runs when you come close, cowers at the pillar, bolts past you when you are almost on him, and creeps back when you leave.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/23" target="_blank" rel="noopener noreferrer"><img src="characters/the-dancer.svg" alt="The Dancer: Tony&#x27;s double in cyan, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Dancer</span><span class="ch-count">3 of 64</span><span class="ch-say">Tony&#x27;s cyan double dances to the tune: he steps with the bass line and bounces on the hits, read from the sound chip.</span></a><a class="ch-card" href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924/64" target="_blank" rel="noopener noreferrer"><img src="characters/the-glitch.svg" alt="The Glitch: Tony&#x27;s double in cycling colour, doing the game&#x27;s idle dance" width="48" height="48" loading="lazy" decoding="async"><span class="ch-name">The Glitch</span><span class="ch-count">1 of 64</span><span class="ch-say">Tony&#x27;s double will not hold still: he wears one of the seven characters at a time and teleports into the next, cycles their colours, and blinks and jitters in bursts.</span></a></div><p class="ch-foot">Every image here is the bytes the contract returns from <code>svg(behaviour)</code> &mdash; not a screenshot of it. Each card opens a token of that character. <a href="https://opensea.io/assets/ethereum/0x75FD5A9c4440c38561A0099B216F825b7C6db924" target="_blank" rel="noopener noreferrer">All sixty-four</a> &middot; <a href="https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924#readContract" target="_blank" rel="noopener noreferrer">the contract</a>.</p></section>
 <h2>The dice came off the sound chip</h2>
 <p>This is the part worth telling, because it is where the two machines met and one of them had to give way.</p>
 <p>The Commodore 64 has a standard source of randomness, and nearly every C64 game that needs one uses it. Register <code>$D41B</code> is read-only and returns the top eight bits of the SID&#x27;s <strong>voice three oscillator</strong>. Set voice three to noise at a high frequency and every read hands you a fresh byte. Bit 7 of <code>$D418</code> silences that voice while leaving its oscillator running, so the classic arrangement is: voice three muted, read once a frame for the dice, and the music written for two voices.</p>
@@ -261,113 +251,6 @@ the Sleeper   12        the Shy       8</code></pre>
 <p>The Perception Chamber is the departure. Same machine, same discipline, but its Tony has a mind that a person teaches and the chain replays, and its weights change. Reading the two together, the question the series is actually asking becomes visible — <strong>what is the difference between behaviour that was written and behaviour that was learned, when both are running on the same frozen machine?</strong></p>
 <p>The Chamber is the before.</p>
 <hr>
-<figure class="token-live" id="token-live">
-  <figcaption class="token-head">
-    <span class="token-label">THE LIVE TOKEN</span>
-    <span class="token-note">read from Ethereum mainnet at the moment you press it</span>
-  </figcaption>
-  <div class="token-stage" id="token-stage">
-    <button type="button" class="token-load" id="token-load">LOAD THE TOKEN</button>
-    <p class="token-sub" id="token-sub">The emulator, the program and this room, assembled from chain state. The wall, the bats and the candle are drawn from the current block, so this arrangement has never existed before and will not again.</p>
-  </div>
-  <p class="token-foot">The machine is real. Hold the centre of the screen and it will take a <code>.prg</code> from your own disk and run it.</p>
-</figure>
-<script>
-(function () {
-  var TOKEN = "0x75FD5A9c4440c38561A0099B216F825b7C6db924";
-  var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
-  var ARG = "0000000000000000000000000000000000000000000000000000000000000017";                     // the token id, 32 bytes
-  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com",
-              "https://eth.drpc.org", "https://rpc.ankr.com/eth",
-              "https://eth.merkle.io", "https://1rpc.io/eth"];
-
-  var stage = document.getElementById("token-stage");
-  var btn = document.getElementById("token-load");
-  var sub = document.getElementById("token-sub");
-  var say = function (t) { sub.textContent = t; };
-
-  // ABI-decode one returned string: [offset][length][bytes]
-  function decodeString(hex) {
-    var b = hex.slice(2);
-    var len = parseInt(b.slice(64, 128), 16);
-    var body = b.slice(128, 128 + len * 2);
-    var out = new Uint8Array(len);
-    for (var i = 0; i < len; i++) out[i] = parseInt(body.substr(i * 2, 2), 16);
-    return new TextDecoder().decode(out);
-  }
-
-  // a base64 data: URI to a Blob, so nothing depends on data-URI length limits
-  function toBlob(uri) {
-    var comma = uri.indexOf(",");
-    var type = uri.slice(5, comma).split(";")[0] || "text/plain";
-    var bin = atob(uri.slice(comma + 1));
-    var buf = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-    return new Blob([buf], { type: type });
-  }
-
-  function call(rpc) {
-    return fetch(rpc, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0", id: 1, method: "eth_call",
-        // eth_call with no gas set usually defaults to the block gas limit, which
-        // is well under what a render this size needs. Ask explicitly; a provider
-        // will still refuse above its own cap, but some caps are higher than the
-        // block limit and this is the only way to reach them.
-        params: [{ to: TOKEN, data: SELECTOR + ARG, gas: "0x5F5E100" }, "latest"]
-      })
-    }).then(function (r) { return r.json(); }).then(function (j) {
-      if (j.error) throw new Error(j.error.message || "the provider refused the call");
-      if (!j.result || j.result === "0x") throw new Error("the provider returned nothing");
-      return j.result;
-    });
-  }
-
-  function run() {
-    btn.disabled = true;
-    btn.textContent = "READING THE CHAIN…";
-    say("Calling tokenURI on mainnet. The full render is about 31 million gas as a read, so give it a few seconds.");
-
-    var p = Promise.reject();
-    RPCS.forEach(function (rpc) { p = p.catch(function () { return call(rpc); }); });
-
-    p.then(function (hex) {
-      return toBlob(decodeString(hex)).text();
-    }).then(function (jsonText) {
-      var meta = JSON.parse(jsonText);
-      if (!meta.animation_url) throw new Error("the token returned no animation_url");
-      var frame = document.createElement("iframe");
-      frame.className = "token-frame";
-      frame.setAttribute("sandbox", "allow-scripts");
-      frame.setAttribute("title", "The Chamber #23, live from Ethereum");
-      frame.src = URL.createObjectURL(toBlob(meta.animation_url));
-      stage.innerHTML = "";
-      stage.appendChild(frame);
-    })["catch"](function (e) {
-      btn.disabled = false;
-      btn.textContent = "TRY AGAIN";
-      say("No public provider would serve this read (" + ((e && e.message) || "unknown error") +
-          "). Rendering this token is a very large call, and free providers cap how much " +
-          "work a read may do. Nothing is wrong with the token: it renders in full on " +
-          "Etherscan and on marketplaces, which do not use those caps.");
-      if (!document.getElementById("token-out")) {
-        var a = document.createElement("a");
-        a.id = "token-out";
-        a.className = "token-out";
-        a.href = "https://etherscan.io/address/" + TOKEN + "#readContract";
-        a.target = "_blank"; a.rel = "noopener";
-        a.textContent = "OPEN THE TOKEN ON ETHERSCAN";
-        stage.appendChild(a);
-      }
-    });
-  }
-
-  btn.addEventListener("click", run);
-})();
-</script>
-
 <h2>What is on chain</h2>
 <p>The program lives in data contracts and is reassembled at render, its hash asserted at deployment. The eight images are stored the same way, each refusing to deploy unless its bytes match a recorded size and hash. The sixty-four-row table is a constant in the contract, so the collection is the same collection row for row wherever it is deployed. The emulator is nopsta&#x27;s, read in place from his 2022 contracts.</p>
 <p>Every token was minted in the constructor and the collection is <strong>locked</strong>: no owner, no minter, no setter, no upgrade, no path by which any of it can be repointed or taken down.</p>
