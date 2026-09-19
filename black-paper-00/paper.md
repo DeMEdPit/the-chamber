@@ -12,8 +12,8 @@ It began as a question about two machines. In 2022 nopsta stored a working
 Commodore 64 — the emulator **minimal64** — inside Ethereum contracts, and
 built **ORAAND** on it: 1,024 generative artworks, each a real C64 program,
 running from chain in a browser and on 1982 hardware. He had already shown
-that the machine could boot from Ethereum and run. Others have built on it
-since.
+that the machine could boot from Ethereum and run, and he was not the last
+to build there.
 
 The question The Chamber asked was a narrower one. Could the chain reach
 **inside** the running program — not boot it and step back, but stay in the
