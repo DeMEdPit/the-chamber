@@ -8,7 +8,19 @@ import re
 
 
 def inline(t):
-    """Inline markdown: code, bold, italic, links, bare URLs."""
+    """Inline markdown: code, bold, italic, links, bare URLs.
+
+    Links are lifted out FIRST. The code-span split below cuts the string on
+    backticks, so a link whose text contains `code` would otherwise be torn
+    into three pieces and never match its own pattern.
+    """
+    links = []
+
+    def _stash(m):
+        links.append((m.group(1), m.group(2)))
+        return "\x00L%d\x00" % (len(links) - 1)
+
+    t = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", _stash, t)
     out, parts = [], re.split(r"(`[^`]+`)", t)
     for part in parts:
         if part.startswith("`") and part.endswith("`") and len(part) > 1:
@@ -27,7 +39,15 @@ def inline(t):
         p = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", p)
         p = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", p)
         out.append(p)
-    return "".join(out)
+    html = "".join(out)
+    for i, (text, href) in enumerate(links):
+        ext = href.startswith("http")
+        tag = ('<a href="%s"%s>%s</a>'
+               % (_html.escape(href, quote=True),
+                  ' target="_blank" rel="noopener"' if ext else "",
+                  inline(text)))
+        html = html.replace("\x00L%d\x00" % i, tag)
+    return html
 
 
 def convert(md, fence=None):

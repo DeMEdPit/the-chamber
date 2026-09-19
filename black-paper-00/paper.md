@@ -136,9 +136,10 @@ advertised on the page, because the artwork is the room, not the loader —
 but the machine underneath was never closed.
 
 That capability is inherited rather than invented. **READY 64**, released
-alongside the proof-of-concept token in August 2026, is a Commodore 64
-assembled entirely from Ethereum with the keyboard handed to you. The
-Chamber keeps the door and shuts the front of it.
+alongside the proof-of-concept token on 28 August 2026, is a Commodore 64
+assembled entirely from Ethereum with the keyboard handed to you —
+[`0x0444C081…fF53`](https://etherscan.io/address/0x0444C08150D830b3056926119DBEaB791669fF53).
+The Chamber keeps the door and shuts the front of it.
 
 It is also the boundary between the first collection and the second: the
 Perception Chamber's page carries no loader at all, on purpose. That
