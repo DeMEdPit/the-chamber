@@ -129,11 +129,11 @@ Those histories matter.
 
 **Frank Rosenblatt (1958)** provides the learning-rule lineage. His perceptron work is a foundational reference for trainable linear systems.
 
-**John Walker's BrainSim (1987)** demonstrated a genuine trainable neural-network/associative-memory system on a Commodore 64, implemented in fewer than 250 lines of BASIC. BrainSim is not the same learning mechanism as BRAIN025, but it is important prior art for machine learning on the C64.
+**John Walker's BrainSim (1987)** demonstrated a genuine trainable neural-network/associative-memory system on a Commodore 64, implemented in fewer than 250 lines of BASIC. BrainSim is not the same learning mechanism as BRAIN025, but it is an important precedent for machine learning on the C64.
 
-**Justin D. Harris and Bo Waggoner (2019)** proposed continuously updated public machine-learning models hosted in Ethereum smart contracts. Their open-source Microsoft project **0xDeCA10B** includes perceptron contracts and establishes clear prior art for state-changing perceptron training under Ethereum consensus.
+**Justin D. Harris and Bo Waggoner (2019)** proposed continuously updated public machine-learning models hosted in Ethereum smart contracts. Their open-source Microsoft Research project **0xDeCA10B** includes perceptron contracts and is the clear precedent for state-changing perceptron training under Ethereum consensus. It is research infrastructure rather than an artwork, and no tokens were issued.
 
-**Perceptrons (Fingerprints DAO × Generative, 2023)** placed functioning neural-network models and their weights fully on Bitcoin as collectible artworks: prior art for a learned model kept whole on a public chain as an artwork.
+**Perceptrons (Fingerprints DAO × Generative, 2023)** placed functioning neural-network models and their weights fully on Bitcoin as collectible artworks: the precedent for a learned model kept whole on a public chain as an artwork.
 
 **nopsta's minimal64 (2022)** provides the portable C64 runtime substrate on which the Chamber project is built.
 

@@ -117,7 +117,8 @@ mechanism from this learner's supervised rule, and thirty-nine years earlier.
 
 **Justin D. Harris and Bo Waggoner** (2019, Microsoft Research) demonstrated
 state-changing perceptron updates inside Ethereum transactions, with working
-open-source Solidity.
+open-source Solidity. Research infrastructure rather than an artwork; no
+tokens were issued.
 *Decentralized & Collaborative AI on Blockchain*, arXiv:1907.07247.
 <https://github.com/microsoft/0xDeCA10B>
 
