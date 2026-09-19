@@ -2,7 +2,7 @@
 
 > **Sixty-four rooms. One program. No learning at all — on purpose.**
 
-**The Chamber** is the first collection in the Chamber series: sixty-four
+**The Chamber** is the Genesis collection of the Chamber series: sixty-four
 ERC-721 tokens over one frozen Commodore 64 program, deployed to Ethereum
 mainnet on 8 September 2026 and locked. Each token is a room with a
 character in it. The program is the same for all sixty-four. What differs is
