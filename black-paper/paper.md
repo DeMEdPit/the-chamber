@@ -4,6 +4,8 @@
 
 **Perception Chamber Canary** is a one-of-one mainnet experiment in portable learned identity. A human teaches a small learner inside a Commodore 64 program. The learned state can then be saved to Ethereum, where the same learning transition is independently replayed under consensus before a new canonical brain revision is accepted.
 
+It is the second work in the Chamber series, and the engineering sample for the collection that follows: one token deployed on its own so the whole path—deployment, teaching, saving, replay, export—could be proven on mainnet before sixty-four minds depend on it. Those sixty-four are not released. This one is a complete work, not a test that gets thrown away.
+
 The model is deliberately simple: a single-layer perceptron with 80 inputs, 10 outputs, and 800 signed learned weights. The technical ambition is elsewhere. Perception Chamber asks whether the *same learned mind* can move between radically different computational environments—a 6510/C64 runtime, a reference implementation, and the EVM—without approximation, model conversion, or trust in a server.
 
 The mainnet canary demonstrates that it can.
