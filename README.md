@@ -52,10 +52,11 @@ A Tony whose clone has a mind: a one-layer perceptron with 80 inputs, 10
 actions and 800 signed weights, held in an 834-byte slot inside the running
 C64 program.
 
-A person teaches it by hand. Press TRAIN and play as Tony; the clone watches,
-and the machine corrects its weights from the difference between what you did
-and what it would have done, one lesson at a time. Nothing is trained
-elsewhere and loaded in.
+A person teaches it by hand. Press TRAIN and you take control of the clone;
+its perceptron goes on predicting what it would have done on its own, and the
+machine corrects the weights from the difference between that and what you
+actually did, one lesson at a time. Nothing is trained elsewhere and loaded
+in.
 
 The weights are on chain, and they change on chain. Each save sends the
 lessons of a sitting in the order the machine accepted them; the contract
