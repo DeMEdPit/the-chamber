@@ -107,6 +107,19 @@ Those four bytes come from the block hash.
 That was not the plan at the start. It is the answer the two machines
 arrived at, and it is a better one than the plan.
 
+**But one thing did not leave.** The Dancer still listens. The contract says
+so itself, in `characterSentence(1)`:
+
+> Tony's cyan double dances to the tune: he steps with the bass line and
+> bounces on the hits, read from the sound chip.
+
+So the chip lost the dice and kept the music. What needed to be
+unpredictable went to the block, where unpredictability is the whole point
+of a hash. What needed to hear the tune went on hearing it. Two different
+uses of one chip, told apart only once it became clear they were different
+things — and the rarest ordinary character in the collection is the one
+still wired to the sound.
+
 ---
 
 ## The machine stays open
