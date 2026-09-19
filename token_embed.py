@@ -2,6 +2,14 @@
 
 One copy of the chain call, the decode and the frame, parameterised by the
 token it points at. Duplicating this per paper is how the two would drift.
+
+`auto=True` makes the block load itself when it scrolls into view instead of
+waiting for a press. It does NOT load on page load: the render is a ~31M gas
+read returning about 580 KB, and the frame runs a real emulator once it
+arrives, so a reader who never reaches the section should not pay for it in
+bandwidth, CPU or battery. The press path stays exactly as it was - auto mode
+fires the same run() - so the failure state, the retry and the Etherscan
+fallback are unchanged, and turning it off is one argument.
 """
 
 
@@ -11,13 +19,14 @@ TEMPLATE = """<figure class="token-live" id="token-live">
     <span class="token-note">{NOTE}</span>
   </figcaption>
   <div class="token-stage" id="token-stage">
-    <button type="button" class="token-load" id="token-load">LOAD THE TOKEN</button>
+    <button type="button" class="token-load" id="token-load"{LOAD_ATTRS}>{LOAD_LABEL}</button>
     <p class="token-sub" id="token-sub">{BLURB}</p>
   </div>
   <p class="token-foot">{FOOT}</p>
 </figure>
 <script>
 (function () {
+  var AUTO = {AUTO};
   var TOKEN = "{ADDRESS}";
   var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
   var ARG = "{TOKEN_ID_HEX}";                     // the token id, 32 bytes
@@ -109,14 +118,40 @@ TEMPLATE = """<figure class="token-live" id="token-live">
   }
 
   btn.addEventListener("click", run);
+
+  // Auto mode: start when the figure is near the viewport, once. rootMargin
+  // buys a head start so the read is usually done by the time it is actually
+  // on screen. Without IntersectionObserver, just run - those browsers are
+  // rare and a working frame beats a correct optimisation.
+  if (AUTO) {
+    var fig = document.getElementById("token-live");
+    if (window.IntersectionObserver && fig) {
+      var io = new IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) { io.disconnect(); run(); return; }
+        }
+      }, { rootMargin: "400px 0px" });
+      io.observe(fig);
+    } else {
+      run();
+    }
+  }
 })();
 </script>
 """
 
 
-def embed(address, token_id, frame_title, note, blurb, foot):
-    """The figure and its script, for one token."""
+def embed(address, token_id, frame_title, note, blurb, foot, auto=False):
+    """The figure and its script, for one token.
+
+    auto=True loads it on scroll instead of on a press. Set it back to False
+    and rebuild to restore the button; nothing else changes.
+    """
     return (TEMPLATE
+            .replace("{AUTO}", "true" if auto else "false")
+            .replace("{LOAD_ATTRS}", " disabled" if auto else "")
+            .replace("{LOAD_LABEL}",
+                     "READING THE CHAIN\u2026" if auto else "LOAD THE TOKEN")
             .replace("{ADDRESS}", address)
             .replace("{TOKEN_ID_HEX}", format(token_id, "064x"))
             .replace("{FRAME_TITLE}", frame_title)

@@ -329,16 +329,17 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <figure class="token-live" id="token-live">
   <figcaption class="token-head">
     <span class="token-label">THE LIVE TOKEN</span>
-    <span class="token-note">read from Ethereum mainnet at the moment you press it</span>
+    <span class="token-note">read from Ethereum mainnet at the moment you reach it</span>
   </figcaption>
   <div class="token-stage" id="token-stage">
-    <button type="button" class="token-load" id="token-load">LOAD THE TOKEN</button>
+    <button type="button" class="token-load" id="token-load" disabled>READING THE CHAIN…</button>
     <p class="token-sub" id="token-sub">About 580 KB: the emulator, the program and the current mind, assembled from chain state. Nothing is fetched from a server.</p>
   </div>
   <p class="token-foot">You can play and teach Tony here. <strong>You cannot save from this frame</strong> &mdash; a browser wallet cannot reach inside it, so teaching done here is not written to the chain. Saving happens on the token&rsquo;s own page.</p>
 </figure>
 <script>
 (function () {
+  var AUTO = true;
   var TOKEN = "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127";
   var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
   var ARG = "0000000000000000000000000000000000000000000000000000000000000001";                     // the token id, 32 bytes
@@ -430,6 +431,24 @@ code{overflow-wrap:anywhere;word-break:break-word}
   }
 
   btn.addEventListener("click", run);
+
+  // Auto mode: start when the figure is near the viewport, once. rootMargin
+  // buys a head start so the read is usually done by the time it is actually
+  // on screen. Without IntersectionObserver, just run - those browsers are
+  // rare and a working frame beats a correct optimisation.
+  if (AUTO) {
+    var fig = document.getElementById("token-live");
+    if (window.IntersectionObserver && fig) {
+      var io = new IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) { io.disconnect(); run(); return; }
+        }
+      }, { rootMargin: "400px 0px" });
+      io.observe(fig);
+    } else {
+      run();
+    }
+  }
 })();
 </script>
 

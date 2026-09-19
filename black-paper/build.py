@@ -58,12 +58,13 @@ def main():
     token = embed(
         "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127", 1,
         "Perception Chamber Canary, live from Ethereum",
-        "read from Ethereum mainnet at the moment you press it",
+        "read from Ethereum mainnet at the moment you reach it",
         "About 580 KB: the emulator, the program and the current mind, assembled "
         "from chain state. Nothing is fetched from a server.",
         "You can play and teach Tony here. <strong>You cannot save from this frame"
         "</strong> &mdash; a browser wallet cannot reach inside it, so teaching done "
-        "here is not written to the chain. Saving happens on the token&rsquo;s own page.")
+        "here is not written to the chain. Saving happens on the token&rsquo;s own page.",
+        auto=True)
     h = body.find("<h2>The mainnet canary</h2>")
     if h == -1:
         raise SystemExit("build: the mainnet canary section is gone; token embed has no home")
