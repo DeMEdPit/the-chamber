@@ -152,12 +152,18 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
 .token-load:hover{background:var(--accent2)}
 .token-load:disabled{background:#2a2a2a;color:var(--muted);cursor:default}
 .token-sub{margin:0;max-width:52ch;text-align:center;color:var(--muted);font-size:.84rem}
-/* The page inside sizes the machine from the AVAILABLE HEIGHT, not the width -
-   measured across three frames, content width stays about 0.68 of frame height -
-   and it top-aligns, so a short frame starves it and leaves a void underneath.
+/* CORRECTED 2026-09-19, from the token page's own CSS rather than from
+   watching it: the page draws itself into a SQUARE - width:min(100%,768px),
+   aspect-ratio:1 - so the machine is sized by the frame's WIDTH, and the frame's
+   height only decides how much empty room is left under it. (The earlier note
+   here said it sized from the available height. It does not.) The square is
+   top-aligned about 105px down, which is what --lift takes off.
    Desktop therefore gives the iframe far more height than it shows and clips the
-   remainder: --frame-h grows the machine, --show-h is how much is kept. Tune the
-   two independently. Mobile keeps its own rules below. */
+   remainder: --frame-h and --lift place the machine, --show-h is how much is
+   kept. On desktop the pad and fire button are hidden and the TRAIN/MENU pill
+   sits 61.5% down the square, so the square's lower third is genuinely empty and
+   safe to clip. Mobile keeps its own rules below, where the pill and the touch
+   controls are near the square's bottom and the clip is guarded accordingly. */
 /* Deriving --lift from --show-h was tried and is wrong: what the page centres
    is a content box TALLER than the visible machine, because it carries its own
    padding below the controls. Centring the window on the iframe therefore
@@ -214,6 +220,24 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
   /* 68vh, not 78: the C64 and its controls do not fill a taller box, and the
      remainder reads as dead space under the buttons */
   .token-frame{aspect-ratio:auto;height:68vh;max-height:680px}
+  /* The same trim as the desktop, and the same rule: clip the window, never
+     shrink the machine. The frame stays 68vh, so nothing inside changes size.
+
+     Safe because of what is being clipped. Inside the frame the token draws
+     itself into a SQUARE - width:min(100%,768px) with aspect-ratio:1 - and
+     every control is positioned as a percentage of THAT square, not of the
+     frame (the pad at bottom:6%, fire at 9%, the TRAIN/MENU pill at 15%).
+     On a phone the square is about as tall as the viewport is wide, while
+     the frame is 68vh, so the space under the controls is frame height minus
+     viewport width: on a 430x932 phone roughly 230px of nothing.
+
+     55 of those come off. The max() is the guard: the window can never come
+     within 64px of the square's bottom edge however short the phone, so a
+     small screen simply gets less of a trim instead of losing its controls.
+     That guard is the whole safety argument - below an overflow:hidden edge
+     things are unclickable as well as invisible. */
+  .token-stage:not(:has(.token-load)){display:block;padding:0;overflow:hidden;
+    height:max(calc(100vw + 64px), calc(min(68vh, 680px) - 55px))}
   /* the subtitle runs to three lines at desktop size. 16px gives two balanced
      lines and stays above body-text size; one line would need 11px, which is
      smaller than the body and fills the column with no slack */
