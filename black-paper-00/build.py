@@ -110,11 +110,14 @@ code{{overflow-wrap:anywhere;word-break:break-word}}
    padding below the controls. Centring the window on the iframe therefore
    centres that box, not the machine, and leaves the void under the buttons.
    So the two are set by eye instead: --lift is where the machine starts (the
-   owner approved 105), --show-h ends just past the controls: the floor lands at 450, the
-   buttons run about 85px below it at this frame size, so 560 clears them
-   with a small margin.
+   owner approved 105), --show-h must clear the controls with REAL margin, not a calculated
+   hair. Anything below an overflow:hidden boundary is unclickable as well as
+   invisible, so a window sized to just reach the buttons makes their lower
+   half dead - which is what "TRAIN does not always register" was. The floor
+   lands at 450 and the buttons run about 85px below it, so they end near 535;
+   600 leaves ~65px of clearance under them. Never trim this to fit.
    --frame-h sizes the machine; the other two frame it. */
-.token-stage{{--frame-h:960px;--lift:105px;--show-h:560px}}
+.token-stage{{--frame-h:960px;--lift:105px;--show-h:600px}}
 .token-frame{{width:min(100%,680px);height:var(--frame-h);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}}
 @media(min-width:701px){{
