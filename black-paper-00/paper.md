@@ -34,7 +34,7 @@ hash, mixes it with the token id, and stamps the result into the running
 program's parameter block before the machine boots.
 
 So the room is drawn from the chain, every time, and it is never quite the
-same twice: the pattern of the back wall, where the bats hang, where the
+same twice: the pattern of the back wall, where the bats fly, where the
 candle stands.
 
 And yet the token's **traits never change**. Three bytes of that seed are

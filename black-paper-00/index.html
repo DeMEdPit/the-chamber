@@ -223,7 +223,7 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <hr>
 <h2>A room that is never the same twice</h2>
 <p>Nothing about a Chamber token is stored per render, and nothing is fetched. When someone calls <code>tokenURI(id)</code>, the contract takes the previous block&#x27;s hash, mixes it with the token id, and stamps the result into the running program&#x27;s parameter block before the machine boots.</p>
-<p>So the room is drawn from the chain, every time, and it is never quite the same twice: the pattern of the back wall, where the bats hang, where the candle stands.</p>
+<p>So the room is drawn from the chain, every time, and it is never quite the same twice: the pattern of the back wall, where the bats fly, where the candle stands.</p>
 <p>And yet the token&#x27;s <strong>traits never change</strong>. Three bytes of that seed are forced to values fixed in the contract at deployment — the token&#x27;s wall, its bats, its candle. A token that says <em>dense wall, two bats, lit</em> shows a dense wall with two bats and a lit candle, on any block, for ever. Only the arrangement moves.</p>
 <blockquote><strong>The room is never the same twice, and the metadata never lies.</strong></blockquote>
 <p>That distinction is the whole trick, and it is the reason the block can be allowed anywhere near the artwork at all.</p>
