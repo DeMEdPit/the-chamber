@@ -327,25 +327,22 @@ code{overflow-wrap:anywhere;word-break:break-word}
     <text class="body-text" x="360" y="392">byte-for-byte serialized learned state</text>
   </svg>
 </div>
-<p>The standard is stronger than behavioral similarity:</p>
-<blockquote><strong>the resulting serialized brain must agree byte-for-byte.</strong></blockquote>
-<p>Each canonical save is therefore also a live cross-runtime conformance test.</p>
+<p>The standard is stronger than behavioral similarity. Two runtimes that merely behaved alike would fail it, and each canonical save is therefore also a live cross-runtime conformance test.</p>
+<blockquote><strong>The resulting serialized brain must agree byte-for-byte.</strong></blockquote>
 <hr>
 <h2>Learned-state lineage</h2>
 <p>Perception Chamber does not overwrite a mutable brain. Each accepted save creates a new immutable revision:</p>
 <pre><code>GENESIS → REV 1 → REV 2 → REV 3 → …</code></pre>
 <p>A revision records or points to its parent, its immutable brain blob, the immutable education that produced it, lesson and education counts, its canonical SHA-256, the block in which it was saved, and the address that committed it. Only the token&#x27;s current holder can commit a revision; the address proves who saved, not who held the joystick for every lesson.</p>
 <p>The brain bytes and education bytes are persisted as immutable Ethereum data contracts. They do not depend on a private database or API server.</p>
-<p>If a token is saved seven times, all seven historical brains remain recoverable. Revision four has its own complete 800-weight matrix. A future tool can compare two revisions weight by weight, identify what changed, retrieve the exact education responsible for the transition, and independently replay it.</p>
-<p>This turns learning history into something closer to biography:</p>
-<blockquote><strong>learned identity can have provenance, ancestry, and a reconstructible past.</strong></blockquote>
+<p>If a token is saved seven times, all seven historical brains remain recoverable. Revision four has its own complete 800-weight matrix. A future tool can compare two revisions weight by weight, identify what changed, retrieve the exact education responsible for the transition, and independently replay it. This turns learning history into something closer to biography.</p>
+<blockquote><strong>Learned identity can have provenance, ancestry, and a reconstructible past.</strong></blockquote>
 <hr>
 <h2>A mind above the runtime</h2>
 <p>The frozen C64 program is itself on-chain. The contract exposes the learned brain and can derive a PRG with the canonical brain inserted into the correct slot.</p>
 <p>A saved mind can therefore be:</p>
 <ul><li>read directly from Ethereum;</li><li>inspected as raw weights;</li><li>visualized as a mindprint;</li><li>replayed from its education history;</li><li>inserted into the original PRG;</li><li>run again under another C64 emulator such as VICE.</li></ul>
-<p>The mainnet canary demonstrated this round trip. Its learned brain was read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum with the learned behavior intact.</p>
-<p>The identity is therefore not confined to Ethereum, the browser, or one emulator.</p>
+<p>The mainnet canary demonstrated this round trip. Its learned brain was read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum with the learned behavior intact. The identity is therefore not confined to Ethereum, the browser, or one emulator.</p>
 <blockquote><strong>The learned identity lives in the serialized state, not in the runtime that happens to execute it.</strong></blockquote>
 <hr>
 <h2>Art, research, and historical layering</h2>
@@ -364,7 +361,8 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <p><strong>Perceptrons (Fingerprints DAO × Generative, 2023)</strong> placed functioning neural-network models and their weights fully on Bitcoin as collectible artworks: prior art for a learned model kept whole on a public chain as an artwork.</p>
 <p><strong>nopsta&#x27;s minimal64 (2022)</strong> provides the portable C64 runtime substrate on which the Chamber project is built.</p>
 <p>The contribution of Perception Chamber is therefore not “a perceptron on Ethereum” or “AI on a C64.” It is the combination:</p>
-<blockquote><strong>a portable learned-state specification, byte-exact implementations across heterogeneous runtimes, consensus replay of education, immutable learned-state lineage, and reconstruction of the learned mind back into its original executable embodiment.</strong></blockquote>
+<ul><li>a portable learned-state specification;</li><li>byte-exact implementations across heterogeneous runtimes;</li><li>consensus replay of education;</li><li>immutable learned-state lineage;</li><li>and reconstruction of the learned mind back into its original executable</li></ul>
+<p>embodiment.</p>
 <hr>
 <h2>The mainnet canary</h2>
 <p>The one-of-one <strong>Perception Chamber Canary</strong> was deployed on Ethereum mainnet in September 2026:</p>
@@ -515,9 +513,8 @@ code{overflow-wrap:anywhere;word-break:break-word}
 <h2>Conclusion</h2>
 <p>Perception Chamber begins with an old and deliberately modest learning rule, but places it inside an unusual chain of custody.</p>
 <p>A human teaches a learner inside a Commodore 64 program. The C64 changes real weights. Ethereum independently replays the same education. A new brain is accepted only if the machines agree. The brain and education remain on-chain as immutable history. The learned brain can leave Ethereum, return to the PRG, and run again.</p>
-<p>The experiment asks:</p>
+<p>The experiment asks one question. The mainnet canary is an affirmative first answer to it.</p>
 <blockquote><strong>Can learned identity survive the runtime?</strong></blockquote>
-<p>The mainnet canary is an affirmative first answer.</p>
 <hr>
 <h2>References and prior art</h2>
 <ol><li value="1">Rosenblatt, F. (1958). “The perceptron: A probabilistic model for information storage and organization in the brain.” <em>Psychological Review</em>, 65(6), 386–408. DOI: 10.1037/h0042519.<br><a href="https://doi.org/10.1037/h0042519" target="_blank" rel="noopener">https://doi.org/10.1037/h0042519</a></li></ol>

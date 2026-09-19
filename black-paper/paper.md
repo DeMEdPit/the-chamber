@@ -56,11 +56,11 @@ Only if the EVM-derived 834 bytes produce the claimed canonical hash can the new
                identical brain B1
 ```
 
-The standard is stronger than behavioral similarity:
+The standard is stronger than behavioral similarity. Two runtimes that merely
+behaved alike would fail it, and each canonical save is therefore also a live
+cross-runtime conformance test.
 
-> **the resulting serialized brain must agree byte-for-byte.**
-
-Each canonical save is therefore also a live cross-runtime conformance test.
+> **The resulting serialized brain must agree byte-for-byte.**
 
 ---
 
@@ -76,11 +76,10 @@ A revision records or points to its parent, its immutable brain blob, the immuta
 
 The brain bytes and education bytes are persisted as immutable Ethereum data contracts. They do not depend on a private database or API server.
 
-If a token is saved seven times, all seven historical brains remain recoverable. Revision four has its own complete 800-weight matrix. A future tool can compare two revisions weight by weight, identify what changed, retrieve the exact education responsible for the transition, and independently replay it.
+If a token is saved seven times, all seven historical brains remain recoverable. Revision four has its own complete 800-weight matrix. A future tool can compare two revisions weight by weight, identify what changed, retrieve the exact education responsible for the transition, and independently replay it. This turns learning history into something closer to
+biography.
 
-This turns learning history into something closer to biography:
-
-> **learned identity can have provenance, ancestry, and a reconstructible past.**
+> **Learned identity can have provenance, ancestry, and a reconstructible past.**
 
 ---
 
@@ -97,9 +96,8 @@ A saved mind can therefore be:
 - inserted into the original PRG;
 - run again under another C64 emulator such as VICE.
 
-The mainnet canary demonstrated this round trip. Its learned brain was read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum with the learned behavior intact.
-
-The identity is therefore not confined to Ethereum, the browser, or one emulator.
+The mainnet canary demonstrated this round trip. Its learned brain was read back from Ethereum, reconstructed into the frozen C64 program, and run again outside Ethereum with the learned behavior intact. The identity is therefore not confined to
+Ethereum, the browser, or one emulator.
 
 > **The learned identity lives in the serialized state, not in the runtime that happens to execute it.**
 
@@ -141,7 +139,12 @@ Those histories matter.
 
 The contribution of Perception Chamber is therefore not “a perceptron on Ethereum” or “AI on a C64.” It is the combination:
 
-> **a portable learned-state specification, byte-exact implementations across heterogeneous runtimes, consensus replay of education, immutable learned-state lineage, and reconstruction of the learned mind back into its original executable embodiment.**
+- a portable learned-state specification;
+- byte-exact implementations across heterogeneous runtimes;
+- consensus replay of education;
+- immutable learned-state lineage;
+- and reconstruction of the learned mind back into its original executable
+  embodiment.
 
 ---
 
@@ -202,11 +205,10 @@ A new brain is accepted only if the machines agree.
 The brain and education remain on-chain as immutable history.  
 The learned brain can leave Ethereum, return to the PRG, and run again.
 
-The experiment asks:
+The experiment asks one question. The mainnet canary is an affirmative first
+answer to it.
 
 > **Can learned identity survive the runtime?**
-
-The mainnet canary is an affirmative first answer.
 
 ---
 
