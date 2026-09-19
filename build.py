@@ -30,6 +30,9 @@ CURRENT = "home"
 
 def main():
     md = (HERE / "README.md").read_text(encoding="utf-8")
+    # a github-only block: the links back to this site belong on the repo
+    # page, not on the site they point at, where the footer already has them
+    md = re.sub(r"<!-- github-only -->.*?<!-- /github-only -->\s*", "", md, flags=re.S)
     css = (HERE / "black-paper" / "paper.css").read_text(encoding="utf-8")
 
     # the first heading and the two paragraphs under it become the hero;
