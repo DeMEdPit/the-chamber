@@ -3,17 +3,23 @@
 A series of Commodore 64 works that live on Ethereum, built one capability at
 a time.
 
-Each generation isolates a single question about behaviour and answers it in
-the smallest system that can. The sequence is not a larger model each time. It
-is a sequence of capability boundaries, each one earned experimentally before
-the next is attempted.
+A working Commodore 64 lives inside Ethereum. Not a picture of one, and not a
+file on a server somewhere: **minimal64**, an emulator nopsta stored in
+contracts in 2022, where it has been ever since — written for new C64 software
+rather than the back catalogue, cycle-accurate by design, carrying its own
+252-byte Kernal and no BASIC or Character ROM. Anyone can boot it. Nobody has
+to host it.
 
-Every work runs on **minimal64**, the Commodore 64 emulator nopsta stored on
-Ethereum in 2022 — written to run new C64 software rather than the back
-catalogue, cycle-accurate by design, carrying its own 252-byte Kernal and no
-BASIC or Character ROM. The programs, their state and their pages are
-assembled from chain state: no server, no IPFS and no hosted asset is required
-to view, play or reconstruct them.
+Every work here is an ERC-721 token that carries everything it needs. The
+emulator, the program, the program's state and the page you look at it
+through are assembled from chain state at the moment you ask for them: no
+server, no IPFS, no hosted file. Pull the program out of the contract and it
+runs on real 1982 hardware.
+
+What changes between works is the behaviour running inside. Each generation
+isolates a single question about behaviour and answers it in the smallest
+system that can — not a bigger model each time, but a sequence of capability
+boundaries, each one earned experimentally before the next is attempted.
 
 <!-- github-only -->
 **Website — [demedpit.github.io/the-chamber](https://demedpit.github.io/the-chamber/)**
