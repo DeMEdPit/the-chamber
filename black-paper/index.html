@@ -168,9 +168,19 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
    invisible, so a window sized to just reach the buttons makes their lower
    half dead - which is what "TRAIN does not always register" was. The floor
    lands at 450 and the buttons run about 85px below it, so they end near 535;
-   600 leaves ~65px of clearance under them. Never trim this to fit.
+   Measured off a desktop screenshot 2026-09-19, with the scale fixed three
+   ways that agree (the stage is 900-44=856 CSS px wide and measured 1630
+   device px; the 680px frame predicted the room's span; the figure's 22px
+   padding measured 21): at --show-h 600 the TRAIN and MENU buttons ended
+   about 97px above the clip, not the ~65 guessed here before. 570 spends 30
+   of those and leaves ~67. That is the whole budget - the owner asked for a
+   little off the bottom and this is it. Do not keep going: anything below an
+   overflow:hidden boundary is unclickable as well as invisible, so a window
+   sized to just reach the buttons makes their lower half dead, which is what
+   "TRAIN does not always register" was. --lift is untouched, so the top of
+   the window does not move; only the bottom edge comes up.
    --frame-h sizes the machine; the other two frame it. */
-.token-stage{--frame-h:960px;--lift:105px;--show-h:600px}
+.token-stage{--frame-h:960px;--lift:105px;--show-h:570px}
 .token-frame{width:min(100%,680px);height:var(--frame-h);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}
 @media(min-width:701px){
