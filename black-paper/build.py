@@ -76,6 +76,19 @@ def main():
     # place it directly after the opening h1/h2 pair
     body = re.sub(r"(</h1>)", r"\1\n" + banner.replace("\\", "\\\\"), body, count=1)
 
+    # The opening line is a subtitle, not a pull-quote. It stays a blockquote in
+    # paper.md, where it reads as one line of prose under the title, and is
+    # lifted here into a plain lede - same words, same place, without the green
+    # rule and the panel. ONLY the first: the five pull-quotes further down are
+    # doing the other job and keep their bar. The bold comes off too, because a
+    # subtitle set in the muted grey does not also need weight.
+    m = re.search(r"<blockquote>(.*?)</blockquote>", body, re.S)
+    if not m:
+        raise SystemExit("build: the opening line is gone from paper.md")
+    body = (body[:m.start()]
+            + '<p class="lede">' + re.sub(r"</?strong>", "", m.group(1)) + "</p>"
+            + body[m.end():])
+
     doc = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -104,6 +117,8 @@ def main():
 <style>
 {css}
 .mindprint-banner{{margin:26px 0 44px;padding:0}}
+.lede{{margin:0 0 34px;color:var(--muted);font-weight:450;line-height:1.4;
+  font-size:clamp(1.15rem,4.2vw,1.45rem)}}
 h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word;margin-bottom:0}}
 hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 .token-live{{margin:34px 0 44px;padding:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0d0d0d,#050505);border-radius:12px}}
