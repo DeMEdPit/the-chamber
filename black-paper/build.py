@@ -120,10 +120,14 @@ hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
    Desktop therefore gives the iframe far more height than it shows and clips the
    remainder: --frame-h grows the machine, --show-h is how much is kept. Tune the
    two independently. Mobile keeps its own rules below. */
-/* --lift: the page inside CENTRES its content in the iframe, so a clip from
-   the top shows the centring gap first. Lifting the frame by that gap starts
-   the visible window at the machine itself. Measured ~115px at 960px tall. */
-.token-stage{{--frame-h:960px;--show-h:640px;--lift:105px}}
+/* Deriving --lift from --show-h was tried and is wrong: what the page centres
+   is a content box TALLER than the visible machine, because it carries its own
+   padding below the controls. Centring the window on the iframe therefore
+   centres that box, not the machine, and leaves the void under the buttons.
+   So the two are set by eye instead: --lift is where the machine starts (the
+   owner approved 105), --show-h is cut to end just past the controls.
+   --frame-h sizes the machine; the other two frame it. */
+.token-stage{{--frame-h:960px;--lift:105px;--show-h:450px}}
 .token-frame{{width:min(100%,680px);height:var(--frame-h);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}}
 @media(min-width:701px){{
