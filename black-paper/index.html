@@ -163,9 +163,11 @@ hr+h2{border-top:0;padding-top:0;margin-top:30px}
    padding below the controls. Centring the window on the iframe therefore
    centres that box, not the machine, and leaves the void under the buttons.
    So the two are set by eye instead: --lift is where the machine starts (the
-   owner approved 105), --show-h is cut to end just past the controls.
+   owner approved 105), --show-h ends just past the controls: the floor lands at 450, the
+   buttons run about 85px below it at this frame size, so 560 clears them
+   with a small margin.
    --frame-h sizes the machine; the other two frame it. */
-.token-stage{--frame-h:960px;--lift:105px;--show-h:450px}
+.token-stage{--frame-h:960px;--lift:105px;--show-h:560px}
 .token-frame{width:min(100%,680px);height:var(--frame-h);margin-inline:auto;
   border:0;border-radius:8px;display:block;background:#000}
 @media(min-width:701px){
