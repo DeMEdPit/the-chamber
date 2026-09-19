@@ -8,12 +8,17 @@ mainnet on 8 September 2026 and locked. Each token is a room with a
 character in it. The program is the same for all sixty-four. What differs is
 who stands in the room, and what the room looks like when you open it.
 
-It began as a question about two machines. nopsta stored a working
-Commodore 64 — the emulator **minimal64** — inside Ethereum contracts in
-2022. Could that machine and the chain it sits on be one work rather than
-two? Not a C64 hosted on Ethereum, and not a picture of a C64 with chain
-data pasted beside it, but a token that **runs a real Commodore 64 and reads
-the chain at the same time**, with the chain's answer visible on the screen.
+It began as a question about two machines. In 2022 nopsta stored a working
+Commodore 64 — the emulator **minimal64** — inside Ethereum contracts, and
+built **ORAAND** on it: 1,024 generative artworks, each a real C64 program,
+running from chain in a browser and on 1982 hardware. He had already shown
+that the machine could boot from Ethereum and run. Others have built on it
+since.
+
+The question The Chamber asked was a narrower one. Could the chain reach
+**inside** the running program — not boot it and step back, but stay in the
+loop, so that what the machine draws depends on the state of the chain at
+the moment you look at it?
 
 The Chamber is that experiment, and it is deliberately the simplest version
 of it: behaviour that a person wrote, running on a machine that boots from
