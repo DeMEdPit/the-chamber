@@ -70,13 +70,17 @@ def convert(md, fence=None):
             ordered = bool(m)
             tag = "ol" if ordered else "ul"
             items = []
+            nums = []
             while i < len(lines):
                 cur = lines[i]
                 mm = re.match(r"^(\d+)\.\s+(.*)", cur)
                 if cur.startswith("- "):
-                    items.append([cur[2:].rstrip()]); i += 1
+                    items.append([cur[2:].rstrip()]); nums.append(None); i += 1
                 elif mm and ordered:
-                    items.append([mm.group(2).rstrip()]); i += 1
+                    # keep the source's own number. Blank-line-separated items
+                    # each become their own <ol>, and an <ol> restarts at 1, so
+                    # without this a seven-entry reference list renders 1,1,1...
+                    items.append([mm.group(2).rstrip()]); nums.append(mm.group(1)); i += 1
                 elif cur.startswith("   ") and cur.strip() and items:
                     # a continuation line: its own line within the item. Kept as a
                     # separate part and joined AFTER inlining, because a <br> put in
@@ -84,8 +88,10 @@ def convert(md, fence=None):
                     items[-1].append(cur.strip()); i += 1
                 else:
                     break
-            body = "".join("<li>" + "<br>".join(inline(part) for part in x) + "</li>"
-                           for x in items)
+            body = "".join(
+                ("<li value=\"%s\">" % n if n else "<li>")
+                + "<br>".join(inline(part) for part in x) + "</li>"
+                for x, n in zip(items, nums))
             out.append(f"<{tag}>{body}</{tag}>")
             continue
 
@@ -93,8 +99,12 @@ def convert(md, fence=None):
             i += 1; continue
 
         buf = []
+        # CommonMark's rule, and the reason it exists: a numbered list may only
+        # interrupt a paragraph when it starts at 1. Without it a sentence whose
+        # line happens to begin "2022. Could that machine..." is read as a list
+        # item, the paragraph breaks, and the year renders as a phantom "1."
         while i < len(lines) and lines[i].strip() and not lines[i].startswith(
-                ("#", ">", "- ", "```", "---")) and not re.match(r"^\d+\.\s", lines[i]):
+                ("#", ">", "- ", "```", "---")) and not re.match(r"^1\.\s", lines[i]):
             buf.append(lines[i].strip()); i += 1
         out.append("<p>" + inline(" ".join(buf)) + "</p>")
     return "\n".join(out)
