@@ -56,7 +56,11 @@ TEMPLATE = """<figure class="token-live" id="token-live">
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0", id: 1, method: "eth_call",
-        params: [{ to: TOKEN, data: SELECTOR + ARG }, "latest"]
+        // eth_call with no gas set usually defaults to the block gas limit, which
+        // is well under what a render this size needs. Ask explicitly; a provider
+        // will still refuse above its own cap, but some caps are higher than the
+        // block limit and this is the only way to reach them.
+        params: [{ to: TOKEN, data: SELECTOR + ARG, gas: "0x5F5E100" }, "latest"]
       })
     }).then(function (r) { return r.json(); }).then(function (j) {
       if (j.error) throw new Error(j.error.message || "the provider refused the call");
