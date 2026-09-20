@@ -30,6 +30,7 @@ CURRENT = "arch"
 # it was before that block existed; nothing else depends on either.
 SCROLL_EDGE = True   # fade a panning drawing's edges, driven by scroll position
 SCROLL_A11Y = True   # make a panning drawing keyboard-scrollable, and name it
+BANNER = True        # the seams artwork as a header strip, under the title
 
 # A diagram belongs to a seam, or to the two framing sections.
 MAP = {
@@ -42,6 +43,21 @@ MAP = {
 LEDE = ("Two machines — a Commodore 64 from 1982 and Ethereum from 2015 — and "
         "the seams between them. Everything below was found by building, and "
         "every claim names the source that backs it.")
+
+# The black papers open with a wide strip under the title - mindprint.svg is
+# 1996x216, about 97px tall in this column. This is the same idea: 1600x320,
+# so it lands nearer 180px. The 16:9 card would be 506px, which is a wall.
+BANNER_CSS = """
+.seams-banner{margin:26px 0 44px;padding:0}
+.seams-banner img{width:100%;height:auto;display:block;border:1px solid var(--line);
+  border-radius:10px;background:#080808}
+"""
+
+BANNER_HTML = ('<figure class="seams-banner">'
+               '<img src="../diagrams/01-the-seams-banner.svg" '
+               'alt="Eight frames nested one inside the next, a light travelling '
+               'inward wall by wall until the smallest one fills with it and fades" '
+               'width="1600" height="320" decoding="async"></figure>')
 
 CSS = """
 .arch-lede{font-size:1.24rem;line-height:1.55;color:var(--ink);max-width:54ch;margin:0 0 34px}
@@ -271,13 +287,14 @@ def main():
 <style>
 {css}
 h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
-{CSS}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}
+{CSS}{BANNER_CSS if BANNER else ""}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}
 {FOOT_CSS}
 </style>
 </head>
 <body>
 <main>
 <h1>Architecture</h1>
+{BANNER_HTML if BANNER else ""}
 {"".join(parts)}
 {footer(CURRENT)}
 </main>
