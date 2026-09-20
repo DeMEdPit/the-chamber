@@ -15,6 +15,7 @@ import re
 
 from md import convert
 from footer import CSS as FOOT_CSS, footer  # noqa: E402
+from papers import CSS as PAPER_CSS, papers  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -51,11 +52,11 @@ def main():
         '<p class="kicker">THE CHAMBER</p>\n'
         "<h1>The Chamber</h1>\n"
         '<p class="lead">' + convert(lead).replace("<p>", "").replace("</p>", " ") + "</p>\n"
-        '<p class="cta">'
-        f'<a class="cta-main" href="{SITE}/black-paper/">READ THE BLACK PAPER</a>'
-        f'<a class="cta-alt" href="{ETHERSCAN}0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127" '
-        'target="_blank" rel="noopener">THE CANARY ON CHAIN</a>'
-        "</p>"
+        # No hero buttons. The cards below ARE the call to action, and unlike
+        # a button they say what you are choosing between: "read the black
+        # paper" stopped meaning anything once there were two of them, and
+        # the canary's chain link belongs in its own card's DETAILS row.
+        + papers()
     )
 
     doc = f"""<!doctype html>
@@ -87,13 +88,6 @@ def main():
 {css}
 h1{{font-size:clamp(2.2rem,11vw,5.6rem);margin-bottom:18px}}
 .lead{{font-size:1.3rem;line-height:1.5;color:var(--ink);max-width:30ch;margin:0 0 30px}}
-.cta{{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 8px}}
-.cta a{{font:700 .76rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
-  border-radius:6px;padding:15px 22px;border:1px solid var(--line);text-decoration:none}}
-.cta-main{{background:var(--accent);color:#050505;border-color:var(--accent)}}
-.cta-main:hover{{background:var(--accent2);border-color:var(--accent2)}}
-.cta-alt{{color:var(--ink);background:#0b0b0b}}
-.cta-alt:hover{{border-color:#3d3d3d}}
 h3{{font-size:1.28rem;margin-top:40px}}
 .addr{{border:0}}
 .addr code{{font-size:.82rem;word-break:break-all}}
@@ -101,9 +95,8 @@ h3{{font-size:1.28rem;margin-top:40px}}
 blockquote{{font-size:1.06rem}}
 @media(max-width:700px){{
   .lead{{font-size:1.06rem;max-width:none}}
-  .cta{{flex-direction:column}}
-  .cta a{{text-align:center}}
 }}
+{PAPER_CSS}
 {FOOT_CSS}
 </style>
 </head>
