@@ -15,6 +15,7 @@ PAGES = [
     ("home", "THE CHAMBER", f"{SITE}/"),
     ("bp00", "BLACK PAPER 00 · THE CHAMBER", f"{SITE}/black-paper-00/"),
     ("bp01", "BLACK PAPER 01 · PERCEPTION CHAMBER", f"{SITE}/black-paper/"),
+    ("arch", "ARCHITECTURE", f"{SITE}/architecture/"),
 ]
 
 CSS = """

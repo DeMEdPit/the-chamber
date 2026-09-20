@@ -1,0 +1,248 @@
+{
+ "generated": "2026-09-20",
+ "source_commit": "a451b21148bd595fb4d7aebbc39a532ce59b7f4b",
+ "source_repo": "DeMEdPit/akalabeth (private)",
+ "counts": {
+  "total": 25,
+  "public": 22,
+  "withheld": 3
+ },
+ "seams": [
+  "C64 ↔ Ethereum",
+  "C64 ↔ browser",
+  "Ethereum ↔ browser",
+  "Ethereum ↔ reader",
+  "Process ↔ record — the learner",
+  "The method itself"
+ ],
+ "findings": [
+  {
+   "id": "F-001",
+   "title": "Which machine's limit binds, and that it flips",
+   "seam": "C64 ↔ Ethereum",
+   "claim": "Neither machine is simply \"the small one.\" Which limit binds depends on what you are shipping, and it swaps: a program shipped as a PRG is bound by the C64's 64 KB; the learning rate (32 lessons a batch) is bound by Ethereum's gas; a program shipped as a cartridge would be bound by Ethereum again.",
+   "receipt": "PRG 52,104 B of 65,536 (80%); batch bound measured in `chamber-v2/study/D-benchmark-baseline.md` §11 — the N = 32 transaction is 3,689,465 gas at 90% of its budget, nothing above 32 passes.",
+   "falsified": "A render budget that makes a 64 KB PRG unaffordable (it does not today: ~33–34 M, under the 50 M provider cap).",
+   "extra": {},
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-002",
+   "title": "The program already uses RAM hidden under the ROMs and the I/O registers",
+   "seam": "C64 ↔ Ethereum",
+   "claim": "The C64's 64 KB is not \"64 KB minus the ROMs\" — the ROMs and I/O are overlays the PLA switches out, and the RAM underneath is real. Perception's PRG uses it in anger: 8,192 bytes land in the BASIC ROM window, 4,096 at `$C000–$CFFF`, and **903 bytes land underneath the VIC and SID registers** at `$D000–$D386`, 433 of them non-zero and patterned like bitmap data.",
+   "receipt": "`workbench/research/chamber-v2/tony-b025-a-vis4.prg`, load `$0801`, end `$D386`; `vendor/minimal64/src/memory/systemRAM.c:3` → `SYSTEM_RAM_LENGTH 0x10000`. Arithmetic reproducible from the file alone.",
+   "falsified": "A recount of the file's span, or evidence the high bytes are padding rather than content.",
+   "extra": {},
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-003",
+   "title": "The codec rewrite handed the binding constraint back to 1982",
+   "seam": "C64 ↔ Ethereum",
+   "claim": "Before `PerceptionCodec`, the render was the limit. After it, the C64 is. The base64 encoder was ~73 gas a byte and two thirds of the whole render; rewriting it to fill a word per `MSTORE` instead of a byte per `MSTORE8` took the placeholder tokenURI from 60.86 M gas to 18.97 M, and the real image from 102.4 M to 33.39 M — with the artwork untouched.",
+   "receipt": "`chamber-v2/src/PerceptionCodec.sol:45` (the word-at-a-time `enc`); measurements in `chamber-v2/study/K-reuse-audit.md` phase 2, held by a differential test against the untouched rehearsal codec.",
+   "falsified": "Re-measuring the two codecs and finding the ratio different.",
+   "extra": {},
+   "date": "2026-09-15 (measured) / 2026-09-19 (framed)"
+  },
+  {
+   "id": "F-004",
+   "title": "The escalation from 42 bytes to 834 is about kind, not size",
+   "seam": "C64 ↔ Ethereum",
+   "claim": "Genesis writes 42 bytes into its program's hole; Perception writes 834. The interesting difference is not 20×. Genesis's 42 are **facts the chain already had** — 32 bytes of seed, 8 digits of block number, plus a behaviour and a colour read from a table. Perception's 834 are **a result the chain had to compute, and could have been wrong about.** The hole went from a mailbox to a verdict.",
+   "receipt": "`chamber/src/Chamber.sol:222` (`_stampRaw`); marker `\"MURAL02\\0\"` at file offset `0x04EC1`, block at `0x04EC9`. Perception: `PerceptionProgram.brainOffset()` = 27,905 (`$7500`), all 834 bytes written by `saveMind`'s replay.",
+   "falsified": "Showing Genesis's stamp requires computation the chain could get wrong.",
+   "extra": {},
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-005",
+   "title": "The page is a compatibility firewall around a runtime that cannot be patched",
+   "seam": "C64 ↔ browser",
+   "claim": "The 2022 emulator's cartridge reader indexes fixed pointer arrays (`roml[64]`, `romh[16]`) with a bank byte taken straight from the file and **never range-checks it**. It cannot be fixed — it is on chain for ever. So the safety moved to the caller: the page validates every `.crt` before a byte reaches the runtime. The general pattern: *when the callee is immutable, the caller carries the safety.*",
+   "receipt": "`vendor/minimal64/src/cartridge/cartridge.h:20-27` (the arrays); `player/tail-console.template.html:855-975` (the validator), deployed on mainnet in the READY 64 tail blobs `0x1377dfB1…`, `0x69cda198…`.",
+   "falsified": "A range check in the 2022 source, or a bypass of the validator.",
+   "extra": {
+    "Generalizes": "*(conjecture)* Any system with a frozen dependency — legacy services, regulated firmware, verified kernels."
+   },
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-006",
+   "title": "The on-chain machine has a working cartridge port, and its ceiling is 512 KB",
+   "seam": "C64 ↔ browser",
+   "claim": "The machine is not capped at 64 KB. nopsta's 2022 build includes a first-class cartridge port with bank switching: `m64_loadCartridge` is exported, and the arrays hold 64 ROML banks (512 KB) plus 16 ROMH (128 KB). Four formats are implemented — Normal (0), Ocean Type 1 (5), C64GS (15), Magic Desk (19). EasyFlash, which most large modern conversions use, is **not** supported. Per-format ceilings as the readers actually index them: Ocean 128/256/512 KB, C64GS 512 KB, Magic Desk 256 KB (bank masked `value & 0x1f`), Normal 4 K or 16 K.",
+   "receipt": "`vendor/minimal64/src/cartridge/cartridge.h:20` (the arrays), `vendor/minimal64/src/cartridge/cartridge.c:310` (the format dispatch); two probe cartridges built from scratch and booted headless, `docs/cartridge-hunt-report.md` §2–3, artifacts in `experiments/test-corpus/crt-probe/` (commit `c0640b9`).",
+   "falsified": "A format table that differs from the source.",
+   "extra": {},
+   "date": "2026-08-20 (found) / 2026-09-20 (re-verified)"
+  },
+  {
+   "id": "F-006a",
+   "title": "8 K \"Normal\" cartridges are permanently broken on this machine",
+   "seam": "C64 ↔ browser",
+   "claim": "`cartridge_readNormal()`'s 8 K branch allocates ROMH, frees ROML, then writes into the never-allocated ROML — out of bounds, a hard WASM trap. The adjacent 4 K and 16 K branches are internally consistent; only 8 K Normal is broken. Because the build is on chain, **this is a permanent fact about the machine**, not a bug to fix.",
+   "receipt": "`vendor/minimal64/src/cartridge/cartridge.c:139` (the 8K branch of `cartridge_readNormal`); reproduced as `RuntimeError: memory access out of bounds` in `docs/cartridge-hunt-report.md` §3.",
+   "falsified": "An 8 K Normal cart booting on the pinned build.",
+   "extra": {},
+   "date": "2026-08-20"
+  },
+  {
+   "id": "F-007",
+   "title": "There is no disk drive, and there was never going to be one",
+   "seam": "C64 ↔ browser",
+   "claim": "`.d64` and every multi-load game are out. The serial bus is *scaffolded* — `iecBus.c` is 80 lines adapted from VICE, with `iecBus_serialDeviceCount = 0` — but no drive CPU and no DOS was ever written behind it. This is the single largest category of software the machine cannot run, and it is structural.",
+   "receipt": "`vendor/minimal64/src/iec/iecBus.c:42` (`iecBus_serialDeviceCount = 0`, in an 80-line file); `vendor/minimal64/src/m64.h` exports no load/save path.",
+   "falsified": "A drive implementation anywhere in the pinned build.",
+   "extra": {},
+   "date": "2026-08-20 / 2026-09-20"
+  },
+  {
+   "id": "F-008",
+   "title": "OpenROMs buys an environment, not capacity — and it costs 8 KB",
+   "seam": "C64 ↔ browser",
+   "claim": "The LGPL replacement ROMs we pressed on chain (KERNAL, BASIC, CHARGEN) roughly double the software the machine can run, by supplying the stock firmware environment that packed loaders and BASIC stubs assume. They add **no memory**. They subtract it: mapping BASIC takes back the 8 KB at `$A000–$BFFF` that Perception is currently using. And a full KERNAL still has nothing on the other end of the bus, so it does not get you a disk (F-007).",
+   "receipt": "Crow Boy: stalled on the bare machine (`$D011 = $00`), booted first try with all three ROM hooks — `docs/cartridge-hunt-report.md` §5, `experiments/test-corpus/crowboy/` (commit `e434e46`). Pressing 1: `0xE0a71d57FB514C8f5793e26937559935350b3406`.",
+   "falsified": "Any memory the ROMs add rather than consume.",
+   "extra": {},
+   "date": "2026-08-20 / 2026-09-20"
+  },
+  {
+   "id": "F-009",
+   "title": "`animation_url` is the fragile link, not the web standards",
+   "seam": "Ethereum ↔ browser",
+   "claim": "The browser dependencies people worry about are the safe ones. The JS engine, Canvas 2D and `requestAnimationFrame` carry essentially zero removal risk; Web Audio's risk is policy drift, not removal. The genuinely fragile link is **`animation_url` itself** — a marketplace convention, not a standard, with no standards body and no deprecation process. The page is frozen on chain and cannot be patched if a convention moves, which is why the `.prg` exit (`prg()` / `prgWithBrain()` as contract views) is what actually makes the work durable.",
+   "receipt": "`chamber-v2/src/PerceptionChamber.sol:173`; `chamber/src/Chamber.sol:207`. The fragility ranking is reasoning over verified history (F-010), not a measurement.",
+   "falsified": "Evidence `animation_url` has a standards process, or that a shipped standardised feature was removed outright.",
+   "extra": {},
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-011",
+   "title": "Genesis cannot render live, and no amount of gas argument fixes it",
+   "seam": "Ethereum ↔ browser",
+   "claim": "The Genesis paper's live embed is gone for good. Its render is ~61 M gas against a **50 M provider cap on `eth_call`** — a cap explicit gas cannot raise, because it is the provider's, not the transaction's. Replaced by a gallery of the eight characters served as files, proven against the on-chain bytes. Perception's render still loads at ~31 M.",
+   "receipt": "`gallery.py:27` in `DeMEdPit/the-chamber`; HANDOFF 2026-09-19.",
+   "falsified": "A mainstream provider serving a 61 M `eth_call`.",
+   "extra": {},
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-012",
+   "title": "Reads are free and unadjudicated; writes are judged. Same contract, two epistemic statuses",
+   "seam": "Ethereum ↔ reader",
+   "claim": "`tokenURI()` and `prg()` are view calls. They run on **one** node, cost nothing, and are **not consensus-verified** — you trust them because they are deterministic and anyone can reproduce them, not because the network checked. `saveMind()` runs on **every** node and is adjudicated. Most descriptions of \"on-chain art\" conflate these. The Chamber has both in one contract, so the difference is concrete rather than theoretical.",
+   "receipt": "`chamber-v2/src/PerceptionChamber.sol:197` (view) vs `chamber-v2/src/PerceptionLineage.sol:216` (state-changing); the L2 gate renders the page from one node and saves through consensus on another.",
+   "falsified": "Nothing — this is how the EVM works; the finding is that it is worth saying.",
+   "extra": {
+    "Generalizes": "*(conjecture)* Any \"verified by blockchain\" claim about read data — RWA attestations, credential lookups, oracle feeds consumed by view."
+   },
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-013",
+   "title": "Ethereum is a judge of derivation, not a judge of intelligence",
+   "seam": "Process ↔ record — the learner",
+   "claim": "The chain never watches the teaching; it cannot. It **re-derives** it. What `saveMind` validates is exactly one proposition: *the claimed brain is the necessary consequence of the claimed lessons under the stated rule.* It validates nothing about whether the learning was good, useful, or interesting.",
+   "receipt": "`chamber-v2/src/PerceptionLineage.sol:216` — the ordered checks; the claim compared against `chamber-v2/src/Brain025.sol:597` (`replay`), mismatch reverts.",
+   "falsified": "Any other property `saveMind` actually enforces.",
+   "extra": {},
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-014",
+   "title": "The on-chain replay is stricter than our own reference implementation",
+   "seam": "Process ↔ record — the learner",
+   "claim": "When a lesson's recorded prediction disagrees with the recomputed one, the Python oracle **records** the mismatch and carries on; the Solidity **reverts**. The EVM is the harshest reader of our own work, by choice.",
+   "receipt": "`chamber-v2/src/Brain025.sol:157-158` (`error PredictionMismatch(uint256 lesson, uint8 recorded, uint8 recomputed)`) and the note at `:48`; the oracle's behaviour in `vendor/brain025/tools/brain025_ref.py`.",
+   "falsified": "The reference reverting too, or the contract not reverting.",
+   "extra": {},
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-015",
+   "title": "The chain verifies the derivation and cannot verify the teacher",
+   "seam": "Process ↔ record — the learner",
+   "claim": "`savedBy` is the address that submitted the transaction — the holder who committed the revision, **never proof of who sat at the keyboard.** We wrote that limitation into the data structure's own comment rather than letting a reader assume otherwise. The gap is structural, not a gap in our implementation: no chain can witness a human.",
+   "receipt": "`chamber-v2/src/PerceptionLineage.sol:66` and `:78`.",
+   "falsified": "Any mechanism in the contract that binds a revision to a person rather than an address.",
+   "extra": {
+    "Generalizes": "*(conjecture)* This is the same wall every verified-credential and proctoring scheme hits: you can prove a curriculum yields a result; you cannot prove who did the work."
+   },
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-016",
+   "title": "The filter on learning architectures is replayability, not size",
+   "seam": "Process ↔ record — the learner",
+   "claim": "The obvious constraint is capacity (834 bytes, 800 weights). It is not the binding one. To live here an architecture must be **exactly replayable**: no floats (IEEE754 cannot be relied on byte-for-byte across three architectures), no hidden state, no clock, no unseeded randomness, no ordering ambiguity, and cost linear in lessons. That filter cuts across the usual taxonomy: **a tiny float network is impossible here; a much larger integer one might be fine.** Hebbian and other local rules are likely *easier* than what we shipped; decision trees and k-NN are trivially admissible; integer backprop is hard but not obviously impossible; attention is not honestly in reach.",
+   "receipt": "The determinism requirement is enforced by construction — exact `int16` accumulators saturating at +127/−128 — `chamber-v2/src/Brain025.sol:109`. The linearity requirement is measured: cost was superlinear until lever 5 cut memory high-water from 2.12 MB to 46 KB (`chamber-v2/study/D` §8).",
+   "falsified": "A float-using learner replaying byte-identically across the three implementations.",
+   "extra": {},
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-017",
+   "title": "The 1969 XOR objection was answered in the decoder, not the network",
+   "seam": "Process ↔ record — the learner",
+   "claim": "A one-layer perceptron cannot learn a non-linearly-separable mapping — Minsky and Papert, 1969. BRAIN025 is one layer. It works anyway because `toRelative()` converts absolute taught actions into Tony-relative ones before the learner sees them, which makes the policy first-order and learnable. **The representation was changed so the network did not have to be.** This is shipped on mainnet and nothing public mentions it.",
+   "receipt": "`chamber-v2/src/Brain025.sol:489` (`toRelative`), applied at `:624` under the block's `hOf` when the vocabulary byte is 1.",
+   "falsified": "Showing the task is linearly separable without the transform.",
+   "extra": {},
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-018",
+   "title": "Determinism is the shared language, and it is the same idea at two scales",
+   "seam": "Process ↔ record — the learner",
+   "claim": "BRAIN025 agrees byte-for-byte on a 6510, in Python, and in the EVM — not because anyone ported anything, but because the specification admits no floats, no clocks and no external calls. **That is the identical property that makes Ethereum work at all.** Consensus is determinism at network scale; our learner is determinism at 834 bytes. Three independent implementations is also the minimum for a vote: with two, disagreement tells you there is a bug but not which side has it.",
+   "receipt": "`chamber-v2/test/Brain025Replay.t.sol:9` — vis4, 240/240 lessons, all 834 bytes, sha256 equal to claimed; plus the four other vectors, each named by its evidence class.",
+   "falsified": "Any divergence between the three on any packaged vector.",
+   "extra": {
+    "Generalizes": "*(conjecture)* ML reproducibility today usually means \"same seed, same library, same GPU.\" This is the stronger position: the spec is the artifact and any correct implementation agrees. Extreme, but it is the far end of a real spectrum."
+   },
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-019",
+   "title": "Roughly half the project is apparatus, not artwork",
+   "seam": "The method itself",
+   "claim": "The oracle exists to check the Solidity. The fixtures exist to make the oracle checkable. The gates exist to make the fixtures checkable. The audit bundle exists to make the gates checkable by a stranger. Of the seven layers in `ARCHITECTURE.md`, three are the work and roughly four are the proof of the work. This is invisible from outside and is probably the most unusual thing about how it was built.",
+   "receipt": "`notebook/ARCHITECTURE.md`; 155 forge tests, 41 L0 gates, 14 L2 gates, `perception-audit-6b41673.tar.gz` (3,985 files).",
+   "falsified": "A recount of the layers that changes the ratio materially.",
+   "extra": {},
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-020",
+   "title": "A cartridge is a proxy pattern, and we refuse it because of identity",
+   "seam": "The method itself",
+   "claim": "A C64 cartridge is the closest thing that machine has to an upgradeable contract: a fixed address (`$8000`) whose contents are swapped by writing a bank number to `$DE00`. The on-chain equivalent is `delegatecall`, or `extcodecopy` from a mutable pointer. **We built the port, proved it boots, and then chose the unbanked machine for the artwork** — every pointer is `immutable` and checked against a commitment. The asymmetry is the finding: on the C64 banking does not threaten the work's identity, because *the cartridge is physically in someone's hand* and the socket is outside the system. On chain there is no hand. A swappable pointer changes what `tokenURI` returns, and the work stops being one thing.",
+   "receipt": "The port: F-006. The refusal: `chamber-v2/src/PerceptionChamber.sol:64`'s four immutable pointers, each checked by commitment; `Chamber` locked 2026-09-08 with `minter()` zero.",
+   "falsified": "A banking scheme that preserves render identity.",
+   "extra": {},
+   "date": "2026-09-20"
+  },
+  {
+   "id": "F-021",
+   "title": "Copies drift; generated artifacts cannot",
+   "seam": "The method itself",
+   "claim": "`papers.py` held a transcribed copy of a black paper's thesis line and was printing the stale version **within the hour** of the source changing. The fix was not vigilance — it was reading the line from `paper.md` at build time and failing loudly if absent. Any fact that appears in two places will disagree; the only reliable remedy is one source and a generator.",
+   "receipt": "`papers.py:28` (`lede`) in `DeMEdPit/the-chamber`, which raises `SystemExit` if the source has no thesis line.",
+   "falsified": "Nothing; it already happened. Kept because it is the rule this notebook runs on.",
+   "extra": {},
+   "date": "2026-09-19"
+  },
+  {
+   "id": "F-024",
+   "title": "OpenROMs pressing 1 is a side branch, not a rung",
+   "seam": "The method itself",
+   "claim": "The series reads as a ladder — a machine, then firmware, then a hole, then a learner — but the firmware step is not on the ladder. **Neither artwork loads it.** The Chamber's page does not even bind the ROM hooks; the Perception page binds them and never calls them. Both boot bare on minimal64's own minimal KERNAL, which is what makes nearly the whole 64 KB available (F-002). The pressing publishes firmware as its own finished object and doubles what the *workbench* can run; it is not a dependency of anything shipped. Two things the same look reveals: the Chamber **imports READY 64's `Launcher` verbatim** and pins its creation bytecode, so that is real reuse rather than a rewrite; and base64 has now been written three times — `Codec`, then inline in `Chamber.sol`, then `PerceptionCodec` — each faster than the last (F-003).",
+   "receipt": "`chamber/script/ChamberBase.s.sol:6` (`import {Launcher} from \"rehearsal/Launcher.sol\"`) and `:66` (the bytecode pin); no `m64_setKernalROM` call in `player/tail-console.template.html` or `chamber-v2/page/tail.js` — bound at `chamber-v2/page/tail.js:31`, never invoked.",
+   "falsified": "A ROM hook actually called on either shipped page.",
+   "extra": {},
+   "date": "2026-09-20"
+  }
+ ]
+}

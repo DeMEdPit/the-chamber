@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 776" width="920" height="776" role="img" aria-label="The eight layers of the Perception Chamber, showing which are the artwork and which are the apparatus that proves it">
+<style>
+  .t{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;fill:#f4f4ef}
+  .title{font-size:19px;letter-spacing:.4px}
+  .sub{font-size:12.5px;fill:#aaa9a3}
+  .num{font-size:12.5px;fill:#aaa9a3}
+  .name{font-size:14px}
+  .dim{font-size:11.5px;fill:#aaa9a3}
+  .tag{font-size:10.5px;letter-spacing:.4px}
+  .art{fill:#141414;stroke:#39ff88;stroke-width:1.25}
+  .app{fill:#141414;stroke:#2e2e2e;stroke-width:1}
+  .non{fill:#101010;stroke:#3a3a3a;stroke-width:1;stroke-dasharray:4 3}
+</style>
+<rect x="0" y="0" width="920" height="776" fill="#0b0b0b"/>
+<text class="t title" x="40" y="42">What it is made of</text>
+<text class="t sub"   x="40" y="63">Eight layers. Three are the artwork, three are apparatus, one is both — and one is not ours.</text>
+
+<!-- legend -->
+<rect x="616" y="30" width="14" height="14" rx="3" class="art"/>
+<text class="t tag" x="638" y="42" fill="#39ff88">artwork</text>
+<rect x="710" y="30" width="14" height="14" rx="3" class="app"/>
+<text class="t tag" x="732" y="42" fill="#aaa9a3">apparatus</text>
+<rect x="818" y="30" width="14" height="14" rx="3" class="non"/>
+<text class="t tag" x="840" y="42" fill="#aaa9a3">not ours</text>
+
+<!-- 0 -->
+<rect class="non" x="40" y="96" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="124">0</text>
+<text class="t name" x="96"  y="124">minimal64 on chain, 2022</text>
+<text class="t dim"  x="96"  y="145">four contracts · a whole Commodore 64 as WebAssembly · GPL-2.0 · we call it, never patch it</text>
+<text class="t tag"  x="860" y="124" text-anchor="end" fill="#aaa9a3">not ours</text>
+
+<!-- 1 -->
+<rect class="art" x="40" y="168" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="196">1</text>
+<text class="t name" x="96"  y="196">the program</text>
+<text class="t dim"  x="96"  y="217">tony-b025-a-vis4.prg · 52,104 B · sha256 355645a6… · an 834-byte hole at $7500 · frozen</text>
+<text class="t tag"  x="860" y="196" text-anchor="end" fill="#39ff88">artwork</text>
+
+<!-- 2 -->
+<rect class="art" x="40" y="240" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="268">2</text>
+<text class="t name" x="96"  y="268">the learner, written three times</text>
+<text class="t dim"  x="96"  y="289">6510 inside the PRG · Python at build time (the oracle) · Solidity on chain — all three agree byte for byte</text>
+<text class="t tag"  x="860" y="268" text-anchor="end" fill="#39ff88">both</text>
+
+<!-- 3 -->
+<rect class="app" x="40" y="312" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="340">3</text>
+<text class="t name" x="96"  y="340">the evidence</text>
+<text class="t dim"  x="96"  y="361">the oracle pinned and rehashed every check · 64 fixtures derived mechanically · evidence classes apart</text>
+<text class="t tag"  x="860" y="340" text-anchor="end" fill="#aaa9a3">apparatus</text>
+
+<!-- 4 -->
+<rect class="art" x="40" y="384" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="412">4</text>
+<text class="t name" x="96"  y="412">the contracts</text>
+<text class="t dim"  x="96"  y="433">nine sources, five deployed · the token 0x6f54E1aA…6127 · saveMind is the only thing that writes</text>
+<text class="t tag"  x="860" y="412" text-anchor="end" fill="#39ff88">artwork</text>
+
+<!-- 5 -->
+<rect class="art" x="40" y="456" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="484">5</text>
+<text class="t name" x="96"  y="484">the page</text>
+<text class="t dim"  x="96"  y="505">55 parts, 44 shared · one source builds both the workbench and the page the contract serves</text>
+<text class="t tag"  x="860" y="484" text-anchor="end" fill="#39ff88">artwork</text>
+
+<!-- 6 -->
+<rect class="app" x="40" y="528" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="556">6</text>
+<text class="t name" x="96"  y="556">the gates</text>
+<text class="t dim"  x="96"  y="577">155 contract tests · 41 page gates · 14 on a real chain · pins, sources, fixtures · a sealed audit bundle</text>
+<text class="t tag"  x="860" y="556" text-anchor="end" fill="#aaa9a3">apparatus</text>
+
+<!-- 7 -->
+<rect class="app" x="40" y="600" width="840" height="62" rx="5"/>
+<text class="t num"  x="60"  y="628">7</text>
+<text class="t name" x="96"  y="628">the record</text>
+<text class="t dim"  x="96"  y="649">HANDOFF · studies A – O · the mainnet record · this notebook</text>
+<text class="t tag"  x="860" y="628" text-anchor="end" fill="#aaa9a3">apparatus</text>
+
+<line x1="40" y1="694" x2="880" y2="694" stroke="#262626" stroke-width="1"/>
+<text class="t dim" x="40" y="720">The oracle exists to check the Solidity. The fixtures exist to make the oracle checkable. The gates exist to make the</text>
+<text class="t dim" x="40" y="742">fixtures checkable. The bundle exists to make the gates checkable by a stranger.  F-019</text>
+</svg>

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 760" width="920" height="760" role="img" aria-label="The Commodore 64 address space beside the Perception program, showing the program running underneath the ROM and I O windows">
+<style>
+  .t{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;fill:#f4f4ef}
+  .title{font-size:19px;letter-spacing:.4px}
+  .sub{font-size:12.5px;fill:#aaa9a3}
+  .hd{font-size:11.5px;fill:#aaa9a3;letter-spacing:.6px}
+  .addr{font-size:11px;fill:#8a8984}
+  .seg{font-size:11px;fill:#d8d7d1}
+  .dim{font-size:11.5px;fill:#aaa9a3}
+  .accn{font-size:11.5px;fill:#39ff88}
+  .ln{stroke:#4a4a46;stroke-width:1;fill:none}
+</style>
+<rect x="0" y="0" width="920" height="760" fill="#0b0b0b"/>
+<text class="t title" x="40" y="42">Where the program actually lives</text>
+<text class="t sub"   x="40" y="63">The C64's ROMs and I/O are overlays, not walls. The RAM beneath them is real — and Perception uses it.</text>
+
+<text class="t hd" x="295" y="96" text-anchor="middle">default map</text>
+<text class="t hd" x="455" y="96" text-anchor="middle">our program</text>
+
+<!-- bar A: what the chip maps -->
+<rect x="240" y="110"   width="110" height="337.5" fill="#141414" stroke="#2e2e2e"/>
+<rect x="240" y="447.5" width="110" height="67.5"  fill="#1c1c1c" stroke="#3a3a3a"/>
+<rect x="240" y="515"   width="110" height="33.7"  fill="#141414" stroke="#2e2e2e"/>
+<rect x="240" y="548.7" width="110" height="33.8"  fill="#1c1c1c" stroke="#3a3a3a"/>
+<rect x="240" y="582.5" width="110" height="67.5"  fill="#1c1c1c" stroke="#3a3a3a"/>
+<text class="t seg" x="295" y="282" text-anchor="middle">RAM</text>
+<text class="t seg" x="295" y="485" text-anchor="middle">BASIC ROM</text>
+<text class="t seg" x="295" y="536" text-anchor="middle">RAM</text>
+<text class="t seg" x="295" y="569" text-anchor="middle">I/O</text>
+<text class="t seg" x="295" y="620" text-anchor="middle">KERNAL ROM</text>
+
+<!-- bar B: our program -->
+<rect x="400" y="110"   width="110" height="16.9"  fill="#141414" stroke="#2e2e2e"/>
+<rect x="400" y="126.9" width="110" height="429.3" fill="#132018" stroke="#39ff88" stroke-width="1.1"/>
+<rect x="400" y="556.2" width="110" height="93.8"  fill="#141414" stroke="#2e2e2e"/>
+<rect x="400" y="356.2" width="110" height="8"     fill="#39ff88"/>
+<text class="t seg" x="455" y="250" text-anchor="middle" fill="#39ff88">the program</text>
+<text class="t dim" x="455" y="270" text-anchor="middle">52,104 B</text>
+
+<!-- address rules -->
+<text class="t addr" x="216" y="114" text-anchor="end">$0000</text>
+<text class="t addr" x="216" y="131" text-anchor="end">$0801</text>
+<text class="t addr" x="216" y="361" text-anchor="end">$7500</text>
+<text class="t addr" x="216" y="452" text-anchor="end">$A000</text>
+<text class="t addr" x="216" y="519" text-anchor="end">$C000</text>
+<text class="t addr" x="216" y="553" text-anchor="end">$D000</text>
+<text class="t addr" x="216" y="587" text-anchor="end">$E000</text>
+<text class="t addr" x="216" y="654" text-anchor="end">$FFFF</text>
+<line class="ln" x1="224" y1="110"   x2="238" y2="110"/>
+<line class="ln" x1="224" y1="126.9" x2="238" y2="126.9"/>
+<line class="ln" x1="224" y1="356.8" x2="238" y2="356.8"/>
+<line class="ln" x1="224" y1="447.5" x2="238" y2="447.5"/>
+<line class="ln" x1="224" y1="515"   x2="238" y2="515"/>
+<line class="ln" x1="224" y1="548.7" x2="238" y2="548.7"/>
+<line class="ln" x1="224" y1="582.5" x2="238" y2="582.5"/>
+<line class="ln" x1="224" y1="650"   x2="238" y2="650"/>
+
+<!-- alignment guides: the boundaries the program runs straight through -->
+<line x1="224" y1="447.5" x2="528" y2="447.5" stroke="#6f6f68" stroke-width="1" stroke-dasharray="2 4"/>
+<line x1="224" y1="515"   x2="528" y2="515"   stroke="#6f6f68" stroke-width="1" stroke-dasharray="2 4"/>
+<line x1="224" y1="548.7" x2="528" y2="548.7" stroke="#6f6f68" stroke-width="1" stroke-dasharray="2 4"/>
+
+<!-- annotations -->
+<path class="ln" d="M510,126.9 L528,126.9"/>
+<text class="t dim" x="536" y="131">the program loads here</text>
+
+<path class="ln" d="M510,360 L528,360"/>
+<text class="t accn" x="536" y="356">the brain — 834 bytes</text>
+<text class="t dim"  x="536" y="374">the only part the chain writes</text>
+
+<path class="ln" d="M510,481 L528,481"/>
+<text class="t dim" x="536" y="477">8,192 bytes of the program sit</text>
+<text class="t dim" x="536" y="495">underneath the BASIC ROM window</text>
+
+<path class="ln" d="M510,556.2 L522,556.2 L522,584"/>
+<text class="t dim" x="536" y="588">903 bytes sit underneath the VIC and</text>
+<text class="t dim" x="536" y="606">SID registers — 433 of them non-zero,</text>
+<text class="t dim" x="536" y="624">patterned like bitmap data. It ends at $D386.</text>
+
+<line x1="40" y1="686" x2="880" y2="686" stroke="#262626" stroke-width="1"/>
+<text class="t dim" x="40" y="712">minimal64 boots with its own minimal KERNAL and no BASIC ROM, so nearly the whole space is available — which is how</text>
+<text class="t dim" x="40" y="734">52,104 bytes fit in a 64 KB machine at all. Loading the OpenROMs firmware would take the top window back.  F-002, F-008</text>
+</svg>
