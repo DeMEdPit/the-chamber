@@ -48,7 +48,7 @@ PAPERS = [
 
 CSS = """
 .papers{margin:52px 0 0;display:grid;gap:22px;
-  grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
 .paper{display:flex;flex-direction:column;padding:22px;border:1px solid var(--line);
   border-radius:14px;background:linear-gradient(180deg,#0d0d0d,#060606)}
 .paper>img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;border:1px solid var(--line);
@@ -71,6 +71,12 @@ CSS = """
   color:#050505;background:var(--accent);border-radius:7px;padding:13px 20px;
   text-decoration:none}
 .paper-go:hover,.paper-go:focus-visible{background:var(--accent2)}
+.paper-next{opacity:.72}
+.paper-blank{width:100%;aspect-ratio:16/9;border:1px dashed #262626;border-radius:10px;
+  background:repeating-linear-gradient(135deg,#080808 0 9px,#0b0b0b 9px 18px);
+  margin-bottom:18px}
+.paper-next .paper-kicker{color:var(--muted)}
+.paper-go-off{background:#151515;color:var(--muted);cursor:default}
 @media(max-width:700px){
   .papers{gap:16px;margin-top:40px}
   .paper{padding:16px}
@@ -97,6 +103,33 @@ def _rows(p):
         for k, v in out)
 
 
+NEXT = {
+    "kicker": "NEXT",
+    "title": "More chambers",
+    "line": "Each generation isolates a single capability the ones before it "
+            "deliberately do not have.",
+    "rows": [("On chain", "not yet"), ("Tokens", "&mdash;"),
+             ("The program", "&mdash;"), ("Written in", "&mdash;"),
+             ("One render", "&mdash;"),
+             ("Details", "said when they are real")],
+}
+
+
+def _next_card():
+    """The series is not finished, and the honest way to show that is a card
+    whose numbers are all dashes. It names nothing, because nothing is real
+    yet."""
+    rows = "".join('<div class="paper-row"><dt>%s</dt><dd>%s</dd></div>' % (k, v)
+                   for k, v in NEXT["rows"])
+    return ('<article class="paper paper-next">'
+            '<div class="paper-blank" aria-hidden="true"></div>'
+            '<span class="paper-kicker">%s</span><h3>%s</h3>'
+            '<p class="paper-line">%s</p>'
+            '<dl class="paper-rows">%s</dl>'
+            '<span class="paper-go paper-go-off">IN RESEARCH</span>'
+            "</article>") % (NEXT["kicker"], NEXT["title"], NEXT["line"], rows)
+
+
 def papers():
     cards = []
     for p in PAPERS:
@@ -110,4 +143,5 @@ def papers():
             + '<dl class="paper-rows">%s</dl>' % _rows(p)
             + '<a class="paper-go" href="%s">READ THE BLACK PAPER &rarr;</a>' % p["href"]
             + "</article>")
-    return '<section class="papers" aria-label="The black papers">%s</section>' % "".join(cards)
+    cards.append(_next_card())
+    return '<section class="papers" aria-label="The series">%s</section>' % "".join(cards)
