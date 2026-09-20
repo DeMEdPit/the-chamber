@@ -14,11 +14,10 @@ import pathlib
 import re
 
 from md import convert
-from footer import CSS as FOOT_CSS, footer  # noqa: E402
+from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
 from papers import CSS as PAPER_CSS, papers  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-SITE = "https://demedpit.github.io/the-chamber"
 TITLE = "The Chamber"
 DESC = ("A series of Commodore 64 works that live on Ethereum, built one "
         "capability at a time.")

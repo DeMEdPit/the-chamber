@@ -14,11 +14,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from md import convert  # noqa: E402
 from gallery import gallery, CSS as GAL_CSS  # noqa: E402
-from footer import CSS as FOOT_CSS, footer  # noqa: E402
+from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
 from stats import CSS as STAT_CSS, stats, CHAMBER  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-SITE = "https://demedpit.github.io/the-chamber"
 TITLE = "The Chamber — Black Paper 00"
 DESC = ("Sixty-four rooms, one frozen Commodore 64 program, and a room the "
         "chain redraws at every read. The genesis of the Chamber series.")

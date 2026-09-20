@@ -18,11 +18,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from md import convert, inline  # noqa: E402
 from token_embed import embed  # noqa: E402
-from footer import CSS as FOOT_CSS, footer  # noqa: E402
+from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
 from stats import CSS as STAT_CSS, stats, PERCEPTION  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-SITE = "https://demedpit.github.io/the-chamber"
 
 TITLE = "Perception Chamber — Black Paper 01"
 DESC = ("A human teaches a perceptron inside a Commodore 64 program; Ethereum "

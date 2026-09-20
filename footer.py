@@ -1,10 +1,14 @@
 """The footer every page carries, so the site is navigable from anywhere.
 
-One definition, shared. `current` names the page so it can mark itself
-rather than link to itself.
+One definition, shared. `current` names the page so it can mark itself rather
+than link to itself.
+
+SITE lives here too, and every build imports it. It was copied into four
+files until 2026-09-20, which would have drifted the first time the domain
+moved - and the first time the domain moved is when it was found.
 """
 
-SITE = "https://demedpit.github.io/the-chamber"
+SITE = "https://chamber64.com"
 REPO = "https://github.com/DeMEdPit/the-chamber"
 
 PAGES = [

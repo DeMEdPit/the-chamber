@@ -24,10 +24,10 @@ system that can — not a bigger model each time, but a sequence of capability
 boundaries, each one earned experimentally before the next is attempted.
 
 <!-- github-only -->
-**Website — [demedpit.github.io/the-chamber](https://demedpit.github.io/the-chamber/)**
+**Website — [chamber64.com](https://chamber64.com/)**
 
-- [Black Paper 00 — The Chamber](https://demedpit.github.io/the-chamber/black-paper-00/)
-- [Black Paper 01 — Perception Chamber](https://demedpit.github.io/the-chamber/black-paper/)
+- [Black Paper 00 — The Chamber](https://chamber64.com/black-paper-00/)
+- [Black Paper 01 — Perception Chamber](https://chamber64.com/black-paper/)
 - The Chamber on chain — [`0x75FD5A9c…db924`](https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924)
 - Perception Chamber Canary on chain — [`0x6f54E1aA…E6127`](https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127)
 <!-- /github-only -->
