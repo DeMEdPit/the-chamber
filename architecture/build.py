@@ -66,7 +66,7 @@ CSS = """
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
   .fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .fig object,.fig img{min-width:680px}
+  .fig object,.fig img{min-width:min(680px,var(--nat))}
   .fig figcaption a::before{content:"— "}
 }
 """
@@ -125,8 +125,9 @@ def figure(src, caption):
     w, h = DIM.search(svg).groups()
     return (f'<figure class="fig">'
             f'<object type="image/svg+xml" data="../diagrams/{src}" '
-            f'style="aspect-ratio:{w}/{h}" aria-label="{_html.escape(caption)}">'
-            f'<img src="../diagrams/{src}" alt="{_html.escape(caption)}" loading="lazy">'
+            f'style="aspect-ratio:{w}/{h};--nat:{w}px" aria-label="{_html.escape(caption)}">'
+            f'<img src="../diagrams/{src}" alt="{_html.escape(caption)}" '
+            f'style="--nat:{w}px" loading="lazy">'
             f'</object>'
             f'<figcaption>{_html.escape(caption)} '
             f'<a href="../diagrams/{src}" target="_blank" rel="noopener">open full size</a>'
