@@ -1,37 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" role="img" aria-label="Four frames nested one inside the next, a light travelling inward from the outermost to the one at the centre">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" role="img" aria-label="Eight frames nested one inside the next, a light travelling inward wall by wall until the smallest one fills with it and fades">
 <title>The seams, as a card</title>
 <style>
-  .f{fill:#131313;stroke:#2e2e2e;stroke-width:1.6}
-  /* The interior stays matte green - that is what makes it the thing the
-     eye lands on. The BORDER is grey like every other wall, and only the
-     halo lights it, exactly as 01 does it: .boxa is fill #111a15 with a
-     #2e2e2e stroke. A permanently lit border was rejected on the diagram
-     (the owner, 2026-09-20) for making the box look special in a way the
-     picture does not need, and this card had it anyway. */
-  .f4{fill:#111a15;stroke:#2e2e2e;stroke-width:1.6}
-  /* The same pulse 01 carries, and the same reading: inward is the boot
-     order - Ethereum serves the page, the page starts the machine, the
-     machine wakes the mind - which is what happens every time anyone opens
-     a token. Absolute timings held from 01: 0.46s to swell, 1.63s back to
-     nothing, 0.7s between rings; the innermost falls over 2.25s, so the
-     light leaves it last. Change the cycle and the percentages together. */
-  .halo{fill:none;stroke:#39ff88;stroke-width:2.6;opacity:0;pointer-events:none;
-        animation:haloSwell 6s ease-in-out infinite}
+  .f{fill:#131313;stroke:#2e2e2e;stroke-width:2}
+  /* The innermost keeps its matte green interior at rest, and a grey border
+     like every other wall - that was settled on the diagram and holds here. */
+  .f8{fill:#111a15;stroke:#2e2e2e;stroke-width:2}
+
+  /* The light travels INWARD - Ethereum, the browser, the machine, the mind -
+     because that is the boot order, and it is what happens every time anyone
+     opens a token. Absolute timings, held constant if the cycle is retuned:
+     0.45s to swell, 1.62s back to nothing, 0.5s between walls. Eight walls
+     now, so the last lights at 3.5s and is gone at 6.2s,
+     leaving 1.3s of rest in a 7.5s cycle.
+     RETUNING RULE: change the cycle length and these percentages together.
+     The percentages are relative to duration, so moving one alone silently
+     changes how fast each wall swells. */
+  .halo{fill:none;stroke:#39ff88;stroke-width:3;opacity:0;pointer-events:none;
+        animation:haloSwell 7.5s ease-in-out infinite}
   #halo-1{animation-delay:0s}
-  #halo-2{animation-delay:.7s}
-  #halo-3{animation-delay:1.4s}
-  #halo-4{animation-delay:2.1s;animation-name:haloLong}
-  @keyframes haloSwell{0%{opacity:0} 7.5%{opacity:.6} 27%{opacity:0} 100%{opacity:0}}
-  @keyframes haloLong {0%{opacity:0} 7.5%{opacity:.6} 45%{opacity:0} 100%{opacity:0}}
+  #halo-2{animation-delay:0.5s}
+  #halo-3{animation-delay:1s}
+  #halo-4{animation-delay:1.5s}
+  #halo-5{animation-delay:2s}
+  #halo-6{animation-delay:2.5s}
+  #halo-7{animation-delay:3s}
+
+  /* The last one is different, and it is the only one that is: the light does
+     not just run round its border, it fills the whole frame - border and
+     interior both - blooms, and takes the long way out. That is the arrival,
+     and it is why the journey is drawn at all. */
+  #halo-8{animation-delay:3.5s;animation-name:haloArrive}
+  #halo-8g{animation-delay:3.5s;animation-name:haloGlow}
+  .fill{fill:#39ff88;stroke:#39ff88;stroke-width:2}
+  .glow{fill:#39ff88;stroke:none;filter:url(#bloom)}
+
+  @keyframes haloSwell {0%{opacity:0} 6.0%{opacity:.6} 21.6%{opacity:0} 100%{opacity:0}}
+  @keyframes haloArrive{0%{opacity:0} 6.0%{opacity:.85} 36.0%{opacity:0} 100%{opacity:0}}
+  @keyframes haloGlow  {0%{opacity:0} 6.0%{opacity:.55} 36.0%{opacity:0} 100%{opacity:0}}
   @media (prefers-reduced-motion:reduce){ .halo{animation:none;opacity:0} }
 </style>
+<defs>
+  <filter id="bloom" x="-120%" y="-200%" width="340%" height="500%">
+    <feGaussianBlur stdDeviation="11"/>
+  </filter>
+</defs>
 <rect x="0" y="0" width="640" height="360" fill="#080808"/>
-<rect class="f"  x="40"  y="24"  width="560" height="312" rx="10"/>
-<rect class="f"  x="88"  y="51"  width="464" height="258" rx="9"/>
-<rect class="f"  x="136" y="78"  width="368" height="204" rx="8"/>
-<rect class="f4" x="184" y="105" width="272" height="150" rx="7"/>
-<rect class="halo" id="halo-1" x="40"  y="24"  width="560" height="312" rx="10"/>
-<rect class="halo" id="halo-2" x="88"  y="51"  width="464" height="258" rx="9"/>
-<rect class="halo" id="halo-3" x="136" y="78"  width="368" height="204" rx="8"/>
-<rect class="halo" id="halo-4" x="184" y="105" width="272" height="150" rx="7"/>
+<rect class="f" x="36" y="20" width="568" height="320" rx="10"/>
+<rect class="f" x="93" y="52" width="454" height="256" rx="9"/>
+<rect class="f" x="138" y="78" width="364" height="204" rx="8"/>
+<rect class="f" x="175" y="98" width="290" height="164" rx="7"/>
+<rect class="f" x="204" y="114" width="232" height="132" rx="7"/>
+<rect class="f" x="227" y="128" width="186" height="104" rx="6"/>
+<rect class="f" x="246" y="138" width="148" height="84" rx="5"/>
+<rect class="f8" x="260" y="146" width="120" height="68" rx="5"/>
+<rect class="halo" id="halo-1" x="36" y="20" width="568" height="320" rx="10"/>
+<rect class="halo" id="halo-2" x="93" y="52" width="454" height="256" rx="9"/>
+<rect class="halo" id="halo-3" x="138" y="78" width="364" height="204" rx="8"/>
+<rect class="halo" id="halo-4" x="175" y="98" width="290" height="164" rx="7"/>
+<rect class="halo" id="halo-5" x="204" y="114" width="232" height="132" rx="7"/>
+<rect class="halo" id="halo-6" x="227" y="128" width="186" height="104" rx="6"/>
+<rect class="halo" id="halo-7" x="246" y="138" width="148" height="84" rx="5"/>
+<rect class="halo glow" id="halo-8g" x="260" y="146" width="120" height="68" rx="5"/>
+<rect class="halo fill" id="halo-8"  x="260" y="146" width="120" height="68" rx="5"/>
 </svg>
