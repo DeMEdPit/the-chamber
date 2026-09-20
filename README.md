@@ -1,7 +1,9 @@
 # The Chamber
 
 A series of Commodore 64 works that live on Ethereum, built one capability at
-a time.
+a time. Two machines, 1982 and 2015, both small and completely specified —
+and one question asked a generation at a time: what separates behaviour that
+was written from behaviour that was learned?
 
 A working Commodore 64 lives inside Ethereum. Not a picture of one, and not a
 file on a server somewhere: **minimal64**, an emulator nopsta stored in

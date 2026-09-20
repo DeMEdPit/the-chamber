@@ -1,6 +1,6 @@
 # The Chamber
 
-> **Sixty-four rooms. One program. No learning at all — on purpose.**
+> **Eight characters, one mechanic each, in a room the chain redraws every time you look.**
 
 **The Chamber** is the Genesis collection of the Chamber series: sixty-four
 ERC-721 tokens over one frozen Commodore 64 program, deployed to Ethereum

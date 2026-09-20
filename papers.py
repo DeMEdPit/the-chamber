@@ -17,8 +17,27 @@ Two layout notes worth keeping:
   than as an empty foot.
 """
 import html as _html
+import pathlib
+import re
 
 from stats import CHAMBER, PERCEPTION
+
+HERE = pathlib.Path(__file__).parent
+
+
+def lede(paper):
+    """A paper's thesis line, read from its own source.
+
+    It was copied here once and drifted within the hour: the Genesis line
+    changed in paper.md and the card went on printing the old one. The card
+    now reads the first blockquote out of the markdown, the same line the
+    build lifts into the page's subtitle, so the two cannot disagree.
+    """
+    src = (HERE / paper / "paper.md").read_text(encoding="utf-8")
+    m = re.search(r"^> \*\*(.+?)\*\*\s*$", src, re.M)
+    if not m:
+        raise SystemExit("papers: no thesis line in %s/paper.md" % paper)
+    return m.group(1)
 
 ROWS = ["On chain", "Tokens", "The program", "Written in", "One render"]
 ETHERSCAN = "https://etherscan.io/address/"
@@ -30,8 +49,7 @@ PAPERS = [
         "img": "black-paper/mindprint-square.svg",
         "alt": "A mindprint: a field of cells, each one a learned weight of the "
                "canary's perceptron",
-        "line": "1958 intelligence, inside a 1982 machine, persisting through a "
-                "2015 computational substrate.",
+        "line": lede("black-paper"),
         "stats": PERCEPTION,
         "addr": "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127", "token": "1",
     },
@@ -40,7 +58,7 @@ PAPERS = [
         "img": "black-paper-00/room-square.svg",
         "alt": "A Chamber room, close: the lit candle at the centre, bricks "
                "around it",
-        "line": "Sixty-four rooms. One program. No learning at all — on purpose.",
+        "line": lede("black-paper-00"),
         "stats": CHAMBER,
         "addr": "0x75FD5A9c4440c38561A0099B216F825b7C6db924", "token": "",
     },

@@ -87,7 +87,7 @@ def main():
 <style>
 {css}
 h1{{font-size:clamp(2.2rem,11vw,5.6rem);margin-bottom:18px}}
-.lead{{font-size:1.3rem;line-height:1.5;color:var(--ink);max-width:30ch;margin:0 0 30px}}
+.lead{{font-size:1.3rem;line-height:1.5;color:var(--ink);max-width:46ch;margin:0 0 30px}}
 h3{{font-size:1.28rem;margin-top:40px}}
 .addr{{border:0}}
 .addr code{{font-size:.82rem;word-break:break-all}}
