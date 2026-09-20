@@ -164,14 +164,358 @@ h1{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}
 .asof{margin:70px 0 0;padding-top:22px;border-top:1px solid var(--line);
   color:var(--muted);font-size:.84rem}
 .asof code{font-size:.8rem}
-/* A 920px diagram scaled to a phone's width is unreadable - the monospace
-   inside it lands around 4px. So below 700px the figure scrolls sideways at
-   a legible size instead of shrinking to fit, and says so. */
+/* .fig is the one remaining drawing (05). A 920px drawing scaled to a phone
+   is unreadable - the monospace lands around 4px - so below 700px it scrolls
+   sideways at a legible size instead of shrinking to fit, and says so. The
+   HTML diagrams need none of this: they reflow. */
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
   .fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .fig object,.fig img{min-width:680px}
   .fig figcaption a::before{content:"— "}
+}
+
+/* The diagrams, as reflowing HTML rather than fixed-layout pictures.
+   One stylesheet for all of them; each fragment is a <figure class="dg …">.
+
+   Why not SVG: an SVG is a drawing at a fixed size. Shrink it to a phone and
+   the type shrinks with it - 12px monospace at 0.38 lands at four pixels. HTML
+   scales nothing. The type stays the size it is and the boxes get tighter.
+
+   WIDTH, NOT VIEWPORT. Every breakpoint below is a @container query, so a
+   diagram answers to the width of the column it is sitting in, not the width
+   of the window. The same file therefore behaves correctly in the notebook
+   preview, in the site's narrow reading column, and in a full-width page,
+   with nothing to keep in step.
+
+   TEXT ON A NARROW SCREEN. Two utility classes, and one rule about them:
+
+     .dg-w   shown only when there is room; dropped when narrow
+     .dg-n   shown only when narrow
+
+   THE RULE, and it matters: .dg-w may only ever wrap an ELABORATION - a
+   clause whose removal leaves the same claim, stated with less detail. Never
+   a QUALIFIER. Dropping "so far", "about", "provisional" or "we think" makes
+   the phone read a STRONGER claim than the desktop, which is the one way this
+   mechanism could quietly lie. A fact keeps its number and drops its gloss.
+
+   .dg-n is for a shorter LABEL only, never for a claim, because it is the one
+   place a genuine second copy could drift. check-html.py counts every use of
+   both and prints them, so the narrow text is reviewed rather than assumed.
+*/
+
+.dg{
+  --dg-bg:#0b0b0b;  --dg-ink:#f4f4ef; --dg-mut:#aaa9a3; --dg-dim:#8a8984;
+  --dg-line:#262626;--dg-edge:#2e2e2e; --dg-acc:#39ff88; --dg-soft:#9dffd0;
+  --dg-blue:#6aa9ff;--dg-box:#141414;  --dg-lit:#111a15; --dg-alt:#101010;
+  --dg-carry:#575652;
+  container-type:inline-size; position:relative;
+  margin:28px 0; padding:18px; border:1px solid var(--dg-line); border-radius:8px;
+  background:var(--dg-bg); color:var(--dg-ink);
+  font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  overflow-wrap:break-word;
+}
+.dg *{box-sizing:border-box}
+.dg p,.dg ul,.dg ol,.dg table{margin:0;padding:0}
+.dg li{list-style:none}
+.dg-n{display:none}
+.dg-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+       overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ---- caption, legend, footer: the frame every diagram shares ---- */
+.dg-cap{margin:0 0 16px}
+.dg-head{font-size:15px;letter-spacing:.3px;margin:0 0 5px}
+.dg-sub{font-size:12px;color:var(--dg-mut)}
+.dg-foot{font-size:11.5px;color:var(--dg-mut);margin-top:18px;padding-top:14px;
+         border-top:1px solid var(--dg-line)}
+.dg-foot + .dg-foot{margin-top:6px;padding-top:0;border-top:0}
+.dg-fid{color:var(--dg-acc);letter-spacing:.3px;white-space:nowrap}
+
+.dg-key{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 16px;
+        font-size:10.5px;letter-spacing:.4px;color:var(--dg-mut)}
+.dg-key li{display:flex;align-items:center;gap:6px}
+.dg-key li::before{content:"";width:10px;height:10px;border-radius:2px;flex:none}
+.k-art::before{background:none;border:1px solid var(--dg-acc)}
+.k-app::before{background:none;border:1px solid var(--dg-edge)}
+.k-non::before{background:none;border:1px dashed #3a3a3a}
+.k-new::before{background:var(--dg-acc)}
+.k-again::before{background:none;border:1px solid var(--dg-soft)}
+.k-carry::before{background:var(--dg-carry);border-radius:50%;width:8px;height:8px}
+.k-them::before{background:var(--dg-blue)}
+.k-art{color:var(--dg-acc)} .k-new{color:var(--dg-acc)}
+.k-again{color:var(--dg-soft)} .k-them{color:var(--dg-blue)}
+
+/* ---- the box, used by 02, 03, 04 ---- */
+.bx{border:1px solid var(--dg-edge);border-radius:6px;background:var(--dg-box);padding:12px 14px}
+.bx-lit{background:var(--dg-lit);border-color:var(--dg-acc)}
+.bx-name{font-size:13.5px}
+.bx-dim{font-size:11.5px;color:var(--dg-mut)}
+.bx-tag{font-size:10.5px;letter-spacing:.4px;color:var(--dg-mut);margin-top:6px}
+.bx-tag.on{color:var(--dg-acc)}
+
+/* A connector, not an arrow. An arrow that needs coordinates breaks the
+   moment a box moves; a glyph between two blocks cannot. */
+.dg-down{display:block;text-align:center;color:#4a4a46;font-size:13px;
+         line-height:1;margin:8px 0}
+.dg-down::before{content:"\2193"}
+
+/* ================= 01 and 07 - the seams ================= */
+.ring{border:1px solid var(--dg-edge);border-radius:6px;background:var(--dg-box);
+      padding:12px;transition:border-color .2s}
+.ring > .ring{margin-top:12px}
+.ring-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ring-name{font-size:13.5px}
+.ring-chip{font-size:11px;color:var(--dg-acc);letter-spacing:.3px;white-space:nowrap}
+.ring-note{font-size:11.5px;color:var(--dg-mut);margin-top:12px;text-align:center}
+.r-in{background:var(--dg-lit)}
+.r-in .ring-name{color:var(--dg-acc)}
+.ring-body{text-align:center;margin:14px 0 6px}
+.ring-body b{font-weight:400;color:#d8d7d1;font-size:12.5px}
+.ring-body span{display:block;font-size:11.5px;color:var(--dg-mut);margin-top:4px}
+
+/* the ways in and out, as rows rather than drawn arrows */
+.dg-flows{display:grid;gap:9px;margin-top:18px}
+.dg-flows li{display:grid;grid-template-columns:92px 1fr;gap:12px;align-items:baseline;
+             font-size:12px;color:var(--dg-mut)}
+.dg-flows b{font-weight:400;color:var(--dg-acc);letter-spacing:.3px}
+.dg-flows .out b{color:var(--dg-mut)}
+.dg-flows .none b{color:#6a6a66}
+.dg-flows .none{color:#6a6a66}
+
+/* The pulse travels INWARD - Ethereum, the browser, the machine, the mind -
+   because that is the boot order, and it is what happens every time anyone
+   opens the token. Absolute timings held constant: 0.46s to swell, 1.63s back
+   to nothing, 0.7s between rings; the innermost falls over 2.25s instead, so
+   the light leaves it last. Change the cycle and the percentages together. */
+@keyframes dgPulse{0%{border-color:#2e2e2e}7.5%{border-color:#39ff88}
+                   27%{border-color:#2e2e2e}100%{border-color:#2e2e2e}}
+@keyframes dgPulseLong{0%{border-color:#2e2e2e}7.5%{border-color:#39ff88}
+                       45%{border-color:#2e2e2e}100%{border-color:#2e2e2e}}
+.r-1{animation:dgPulse 6s ease-in-out infinite}
+.r-2{animation:dgPulse 6s ease-in-out infinite .7s}
+.r-3{animation:dgPulse 6s ease-in-out infinite 1.4s}
+.r-4{animation:dgPulseLong 6s ease-in-out infinite 2.1s}
+@media (prefers-reduced-motion:reduce){.ring{animation:none}}
+
+/* ================= 02 - the layers ================= */
+.dg-rows{display:grid;gap:6px}
+.lay{display:grid;grid-template-columns:22px 1fr auto;gap:2px 10px;align-items:baseline;
+     border:1px solid var(--dg-edge);border-radius:5px;background:var(--dg-box);padding:10px 12px}
+.lay-n{color:var(--dg-mut);font-size:12px}
+.lay-name{font-size:13.5px}
+.lay-tag{font-size:10.5px;letter-spacing:.4px;color:var(--dg-mut);justify-self:end;white-space:nowrap}
+.lay-dim{grid-column:2/4;font-size:11.5px;color:var(--dg-mut);margin-top:3px}
+.lay.art{border-color:var(--dg-acc)} .lay.art .lay-tag{color:var(--dg-acc)}
+.lay.non{border-style:dashed;border-color:#3a3a3a;background:var(--dg-alt)}
+
+/* ================= 03 - a save ================= */
+.dg-lanes{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.lane-hd{font-size:10.5px;letter-spacing:1.1px;color:var(--dg-mut);margin-bottom:10px}
+.lane-on .lane-hd{text-align:right}
+.dg-cross{font-size:11.5px;color:var(--dg-acc);text-align:right;margin:14px 0 0}
+.dg-cross::after{content:" \2192"}
+/* Native <ol> numbering, not a CSS counter, so start="5" on the middle list
+   is the real thing rather than a number typed twice. */
+.dg .steps{margin-top:12px;font-size:12px;color:#d8d7d1;padding-left:26px}
+.dg .steps + .steps{margin-top:9px}
+.dg .steps li{display:list-item;list-style:decimal;margin:0 0 8px}
+.dg .steps li:last-child{margin-bottom:0}
+.steps li::marker{color:var(--dg-mut);font-size:11px}
+.steps li.core{color:var(--dg-acc)}
+.steps li.core::marker{color:var(--dg-acc)}
+.dg .core-wrap{border:1px solid var(--dg-acc);border-radius:5px;background:var(--dg-lit);
+               padding:10px 10px 10px 26px;margin:10px 0 0}
+.bx-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+         padding-bottom:9px;border-bottom:1px solid var(--dg-line)}
+.bx-rule{border-top:1px solid var(--dg-line);margin-top:12px;padding-top:11px}
+.dg-out{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+/* the one thing that comes back the other way */
+.dg-back{margin-top:30px;border-style:dashed}
+.dg-back::before{content:"\2190 from the chain";display:block;font-size:11px;
+                 color:var(--dg-acc);margin-bottom:8px}
+
+/* ================= 04 - three implementations ================= */
+.dg-three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.dg-join{font-size:11.5px;color:var(--dg-mut);text-align:center;margin:12px 0}
+.dg-join::before{content:"\2193";display:block;color:#4a4a46;margin-bottom:6px}
+.dg-result{text-align:center;padding:16px 14px}
+.dg-result b{display:block;font-weight:400;font-size:16px;color:var(--dg-acc);
+             letter-spacing:.3px;margin-bottom:8px}
+.dg-result span{display:block;font-size:11.5px;color:var(--dg-mut)}
+
+/* ================= 06 - the ledger ================= */
+/* The release filter is five radio buttons and no JavaScript at all. Radios
+   give pin, switch and keyboard access for free; ALL is the reset, and it is
+   a real control rather than behaviour you have to trust on a phone. */
+.dg-r{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+      overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.dg-filter{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;align-items:center}
+.dg-filter label{font-size:10.5px;letter-spacing:.4px;color:var(--dg-mut);cursor:pointer;
+  border:1px solid var(--dg-edge);border-radius:4px;padding:4px 9px;background:var(--dg-box);
+  transition:color .15s,border-color .15s}
+.dg-filter label:hover{color:var(--dg-ink);border-color:#4a4a46}
+.dg-hint{font-size:10.5px;color:var(--dg-dim);margin-left:2px}
+.dg-tbl{width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed}
+.dg-tbl .corner{width:36%}
+.dg-tbl th,.dg-tbl td{padding:7px 6px;text-align:center;vertical-align:middle;
+                      transition:opacity .15s}
+.dg-tbl thead th{font-size:12px;font-weight:400;color:var(--dg-ink);vertical-align:bottom;
+                 border-bottom:1px solid var(--dg-edge);padding-bottom:9px}
+.dg-tbl thead th small{display:block;font-size:10px;color:var(--dg-dim);margin-top:3px}
+.dg-tbl thead th.them{color:var(--dg-blue)}
+.dg-tbl th[scope=row]{text-align:left;font-weight:400;color:#d8d7d1;font-size:12px;
+                      padding-left:0;width:38%}
+.dg-tbl tbody tr:nth-child(odd){background:var(--dg-alt)}
+.cell{display:inline-block;border-radius:3px;padding:2px 6px;font-size:9.5px;
+      line-height:1.35;max-width:100%}
+.cell.new{border:1px solid var(--dg-acc);background:#11241a;color:var(--dg-acc)}
+.cell.again{border:1px solid var(--dg-soft);color:var(--dg-soft)}
+.cell.them{border:1px solid var(--dg-blue);background:#14243a;color:var(--dg-blue)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dg-carry)}
+.dot + .carried{margin-left:7px}
+.carried{font-size:9.5px;color:var(--dg-dim)}
+
+/* ---- shared inline bits ---- */
+.dg code{font-family:inherit;font-size:.95em;color:#d8d7d1;white-space:nowrap}
+.dg-foot b{font-weight:400;color:var(--dg-ink)}
+
+/* A chain of four sentences: one run-on paragraph when there is room, four
+   stepped lines when there is not. Same words, two shapes - the phone gets a
+   different rendering of the sentence, never a different sentence. */
+.dg-chain span{display:inline}
+.dg-chain span + span{margin-left:.35em}
+
+/* ================= preview / standalone ================= */
+.dg-src{font-size:10.5px;color:var(--dg-dim);margin-top:14px}
+
+/* =========================================================
+   NARROW. Everything below is the phone reading, and it only
+   ever removes or restacks - it never states anything new.
+   ========================================================= */
+@container (max-width:600px){
+  .dg-w{display:none}
+  .dg-n{display:inline}
+
+  .dg-sub{font-size:11.5px}
+
+  /* centred text that wraps reads worse than text that does not, so the
+     notes go left once they stop fitting on one line */
+  .ring-note{text-align:left;margin-top:10px}
+  .ring{padding:10px}
+  .ring-top{display:block}
+  .ring-chip{display:block;margin-top:2px}
+  .ring-body{text-align:left}
+  .dg-flows li{grid-template-columns:1fr;gap:1px}
+  .dg-flows{gap:11px}
+
+  .lay{grid-template-columns:20px 1fr;padding:9px 10px}
+  .lay-tag{grid-row:2;grid-column:2;justify-self:start;margin-top:1px}
+  .lay-dim{grid-column:2;grid-row:3}
+
+  .dg-lanes{grid-template-columns:1fr;gap:0}
+  .lane-on .lane-hd{text-align:left}
+  .lane-on{margin-top:18px}
+  .dg-cross{margin:16px 0 0;text-align:center}
+  .dg-cross::after{content:" \2193"}
+  .dg-out{grid-template-columns:1fr}
+  .dg-back{margin-top:18px}
+  .dg-back::before{content:"\2191 from the chain"}
+
+  .dg-three{grid-template-columns:1fr;gap:8px}
+
+  .dg-chain span{display:block;padding-left:14px;text-indent:-14px;margin:0 0 3px}
+  .dg-chain span + span{margin-left:0}
+  .dg-chain span::before{content:"\2192 ";color:var(--dg-dim)}
+
+  /* the table stops being a table: one block a capability, and the column
+     name moves inside the cell. One DOM, two shapes - never two copies. */
+  .dg-tbl,.dg-tbl tbody,.dg-tbl tr,.dg-tbl td,.dg-tbl th{display:block;width:auto}
+  .dg-tbl{table-layout:auto}
+  .dg-tbl thead{display:none}
+  .dg-tbl tbody tr{background:var(--dg-box);border:1px solid var(--dg-edge);
+                   border-radius:6px;padding:10px 12px;margin-bottom:8px}
+  .dg-tbl tbody tr:nth-child(odd){background:var(--dg-box)}
+  .dg-tbl th[scope=row]{width:auto;padding:0 0 7px;font-size:12px}
+  .dg-tbl td{padding:3px 0;text-align:left;display:flex;gap:10px;align-items:baseline}
+  .dg-tbl td.none{display:none}
+  .dg-tbl td::before{content:attr(data-col);color:var(--dg-dim);font-size:10px;
+                     flex:0 0 84px;letter-spacing:.3px}
+  .dot::after{content:"carried";margin-left:10px;color:var(--dg-dim);font-size:9.5px}
+  .dot.has-text::after{content:none}
+  .dot{width:auto;height:auto;border-radius:0;background:none}
+  .dot::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+               background:var(--dg-carry);vertical-align:.05em}
+}
+
+/* Very narrow: the last thing to give is the row label's column. */
+@container (max-width:380px){
+  .dg{padding:14px}
+  .dg-tbl td{display:block}
+  .dg-tbl td::before{display:block;margin-bottom:1px}
+}
+
+/* Generated by build-06.py - do not edit. The release filter's
+   per-column rules; the rest of the ledger is in diagrams.css. */
+
+#dgrel-0:checked ~ .dg-tbl td:not(.c0),
+#dgrel-0:checked ~ .dg-tbl thead th:not(.c0):not(.corner){opacity:.28}
+#dgrel-0:checked ~ .dg-filter label[for="dgrel-0"]{color:var(--dg-acc);
+  border-color:var(--dg-acc);background:var(--dg-lit)}
+#dgrel-0:focus-visible ~ .dg-filter label[for="dgrel-0"]{outline:2px solid var(--dg-soft);
+  outline-offset:2px}
+
+#dgrel-1:checked ~ .dg-tbl td:not(.c1),
+#dgrel-1:checked ~ .dg-tbl thead th:not(.c1):not(.corner){opacity:.28}
+#dgrel-1:checked ~ .dg-filter label[for="dgrel-1"]{color:var(--dg-acc);
+  border-color:var(--dg-acc);background:var(--dg-lit)}
+#dgrel-1:focus-visible ~ .dg-filter label[for="dgrel-1"]{outline:2px solid var(--dg-soft);
+  outline-offset:2px}
+
+#dgrel-2:checked ~ .dg-tbl td:not(.c2),
+#dgrel-2:checked ~ .dg-tbl thead th:not(.c2):not(.corner){opacity:.28}
+#dgrel-2:checked ~ .dg-filter label[for="dgrel-2"]{color:var(--dg-acc);
+  border-color:var(--dg-acc);background:var(--dg-lit)}
+#dgrel-2:focus-visible ~ .dg-filter label[for="dgrel-2"]{outline:2px solid var(--dg-soft);
+  outline-offset:2px}
+
+#dgrel-3:checked ~ .dg-tbl td:not(.c3),
+#dgrel-3:checked ~ .dg-tbl thead th:not(.c3):not(.corner){opacity:.28}
+#dgrel-3:checked ~ .dg-filter label[for="dgrel-3"]{color:var(--dg-acc);
+  border-color:var(--dg-acc);background:var(--dg-lit)}
+#dgrel-3:focus-visible ~ .dg-filter label[for="dgrel-3"]{outline:2px solid var(--dg-soft);
+  outline-offset:2px}
+
+#dgrel-4:checked ~ .dg-tbl td:not(.c4),
+#dgrel-4:checked ~ .dg-tbl thead th:not(.c4):not(.corner){opacity:.28}
+#dgrel-4:checked ~ .dg-filter label[for="dgrel-4"]{color:var(--dg-acc);
+  border-color:var(--dg-acc);background:var(--dg-lit)}
+#dgrel-4:focus-visible ~ .dg-filter label[for="dgrel-4"]{outline:2px solid var(--dg-soft);
+  outline-offset:2px}
+
+#dgrel-all:checked ~ .dg-filter label[for="dgrel-all"]{color:var(--dg-ink);
+  border-color:#4a4a46}
+#dgrel-all:focus-visible ~ .dg-filter label[for="dgrel-all"]{outline:2px solid var(--dg-soft);
+  outline-offset:2px}
+
+/* On a phone, dimming a column you then have to hunt for is no help: picking a
+   release hides the others outright, and a capability that release does not
+   have drops out of the list entirely. Same DOM, same data, better shape. */
+@container (max-width:600px){
+  #dgrel-0:checked ~ .dg-tbl td:not(.c0){display:none}
+  #dgrel-0:checked ~ .dg-tbl td.c0{opacity:1}
+  #dgrel-0:checked ~ .dg-tbl tbody tr:not(:has(td.c0:not(.none))){display:none}
+  #dgrel-1:checked ~ .dg-tbl td:not(.c1){display:none}
+  #dgrel-1:checked ~ .dg-tbl td.c1{opacity:1}
+  #dgrel-1:checked ~ .dg-tbl tbody tr:not(:has(td.c1:not(.none))){display:none}
+  #dgrel-2:checked ~ .dg-tbl td:not(.c2){display:none}
+  #dgrel-2:checked ~ .dg-tbl td.c2{opacity:1}
+  #dgrel-2:checked ~ .dg-tbl tbody tr:not(:has(td.c2:not(.none))){display:none}
+  #dgrel-3:checked ~ .dg-tbl td:not(.c3){display:none}
+  #dgrel-3:checked ~ .dg-tbl td.c3{opacity:1}
+  #dgrel-3:checked ~ .dg-tbl tbody tr:not(:has(td.c3:not(.none))){display:none}
+  #dgrel-4:checked ~ .dg-tbl td:not(.c4){display:none}
+  #dgrel-4:checked ~ .dg-tbl td.c4{opacity:1}
+  #dgrel-4:checked ~ .dg-tbl tbody tr:not(:has(td.c4:not(.none))){display:none}
 }
 
 
@@ -192,7 +536,84 @@ h1{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}
 <body>
 <main>
 <h1>Architecture</h1>
-<p class="arch-lede">Two machines — a Commodore 64 from 1982 and Ethereum from 2015 — and the seams between them. Everything below was found by building, and every claim names the source that backs it.</p><figure class="fig"><object type="image/svg+xml" data="../diagrams/01-the-seams.svg" style="aspect-ratio:920/690" aria-label="The seams: four machines, each inside the next"><img src="../diagrams/01-the-seams.svg" alt="The seams: four machines, each inside the next" loading="lazy"></object><figcaption>The seams: four machines, each inside the next <a href="../diagrams/01-the-seams.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><figure class="fig"><object type="image/svg+xml" data="../diagrams/07-the-seams-chamber.svg" style="aspect-ratio:920/690" aria-label="The same walls in the Chamber — one arrow instead of three"><img src="../diagrams/07-the-seams-chamber.svg" alt="The same walls in the Chamber — one arrow instead of three" loading="lazy"></object><figcaption>The same walls in the Chamber — one arrow instead of three <a href="../diagrams/07-the-seams-chamber.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><section class="seam"><h2>C64 ↔ Ethereum</h2><p class="about">4 findings.</p><figure class="fig"><object type="image/svg+xml" data="../diagrams/05-where-the-program-lives.svg" style="aspect-ratio:440/800" aria-label="The C64 address space beside our program"><img src="../diagrams/05-where-the-program-lives.svg" alt="The C64 address space beside our program" loading="lazy"></object><figcaption>The C64 address space beside our program <a href="../diagrams/05-where-the-program-lives.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><article class="find" id="f-001">
+<p class="arch-lede">Two machines — a Commodore 64 from 1982 and Ethereum from 2015 — and the seams between them. Everything below was found by building, and every claim names the source that backs it.</p><figure class="dg dg-seams">
+  <figcaption class="dg-cap">
+    <p class="dg-head">The seams</p>
+    <p class="dg-sub">Four machines, each inside the next. Every finding so far sits on one of these walls.</p>
+  </figcaption>
+
+  <div class="ring r-1">
+    <p class="ring-top"><span class="ring-name">Ethereum</span><span class="ring-chip">F-009 – F-011</span></p>
+
+    <div class="ring r-2">
+      <p class="ring-top"><span class="ring-name">the browser</span><span class="ring-chip">F-005 – F-008</span></p>
+
+      <div class="ring r-3">
+        <p class="ring-top"><span class="ring-name">the Commodore 64</span><span class="ring-chip">F-001 – F-004</span></p>
+
+        <div class="ring r-4 r-in">
+          <p class="ring-top"><span class="ring-name">the perceptron</span><span class="ring-chip">F-013 – F-018</span></p>
+          <p class="ring-body"><b>834 bytes · 800 weights · one layer</b>
+            <span>in a hole in a frozen program, at $7500</span></p>
+        </div>
+
+        <p class="ring-note">52,104 bytes<span class="dg-w"> at $0801</span> — 80% of the whole machine</p>
+      </div>
+
+      <p class="ring-note">WebAssembly · Canvas · Web Audio<span class="dg-w"> · one frozen page</span></p>
+    </div>
+
+    <p class="ring-note">nine contracts of ours, and four of nopsta's<span class="dg-w"> from 2022</span></p>
+  </div>
+
+  <ul class="dg-flows">
+    <li><b>teaches</b><span>a person, at a keyboard<span class="dg-w">, inside the running machine</span></span></li>
+    <li class="out"><b>reads</b><span>one node · free · not adjudicated — F-012</span></li>
+    <li><b>saves</b><span>judged by every node</span></li>
+  </ul>
+
+  <p class="dg-foot">The program crosses every wall: held on Ethereum, served through the browser, run by the C64.</p>
+</figure>
+<figure class="dg dg-seams">
+  <figcaption class="dg-cap">
+    <p class="dg-head">The seams — the Chamber</p>
+    <p class="dg-sub">The same four machines. One arrow instead of three — and that absence is the argument.</p>
+  </figcaption>
+
+  <div class="ring r-1">
+    <p class="ring-top"><span class="ring-name">Ethereum</span><span class="ring-chip">F-009 – F-011</span></p>
+
+    <div class="ring r-2">
+      <p class="ring-top"><span class="ring-name">the browser</span><span class="ring-chip">F-005 – F-008</span></p>
+
+      <div class="ring r-3">
+        <p class="ring-top"><span class="ring-name">the Commodore 64</span><span class="ring-chip">F-001 – F-004</span></p>
+
+        <div class="ring r-4 r-in">
+          <p class="ring-top"><span class="ring-name">the stamp</span><span class="ring-chip">F-004, F-020</span></p>
+          <p class="ring-body"><b>42 bytes · seed, block, behaviour, colour</b>
+            <span>at $56C8 — computed at read time, never stored</span></p>
+        </div>
+
+        <p class="ring-note">46,877 bytes<span class="dg-w"> at $0801</span> — 71% of the whole machine</p>
+      </div>
+
+      <p class="ring-note">the program carried as hex, not base64<span class="dg-w"> · one frozen page</span></p>
+    </div>
+
+    <p class="ring-note">sixteen contracts · locked · <code>minter()</code> is zero</p>
+  </div>
+
+  <ul class="dg-flows">
+    <li class="out"><b>loads</b><span>a person, outside all of it, hands the machine a <code>.prg</code> or <code>.crt</code><span class="dg-w"> — it never leaves the browser</span></span></li>
+    <li class="out"><b>reads</b><span>one node · free · not adjudicated — F-012</span></li>
+    <li class="none"><b>no save</b><span>nothing can write here</span></li>
+  </ul>
+
+  <p class="dg-foot">The doors let a visitor load a program into the machine. It stops at the browser, and never reaches the chain.</p>
+  <p class="dg-foot">The Chamber is authored behaviour, sealed. Perception is learned behaviour, and needs a way in. Compare 01.</p>
+</figure>
+<section class="seam"><h2>C64 ↔ Ethereum</h2><p class="about">4 findings.</p><figure class="fig"><object type="image/svg+xml" data="../diagrams/05-where-the-program-lives.svg" style="aspect-ratio:440/800" aria-label="The C64 address space beside our program"><img src="../diagrams/05-where-the-program-lives.svg" alt="The C64 address space beside our program" loading="lazy"></object><figcaption>The C64 address space beside our program <a href="../diagrams/05-where-the-program-lives.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><article class="find" id="f-001">
 <h3><span class="fid">F-001</span><a class="anchor" href="#f-001">Which machine&#x27;s limit binds, and that it flips</a></h3>
 <p>Neither machine is simply &quot;the small one.&quot; Which limit binds depends on what you are shipping, and it swaps: a program shipped as a PRG is bound by the C64&#x27;s 64 KB; the learning rate (32 lessons a batch) is bound by Ethereum&#x27;s gas; a program shipped as a cartridge would be bound by Ethereum again.</p>
 <p class="meta"><b>Receipt.</b> PRG 52,104 B of 65,536 (80%); batch bound measured in <code>chamber-v2/study/D-benchmark-baseline.md</code> §11 — the N = 32 transaction is 3,689,465 gas at 90% of its budget, nothing above 32 passes.</p>
@@ -254,7 +675,122 @@ h1{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}
 <p class="meta"><b>Receipt.</b> <code>chamber-v2/src/PerceptionChamber.sol:197</code> (view) vs <code>chamber-v2/src/PerceptionLineage.sol:216</code> (state-changing); the L2 gate renders the page from one node and saves through consensus on another.</p>
 <p class="meta"><b>Falsified by.</b> Nothing — this is how the EVM works; the finding is that it is worth saying.</p>
 <p class="meta"><b>Generalizes.</b> <em>(conjecture)</em> Any &quot;verified by blockchain&quot; claim about read data — RWA attestations, credential lookups, oracle feeds consumed by view.</p>
-</article></section><section class="seam"><h2>Process ↔ record — the learner</h2><p class="about">6 findings.</p><figure class="fig"><object type="image/svg+xml" data="../diagrams/03-a-save.svg" style="aspect-ratio:920/800" aria-label="A save, end to end"><img src="../diagrams/03-a-save.svg" alt="A save, end to end" loading="lazy"></object><figcaption>A save, end to end <a href="../diagrams/03-a-save.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><figure class="fig"><object type="image/svg+xml" data="../diagrams/04-three-implementations.svg" style="aspect-ratio:920/576" aria-label="One learner, written three times"><img src="../diagrams/04-three-implementations.svg" alt="One learner, written three times" loading="lazy"></object><figcaption>One learner, written three times <a href="../diagrams/04-three-implementations.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><article class="find" id="f-013">
+</article></section><section class="seam"><h2>Process ↔ record — the learner</h2><p class="about">6 findings.</p><figure class="dg dg-save">
+  <figcaption class="dg-cap">
+    <p class="dg-head">A save, end to end</p>
+    <p class="dg-sub">The chain never watches the teaching. It re-derives it, and checks the answer against the claim.</p>
+  </figcaption>
+
+  <div class="dg-lanes">
+    <section class="lane lane-off">
+      <p class="lane-hd">OFF CHAIN · ONE BROWSER</p>
+
+      <div class="bx">
+        <p class="bx-name">a person teaches</p>
+        <p class="bx-dim">inside the running C64, on the token page</p>
+      </div>
+      <span class="dg-down"></span>
+      <div class="bx">
+        <p class="bx-name">the lessons pile up</p>
+        <p class="bx-dim"><code>n UNSAVED</code> — nothing has left the browser yet</p>
+      </div>
+      <span class="dg-down"></span>
+      <div class="bx">
+        <p class="bx-name">one envelope, built once</p>
+        <p class="bx-dim">the parent revision · the parent hash</p>
+        <p class="bx-dim">the lessons themselves</p>
+        <p class="bx-dim">the claimed child hash</p>
+      </div>
+      <p class="dg-cross">one transaction</p>
+
+      <div class="bx dg-back">
+        <p class="bx-name">back in the browser</p>
+        <p class="bx-dim">the page re-reads the head after the receipt</p>
+      </div>
+    </section>
+
+    <section class="lane lane-on">
+      <p class="lane-hd">ON CHAIN · EVERY NODE</p>
+
+      <div class="bx">
+        <p class="bx-head"><span class="bx-name">saveMind</span><span class="bx-dim">every check before any write</span></p>
+        <ol class="steps">
+          <li>the holder — never an operator</li>
+          <li>the batch bound, 32 lessons</li>
+          <li>the parent revision is not stale</li>
+          <li>the parent bytes, the parent blob</li>
+        </ol>
+        <ol class="steps core-wrap" start="5">
+          <li class="core">replay every lesson from the parent</li>
+          <li class="core">compare the result to the claim</li>
+        </ol>
+        <ol class="steps" start="7">
+          <li>a save that changes nothing reverts</li>
+          <li>admission — the slot is canonical</li>
+          <li>persist, append, emit</li>
+        </ol>
+        <div class="bx-rule">
+          <p class="bx-dim">Steps 5 and 6 are the whole claim. Everything else guards them.</p>
+          <p class="bx-dim">Stricter than our own reference. <span class="dg-fid">F-014</span></p>
+        </div>
+      </div>
+
+      <div class="dg-out">
+        <div class="bx bx-lit">
+          <p class="bx-name on">the head advances</p>
+          <p class="bx-dim">a new revision</p>
+        </div>
+        <div class="bx">
+          <p class="bx-name">it reverts</p>
+          <p class="bx-dim">nothing is written</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="dg-foot"><b>What is validated:</b> that the claimed brain is the necessary consequence of the claimed lessons under the stated rule.</p>
+  <p class="dg-foot"><b>What is not:</b> whether the learning was any good, and who sat at the keyboard — <code>savedBy</code> is an address. <span class="dg-fid">F-013, F-015</span></p>
+</figure>
+<figure class="dg dg-three-up">
+  <figcaption class="dg-cap">
+    <p class="dg-head">One learner, written three times</p>
+    <p class="dg-sub">Three architectures, no floats, no clocks, no external calls — and therefore one answer.</p>
+  </figcaption>
+
+  <ul class="dg-three">
+    <li class="bx">
+      <p class="bx-name">6510 assembly</p>
+      <p class="bx-dim">inside the frozen PRG</p>
+      <p class="bx-dim">runs on a Commodore 64</p>
+      <p class="bx-tag on">SHIPS</p>
+    </li>
+    <li class="bx">
+      <p class="bx-name">Python — the oracle</p>
+      <p class="bx-dim"><code>vendor/brain025</code>, pinned</p>
+      <p class="bx-dim">runs at build time only</p>
+      <p class="bx-tag">SCAFFOLDING · REMOVED</p>
+    </li>
+    <li class="bx">
+      <p class="bx-name">Solidity</p>
+      <p class="bx-dim"><code>Brain025.sol</code></p>
+      <p class="bx-dim">runs on Ethereum</p>
+      <p class="bx-tag on">SHIPS</p>
+    </li>
+  </ul>
+
+  <p class="dg-join">held to 64 packaged fixtures, every check</p>
+
+  <div class="bx bx-lit dg-result">
+    <b>the same 834 bytes</b>
+    <span>vis4 · 240 of 240 lessons · every byte</span>
+    <span>sha256 <code>4e957ef7…</code> equals the claim</span>
+  </div>
+
+  <p class="dg-foot">None is a port of another. Each was written against the same specification, then held to the others byte for byte.</p>
+  <p class="dg-foot">Three is the minimum for a vote: with two, a disagreement tells you there is a bug but not which side has it.</p>
+  <p class="dg-foot">This is the property that makes Ethereum work at all — consensus is determinism at network scale. <span class="dg-fid">F-018</span></p>
+</figure>
+<article class="find" id="f-013">
 <h3><span class="fid">F-013</span><a class="anchor" href="#f-013">Ethereum is a judge of derivation, not a judge of intelligence</a></h3>
 <p>The chain never watches the teaching; it cannot. It <strong>re-derives</strong> it. What <code>saveMind</code> validates is exactly one proposition: <em>the claimed brain is the necessary consequence of the claimed lessons under the stated rule.</em> It validates nothing about whether the learning was good, useful, or interesting.</p>
 <p class="meta"><b>Receipt.</b> <code>chamber-v2/src/PerceptionLineage.sol:216</code> — the ordered checks; the claim compared against <code>chamber-v2/src/Brain025.sol:597</code> (<code>replay</code>), mismatch reverts.</p>
@@ -306,7 +842,220 @@ h1{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}
 <p>The series reads as a ladder — a machine, then firmware, then a hole, then a learner — but the firmware step is not on the ladder. <strong>Neither artwork loads it.</strong> The Chamber&#x27;s page does not even bind the ROM hooks; the Perception page binds them and never calls them. Both boot bare on minimal64&#x27;s own minimal KERNAL, which is what makes nearly the whole 64 KB available (F-002). The pressing publishes firmware as its own finished object and doubles what the <em>workbench</em> can run; it is not a dependency of anything shipped. Two things the same look reveals: the Chamber <strong>imports READY 64&#x27;s `Launcher` verbatim</strong> and pins its creation bytecode, so that is real reuse rather than a rewrite; and base64 has now been written three times — <code>Codec</code>, then inline in <code>Chamber.sol</code>, then <code>PerceptionCodec</code> — each faster than the last (F-003).</p>
 <p class="meta"><b>Receipt.</b> <code>chamber/script/ChamberBase.s.sol:6</code> (<code>import {Launcher} from &quot;rehearsal/Launcher.sol&quot;</code>) and <code>:66</code> (the bytecode pin); no <code>m64_setKernalROM</code> call in <code>player/tail-console.template.html</code> or <code>chamber-v2/page/tail.js</code> — bound at <code>chamber-v2/page/tail.js:31</code>, never invoked.</p>
 <p class="meta"><b>Falsified by.</b> A ROM hook actually called on either shipped page.</p>
-</article></section><section class="seam"><h2>How it is built</h2><p class="about">The parts, and what each release added.</p><figure class="fig"><object type="image/svg+xml" data="../diagrams/02-the-layers.svg" style="aspect-ratio:920/776" aria-label="The eight layers: artwork and apparatus"><img src="../diagrams/02-the-layers.svg" alt="The eight layers: artwork and apparatus" loading="lazy"></object><figcaption>The eight layers: artwork and apparatus <a href="../diagrams/02-the-layers.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure><figure class="fig"><object type="image/svg+xml" data="../diagrams/06-what-each-release-added.svg" style="aspect-ratio:1080/880" aria-label="What each release added, and what it carried forward"><img src="../diagrams/06-what-each-release-added.svg" alt="What each release added, and what it carried forward" loading="lazy"></object><figcaption>What each release added, and what it carried forward <a href="../diagrams/06-what-each-release-added.svg" target="_blank" rel="noopener">open full size</a></figcaption></figure></section><p class="asof">These findings are generated from a private working notebook, as of <code>690e717</code> on 2026-09-20. 22 of 25 are published; the rest are held back or still being checked. Nothing here is transcribed by hand — if a claim and its source ever disagree, the source wins.</p>
+</article></section><section class="seam"><h2>How it is built</h2><p class="about">The parts, and what each release added.</p><figure class="dg dg-layers">
+  <figcaption class="dg-cap">
+    <p class="dg-head">What it is made of</p>
+    <p class="dg-sub">Eight layers. Three are the artwork, three are apparatus, one is both — and one is not ours.</p>
+  </figcaption>
+
+  <ul class="dg-key">
+    <li class="k-art">artwork</li>
+    <li class="k-app">apparatus</li>
+    <li class="k-non">not ours</li>
+  </ul>
+
+  <ol class="dg-rows">
+    <li class="lay non">
+      <span class="lay-n">0</span>
+      <span class="lay-name">minimal64 on chain, 2022</span>
+      <span class="lay-tag">not ours</span>
+      <span class="lay-dim">four contracts · a whole Commodore 64 as WebAssembly · GPL-2.0<span class="dg-w"> · we call it, never patch it</span></span>
+    </li>
+    <li class="lay art">
+      <span class="lay-n">1</span>
+      <span class="lay-name">the program</span>
+      <span class="lay-tag">artwork</span>
+      <span class="lay-dim"><code>tony-b025-a-vis4.prg</code> · 52,104 B · an 834-byte hole at $7500 · frozen<span class="dg-w"> · sha256 <code>355645a6…</code></span></span>
+    </li>
+    <li class="lay art">
+      <span class="lay-n">2</span>
+      <span class="lay-name">the learner, written three times</span>
+      <span class="lay-tag">both</span>
+      <span class="lay-dim">6510 inside the PRG · Python at build time<span class="dg-w"> (the oracle)</span> · Solidity on chain — all three agree byte for byte</span>
+    </li>
+    <li class="lay app">
+      <span class="lay-n">3</span>
+      <span class="lay-name">the evidence</span>
+      <span class="lay-tag">apparatus</span>
+      <span class="lay-dim">the oracle pinned and rehashed every check · 64 fixtures derived mechanically<span class="dg-w"> · evidence classes apart</span></span>
+    </li>
+    <li class="lay art">
+      <span class="lay-n">4</span>
+      <span class="lay-name">the contracts</span>
+      <span class="lay-tag">artwork</span>
+      <span class="lay-dim">nine sources, five deployed · <code>saveMind</code> is the only thing that writes<span class="dg-w"> · the token <code>0x6f54E1aA…6127</code></span></span>
+    </li>
+    <li class="lay art">
+      <span class="lay-n">5</span>
+      <span class="lay-name">the page</span>
+      <span class="lay-tag">artwork</span>
+      <span class="lay-dim">55 parts, 44 shared · one source builds both the workbench and the page the contract serves</span>
+    </li>
+    <li class="lay app">
+      <span class="lay-n">6</span>
+      <span class="lay-name">the gates</span>
+      <span class="lay-tag">apparatus</span>
+      <span class="lay-dim">155 contract tests · 41 page gates · 14 on a real chain<span class="dg-w"> · pins, sources, fixtures</span> · a sealed audit bundle</span>
+    </li>
+    <li class="lay app">
+      <span class="lay-n">7</span>
+      <span class="lay-name">the record</span>
+      <span class="lay-tag">apparatus</span>
+      <span class="lay-dim">HANDOFF · studies A – O · the mainnet record · this notebook</span>
+    </li>
+  </ol>
+
+  <p class="dg-foot">
+    <span class="dg-chain">
+      <span>The oracle exists to check the Solidity.</span>
+      <span>The fixtures exist to make the oracle checkable.</span>
+      <span>The gates exist to make the fixtures checkable.</span>
+      <span>The bundle exists to make the gates checkable by a stranger.</span>
+    </span>
+    <span class="dg-fid">F-019</span>
+  </p>
+</figure>
+<figure class="dg dg-ledger">
+  <figcaption class="dg-cap">
+    <p class="dg-head">What each release added</p>
+    <p class="dg-sub">One capability a row. A named cell is where it first appeared, or where it was built again.</p>
+  </figcaption>
+  <ul class="dg-key"><li class="k-new">new here</li><li class="k-again">built again</li><li class="k-carry">carried</li><li class="k-them">not ours</li></ul>
+  <input class="dg-r" type="radio" name="dgrel" id="dgrel-all" checked>
+  <input class="dg-r" type="radio" name="dgrel" id="dgrel-0">
+  <input class="dg-r" type="radio" name="dgrel" id="dgrel-1">
+  <input class="dg-r" type="radio" name="dgrel" id="dgrel-2">
+  <input class="dg-r" type="radio" name="dgrel" id="dgrel-3">
+  <input class="dg-r" type="radio" name="dgrel" id="dgrel-4">
+  <div class="dg-filter">
+    <label for="dgrel-all">ALL</label>
+    <label for="dgrel-0">minimal64</label>
+    <label for="dgrel-1">READY 64</label>
+    <label for="dgrel-2">OpenROMs 1</label>
+    <label for="dgrel-3">The Chamber</label>
+    <label for="dgrel-4">Perception</label>
+    <span class="dg-hint">pick a release to <span class="dg-w">dim</span><span class="dg-n">show only</span> <span class="dg-w">the others</span><span class="dg-n">that one</span></span>
+  </div>
+  <table class="dg-tbl"><caption class="dg-sr">What each release added</caption>
+    <thead><tr><th class="corner"></th>
+      <th class="c0 them" scope="col">minimal64<small>2022</small></th>
+      <th class="c1" scope="col">READY 64<small>30 Aug</small></th>
+      <th class="c2" scope="col">OpenROMs 1<small>3 Sep</small></th>
+      <th class="c3" scope="col">The Chamber<small>8 Sep</small></th>
+      <th class="c4" scope="col">Perception<small>17 Sep</small></th>
+    </tr></thead>
+    <tbody>
+      <tr><th scope="row">A Commodore 64 that runs from chain state</th>
+        <td class="c0" data-col="minimal64"><span class="cell them">minimal64</span></td>
+        <td class="c1" data-col="READY 64"><span class="dot"></span></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="dot"></span></td>
+        <td class="c4" data-col="Perception"><span class="dot"></span></td>
+      </tr>
+      <tr><th scope="row">A page assembled on chain, with no server</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1" data-col="READY 64"><span class="cell new">Launcher</span></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="dot has-text"></span><span class="carried">Launcher</span></td>
+        <td class="c4" data-col="Perception"><span class="cell again">PerceptionLauncher</span></td>
+      </tr>
+      <tr><th scope="row">Base64 encoding inside a contract</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1" data-col="READY 64"><span class="cell new">Codec</span></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="cell again">in Chamber</span></td>
+        <td class="c4" data-col="Perception"><span class="cell again">PerceptionCodec</span></td>
+      </tr>
+      <tr><th scope="row">An ERC-721 that renders its own artwork</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1" data-col="READY 64"><span class="cell new">PoC721</span></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="cell again">Chamber</span></td>
+        <td class="c4" data-col="Perception"><span class="cell again">PerceptionChamber</span></td>
+      </tr>
+      <tr><th scope="row">Firmware published on chain</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2" data-col="OpenROMs 1"><span class="cell new">ROMSet</span></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4 none" data-col="Perception"></td>
+      </tr>
+      <tr><th scope="row">Source archived on chain</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2" data-col="OpenROMs 1"><span class="cell new">Archive</span></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4 none" data-col="Perception"></td>
+      </tr>
+      <tr><th scope="row">A frozen program with a hole in it</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="cell new">ChamberBase</span></td>
+        <td class="c4" data-col="Perception"><span class="cell again">PerceptionProgram</span></td>
+      </tr>
+      <tr><th scope="row">Facts the chain already had, written in</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="cell new">42 bytes</span></td>
+        <td class="c4 none" data-col="Perception"></td>
+      </tr>
+      <tr><th scope="row">Many tokens over one program</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="cell new">64 tokens</span></td>
+        <td class="c4" data-col="Perception"><span class="dot has-text"></span><span class="carried">1, then 64</span></td>
+      </tr>
+      <tr><th scope="row">Artwork images held in many parts</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3" data-col="The Chamber"><span class="cell new">ChamberImage</span></td>
+        <td class="c4" data-col="Perception"><span class="dot has-text"></span><span class="carried">PerceptionImage</span></td>
+      </tr>
+      <tr><th scope="row">A learner living in the hole</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4" data-col="Perception"><span class="cell new">Brain025</span></td>
+      </tr>
+      <tr><th scope="row">A result the chain had to compute</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4" data-col="Perception"><span class="cell new">834 bytes</span></td>
+      </tr>
+      <tr><th scope="row">New bytes persisted after deployment</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4" data-col="Perception"><span class="cell new">Blob</span></td>
+      </tr>
+      <tr><th scope="row">A chain of revisions, each with a parent</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4" data-col="Perception"><span class="cell new">PerceptionLineage</span></td>
+      </tr>
+      <tr><th scope="row">A token that changes after it is minted</th>
+        <td class="c0 none" data-col="minimal64"></td>
+        <td class="c1 none" data-col="READY 64"></td>
+        <td class="c2 none" data-col="OpenROMs 1"></td>
+        <td class="c3 none" data-col="The Chamber"></td>
+        <td class="c4" data-col="Perception"><span class="cell new">saveMind</span></td>
+      </tr>
+    </tbody></table>
+  <p class="dg-foot">OpenROMs pressing 1 is a side branch, not a rung: it publishes firmware, and neither artwork loads it — both boot bare.</p>
+  <p class="dg-foot">The Chamber imports READY 64&#x27;s Launcher verbatim and pins its bytecode.<span class="dg-w"> Base64 has now been written three times, each faster.</span></p>
+  <p class="dg-foot">The escalation is in the hole: 42 bytes of facts the chain already had, then 834 bytes it had to compute and could be wrong about.</p>
+</figure>
+</section><p class="asof">These findings are generated from a private working notebook, as of <code>eaf7ce2</code> on 2026-09-20. 22 of 25 are published; the rest are held back or still being checked. Nothing here is transcribed by hand — if a claim and its source ever disagree, the source wins.</p>
 <footer class="site-foot"><ul><li><a href="https://chamber64.com/">THE CHAMBER</a></li><li><a href="https://chamber64.com/black-paper-00/">BLACK PAPER 00 · THE CHAMBER</a></li><li><a href="https://chamber64.com/black-paper/">BLACK PAPER 01 · PERCEPTION CHAMBER</a></li><li><span class="here">ARCHITECTURE</span></li></ul><p class="repo">Everything here — the contracts, the pages and these papers — is open on <a href="https://github.com/DeMEdPit/the-chamber" target="_blank" rel="noopener">GitHub</a>, MIT.</p></footer>
 </main>
 </body>

@@ -25,12 +25,15 @@ DESC = ("What we learned building Commodore 64 works that live on Ethereum: "
 CURRENT = "arch"
 
 # A diagram belongs to a seam, or to the two framing sections.
+# The diagrams are HTML now - boxes with labels in them, which is what HTML
+# is - so they are inlined and they reflow. The one exception is 05: its bar
+# heights are proportional to real addresses, which is a drawing.
 MAP = {
     "C64 ↔ Ethereum": [("05-where-the-program-lives.svg",
                         "The C64 address space beside our program")],
     "Process ↔ record — the learner": [
-        ("03-a-save.svg", "A save, end to end"),
-        ("04-three-implementations.svg", "One learner, written three times")],
+        ("03-a-save.html", None),
+        ("04-three-implementations.html", None)],
 }
 LEDE = ("Two machines — a Commodore 64 from 1982 and Ethereum from 2015 — and "
         "the seams between them. Everything below was found by building, and "
@@ -60,9 +63,10 @@ CSS = """
 .asof{margin:70px 0 0;padding-top:22px;border-top:1px solid var(--line);
   color:var(--muted);font-size:.84rem}
 .asof code{font-size:.8rem}
-/* A 920px diagram scaled to a phone's width is unreadable - the monospace
-   inside it lands around 4px. So below 700px the figure scrolls sideways at
-   a legible size instead of shrinking to fit, and says so. */
+/* .fig is the one remaining drawing (05). A 920px drawing scaled to a phone
+   is unreadable - the monospace lands around 4px - so below 700px it scrolls
+   sideways at a legible size instead of shrinking to fit, and says so. The
+   HTML diagrams need none of this: they reflow. */
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
   .fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -109,18 +113,35 @@ def card(f):
 DIM = re.compile(r'width="(\d+)" height="(\d+)"')
 
 
-def figure(src, caption):
-    """An <object>, not an <img>.
+def diagram_css():
+    """diagrams.css, plus any stylesheet a generated diagram brings with it.
 
-    An SVG loaded through <img> is a flat picture: no hover, no tap, no
-    script. Through <object> it is a live document, so the diagrams that
-    carry interaction keep it - and because each object is its own document,
-    two diagrams sharing element ids (01 and 07 share six) cannot collide,
-    which inlining them both would have caused.
-
-    The aspect ratio is read from the file so the box never has to be told
-    twice and cannot drift from the drawing.
+    Read from the exported files rather than listed here, so a new diagram
+    that needs its own rules cannot arrive without them.
     """
+    d = ROOT / "diagrams"
+    parts = [(d / "diagrams.css").read_text(encoding="utf-8")]
+    parts += [p.read_text(encoding="utf-8") for p in sorted(d.glob("[0-9][0-9]-*.css"))]
+    return "\n".join(parts)
+
+
+def figure(src, caption=None):
+    """Inline the fragment. It is HTML; there is nothing to embed it in.
+
+    This was an <object> around an SVG, which was the right answer to the
+    wrong question. An SVG is a drawing at a fixed size: shrink it to a phone
+    and twelve-pixel monospace lands at four pixels, and every fix for that -
+    panning, a full-size link, a sparser redraw - was a workaround for the
+    format. These diagrams are boxes with labels in them, so they are boxes
+    with labels in them, and they reflow. Inlining is also what makes them
+    inherit this page's palette instead of carrying their own copy of it.
+
+    05 is still a drawing - its bars are proportional to real addresses - and
+    still goes through <object>, which keeps it a live document and keeps its
+    element ids out of this page's namespace.
+    """
+    if src.endswith(".html"):
+        return (ROOT / "diagrams" / src).read_text(encoding="utf-8")
     svg = (ROOT / "diagrams" / src).read_text(encoding="utf-8")
     w, h = DIM.search(svg).groups()
     return (f'<figure class="fig">'
@@ -136,12 +157,11 @@ def figure(src, caption):
 def main():
     data = json.loads((HERE / "findings.json").read_text(encoding="utf-8"))
     css = (ROOT / "black-paper" / "paper.css").read_text(encoding="utf-8")
+    DIAGRAM_CSS = diagram_css()
 
     parts = [f'<p class="arch-lede">{rich(LEDE)}</p>',
-             figure("01-the-seams.svg",
-                    "The seams: four machines, each inside the next"),
-             figure("07-the-seams-chamber.svg",
-                    "The same walls in the Chamber — one arrow instead of three")]
+             figure("01-the-seams.html"),
+             figure("07-the-seams-chamber.html")]
 
     for seam in data["seams"]:
         rows = [f for f in data["findings"] if f["seam"] == seam]
@@ -155,9 +175,8 @@ def main():
 
     parts.append('<section class="seam"><h2>How it is built</h2>'
                  '<p class="about">The parts, and what each release added.</p>')
-    parts.append(figure("02-the-layers.svg", "The eight layers: artwork and apparatus"))
-    parts.append(figure("06-what-each-release-added.svg",
-                        "What each release added, and what it carried forward"))
+    parts.append(figure("02-the-layers.html"))
+    parts.append(figure("06-what-each-release-added.html"))
     parts.append("</section>")
 
     sha = data["source_commit"]
@@ -197,6 +216,7 @@ def main():
 {css}
 h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
 {CSS}
+{DIAGRAM_CSS}
 {FOOT_CSS}
 </style>
 </head>
