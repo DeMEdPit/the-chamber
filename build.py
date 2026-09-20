@@ -15,7 +15,13 @@ import re
 
 from md import convert
 from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
-from papers import CSS as PAPER_CSS, papers  # noqa: E402
+from papers import (ARCH_CSS, CSS as PAPER_CSS, arch_block,  # noqa: E402
+                    papers)
+
+# ------------------------------------------------------------- switch
+# One self-contained block: a section, a CSS block in papers.py, and one
+# image. False and rebuild puts the page back exactly as it was.
+ARCH_BLOCK = True
 
 HERE = pathlib.Path(__file__).parent
 TITLE = "The Chamber"
@@ -56,6 +62,7 @@ def main():
         # paper" stopped meaning anything once there were two of them, and
         # the canary's chain link belongs in its own card's DETAILS row.
         + papers()
+        + (arch_block() if ARCH_BLOCK else "")
     )
 
     doc = f"""<!doctype html>
@@ -95,7 +102,7 @@ blockquote{{font-size:1.06rem}}
 @media(max-width:700px){{
   .lead{{font-size:1.06rem;max-width:none}}
 }}
-{PAPER_CSS}
+{PAPER_CSS}{ARCH_CSS if ARCH_BLOCK else ''}
 {FOOT_CSS}
 </style>
 </head>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360" role="img" aria-label="Four frames nested one inside the next, a light travelling inward from the outermost to the one at the centre">
+<title>The seams, as a card</title>
+<style>
+  .f{fill:#131313;stroke:#2e2e2e;stroke-width:1.6}
+  .f4{fill:#111a15;stroke:#39ff88;stroke-width:1.8}
+  /* The same pulse 01 carries, and the same reading: inward is the boot
+     order - Ethereum serves the page, the page starts the machine, the
+     machine wakes the mind - which is what happens every time anyone opens
+     a token. Absolute timings held from 01: 0.46s to swell, 1.63s back to
+     nothing, 0.7s between rings; the innermost falls over 2.25s, so the
+     light leaves it last. Change the cycle and the percentages together. */
+  .halo{fill:none;stroke:#39ff88;stroke-width:2.6;opacity:0;pointer-events:none;
+        animation:haloSwell 6s ease-in-out infinite}
+  #halo-1{animation-delay:0s}
+  #halo-2{animation-delay:.7s}
+  #halo-3{animation-delay:1.4s}
+  #halo-4{animation-delay:2.1s;animation-name:haloLong}
+  @keyframes haloSwell{0%{opacity:0} 7.5%{opacity:.6} 27%{opacity:0} 100%{opacity:0}}
+  @keyframes haloLong {0%{opacity:0} 7.5%{opacity:.6} 45%{opacity:0} 100%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){ .halo{animation:none;opacity:0} }
+</style>
+<rect x="0" y="0" width="640" height="360" fill="#080808"/>
+<rect class="f"  x="40"  y="24"  width="560" height="312" rx="10"/>
+<rect class="f"  x="88"  y="51"  width="464" height="258" rx="9"/>
+<rect class="f"  x="136" y="78"  width="368" height="204" rx="8"/>
+<rect class="f4" x="184" y="105" width="272" height="150" rx="7"/>
+<rect class="halo" id="halo-1" x="40"  y="24"  width="560" height="312" rx="10"/>
+<rect class="halo" id="halo-2" x="88"  y="51"  width="464" height="258" rx="9"/>
+<rect class="halo" id="halo-3" x="136" y="78"  width="368" height="204" rx="8"/>
+<rect class="halo" id="halo-4" x="184" y="105" width="272" height="150" rx="7"/>
+</svg>

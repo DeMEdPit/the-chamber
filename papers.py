@@ -64,6 +64,27 @@ PAPERS = [
     },
 ]
 
+ARCH_CSS = """
+/* The architecture block: one wide row under the series, not a fourth card.
+   Set ARCH_BLOCK = False in build.py and none of this is emitted. */
+.arch-block{margin:22px 0 0}
+.arch-card{display:grid;grid-template-columns:300px 1fr;gap:26px;align-items:center;
+  padding:22px;border:1px solid var(--line);border-radius:14px;text-decoration:none;
+  background:linear-gradient(180deg,#0d0d0d,#060606);color:inherit;
+  transition:border-color .18s}
+.arch-card:hover,.arch-card:focus-visible{border-color:#35545b}
+.arch-card>img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;
+  border:1px solid var(--line);border-radius:10px;background:#000}
+.arch-card h3{margin:9px 0 8px;font-size:1.45rem;letter-spacing:-.02em;font-weight:700}
+.arch-card .paper-line{margin:0}
+.arch-go{display:inline-block;margin-top:18px;
+  font:700 .72rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+  color:var(--accent2)}
+.arch-card:hover .arch-go,.arch-card:focus-visible .arch-go{color:var(--accent)}
+@media(max-width:640px){.arch-card{grid-template-columns:1fr;gap:18px}}
+
+"""
+
 CSS = """
 .papers{margin:52px 0 0;display:grid;gap:22px;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
@@ -157,6 +178,46 @@ def _next_card():
             '<dl class="paper-rows">%s</dl>'
             '<span class="paper-go paper-go-off">IN RESEARCH</span>'
             "</article>") % (NEXT["kicker"], NEXT["title"], NEXT["line"], rows)
+
+
+ARCH = {
+    "img": "diagrams/01-the-seams-card.svg",
+    "alt": ("Four frames nested one inside the next, a light travelling inward "
+            "from the outermost to the one at the centre"),
+    "kicker": "THE WORKINGS",
+    "title": "Architecture",
+    "line": ("Twenty-two findings from building these — each one naming the "
+             "source that backs it — and the seams they all sit on."),
+    "href": "architecture/",
+    "go": "READ THE ARCHITECTURE",
+}
+
+
+def arch_block():
+    """The architecture page, on the front door.
+
+    Deliberately NOT a fourth card in the series row. That row is a table
+    with a schema - On chain, Tokens, The program, Written in, One render,
+    Details - and architecture has none of those. As a card it would be six
+    dashes, which reads as an unreleased work, or it would break the schema
+    that makes the row scannable side by side. A different shape says
+    "different kind of thing" without a word of explanation.
+
+    Unlike a paper card this one IS a link, because there is nothing else
+    clickable inside it - no nested anchor, and one big tap target on a
+    phone.
+    """
+    a = ARCH
+    return ('<section class="arch-block" aria-label="Architecture">'
+            '<a class="arch-card" href="%s">'
+            '<img src="%s" alt="%s" loading="lazy" decoding="async">'
+            '<div class="arch-body">'
+            '<span class="paper-kicker">%s</span><h3>%s</h3>'
+            '<p class="paper-line">%s</p>'
+            '<span class="arch-go">%s &rarr;</span>'
+            "</div></a></section>") % (
+        a["href"], a["img"], _html.escape(a["alt"]), a["kicker"],
+        _html.escape(a["title"]), _html.escape(a["line"]), a["go"])
 
 
 def papers():
