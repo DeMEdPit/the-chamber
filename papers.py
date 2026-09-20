@@ -120,7 +120,9 @@ NEXT = {
     "rows": [("On chain", "not yet"), ("Tokens", "&mdash;"),
              ("The program", "&mdash;"), ("Written in", "&mdash;"),
              ("One render", "&mdash;"),
-             ("Details", "said when they are real")],
+             # a dash, not "n/a": four rows above already use it, and a
+             # second vocabulary for the same idea would read as two things
+             ("Details", "&mdash;")],
 }
 
 
