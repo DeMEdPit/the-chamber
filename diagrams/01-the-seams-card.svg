@@ -2,7 +2,13 @@
 <title>The seams, as a card</title>
 <style>
   .f{fill:#131313;stroke:#2e2e2e;stroke-width:1.6}
-  .f4{fill:#111a15;stroke:#39ff88;stroke-width:1.8}
+  /* The interior stays matte green - that is what makes it the thing the
+     eye lands on. The BORDER is grey like every other wall, and only the
+     halo lights it, exactly as 01 does it: .boxa is fill #111a15 with a
+     #2e2e2e stroke. A permanently lit border was rejected on the diagram
+     (the owner, 2026-09-20) for making the box look special in a way the
+     picture does not need, and this card had it anyway. */
+  .f4{fill:#111a15;stroke:#2e2e2e;stroke-width:1.6}
   /* The same pulse 01 carries, and the same reading: inward is the boot
      order - Ethereum serves the page, the page starts the machine, the
      machine wakes the mind - which is what happens every time anyone opens
