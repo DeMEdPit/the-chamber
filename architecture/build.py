@@ -17,6 +17,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
+from stats import CSS as STATS_CSS, stats  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 TITLE = "The Chamber — Architecture"
@@ -30,7 +31,10 @@ CURRENT = "arch"
 # it was before that block existed; nothing else depends on either.
 SCROLL_EDGE = True   # fade a panning drawing's edges, driven by scroll position
 SCROLL_A11Y = True   # make a panning drawing keyboard-scrollable, and name it
-BANNER = True        # the seams artwork as a header strip, under the title
+BANNER = False       # the seams artwork as a header strip (OFF: it is the
+                     # same picture as diagram 01 below it, without the labels,
+                     # and two animations stacked read as noise)
+STATS = True         # the apparatus block, in the black papers' place
 
 # A diagram belongs to a seam, or to the two framing sections.
 MAP = {
@@ -287,7 +291,7 @@ def main():
 <style>
 {css}
 h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
-{CSS}{BANNER_CSS if BANNER else ""}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}
+{CSS}{STATS_CSS if STATS else ""}{BANNER_CSS if BANNER else ""}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}
 {FOOT_CSS}
 </style>
 </head>
@@ -295,6 +299,7 @@ h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
 <main>
 <h1>Architecture</h1>
 {BANNER_HTML if BANNER else ""}
+{stats(data["apparatus"]) if STATS else ""}
 {"".join(parts)}
 {footer(CURRENT)}
 </main>
