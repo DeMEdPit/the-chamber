@@ -24,6 +24,13 @@ DESC = ("What we learned building Commodore 64 works that live on Ethereum: "
         "findings, each with the source that backs it.")
 CURRENT = "arch"
 
+# --------------------------------------------------------------- switches
+# Each is one self-contained block of CSS, defined next to its own
+# explanation below. Set to False and rebuild and the page is exactly what
+# it was before that block existed; nothing else depends on either.
+SCROLL_EDGE = True   # fade a panning drawing's edges, driven by scroll position
+SCROLL_A11Y = True   # make a panning drawing keyboard-scrollable, and name it
+
 # A diagram belongs to a seam, or to the two framing sections.
 MAP = {
     "C64 ↔ Ethereum": [("05-where-the-program-lives.svg",
@@ -43,8 +50,13 @@ CSS = """
   color:var(--accent2)}
 .seam > .about{color:var(--muted);font-size:.94rem;margin:0 0 26px;max-width:62ch}
 .fig{margin:0 0 30px}
-.fig object,.fig img{width:100%;height:auto;display:block;border:1px solid var(--line);
-  border-radius:6px;background:#0b0b0b}
+.fig-pan object,.fig-pan img{width:100%;height:auto;display:block;
+  border:1px solid var(--line);border-radius:6px;background:#0b0b0b;
+  /* The same rule on every screen: never ENLARGED past the size it was drawn.
+     05 is 440 wide - drawn narrow on purpose - and filling a 900px column
+     with it was a 2x blow-up, which is why it read as much bigger than the
+     rest. Shrinking to fit is fine; growing past the drawing is not. */
+  max-width:var(--nat);margin-inline:auto}
 .fig figcaption{color:var(--muted);font-size:.8rem;margin-top:8px}
 .fig figcaption a{color:var(--accent2);font-size:.78rem}
 .find{border-top:1px solid var(--line);padding:22px 0 6px}
@@ -60,14 +72,69 @@ CSS = """
 .asof{margin:70px 0 0;padding-top:22px;border-top:1px solid var(--line);
   color:var(--muted);font-size:.84rem}
 .asof code{font-size:.8rem}
-/* A 920px diagram scaled to a phone's width is unreadable - the monospace
-   inside it lands around 4px. So below 700px the figure scrolls sideways at
-   a legible size instead of shrinking to fit, and says so. */
+/* A 920px drawing scaled to a phone's width is unreadable - the monospace
+   inside it lands around 4px. So below 700px it pans at a legible size
+   instead of shrinking to fit, and says so. WCAG 1.4.10 Reflow explicitly
+   exempts diagrams from its ban on two-dimensional scrolling, so this is
+   conformant - the page around the drawing still reflows.
+   Never ENLARGED past the size it was drawn: min(680px, its own width). */
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
-  .fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .fig object,.fig img{min-width:min(680px,var(--nat))}
+  .fig-pan{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .fig-pan object,.fig-pan img{min-width:min(680px,var(--nat))}
   .fig figcaption a::before{content:"— "}
+}
+"""
+
+# --- SCROLL_A11Y ---------------------------------------------------------
+# A scrollable region that cannot take focus cannot be scrolled by keyboard
+# at all. axe calls this scrollable-region-focusable; it is a WCAG 2.1.1
+# Level A failure, and the documented fix is exactly this: make it focusable,
+# give it a name and a role, and show where the focus is.
+# overscroll-behavior-x keeps a sideways swipe from turning into the
+# browser's back gesture.
+A11Y_CSS = """
+.fig-pan{overscroll-behavior-x:contain}
+.fig-pan:focus-visible{outline:2px solid var(--accent2);outline-offset:3px;
+  border-radius:8px}
+"""
+
+# --- SCROLL_EDGE ---------------------------------------------------------
+# The established pattern is Roman Komarov's scrolling shadows as Lea Verou
+# implemented them: gradients with background-attachment: local, so the cue
+# appears only where there IS more and vanishes at the end. Its virtue is
+# not the fade - it is knowing where the end is; a permanent gradient claims
+# there is more content where there is none.
+#
+# That technique needs the container's background to show through, and our
+# drawings paint an opaque canvas over it. The equivalent that works over
+# opaque content is a mask on the scroller, which fades the content itself.
+# A static mask brings back the flaw the original avoids, so the fade
+# distance is driven by scroll position instead - with no JavaScript, since
+# the timeline is the scroller.
+#
+# Chrome/Edge 115+, Safari 26+. Firefox has not shipped scroll-driven
+# animations, so this sits behind @supports and falls back to the plain hard
+# edge, which is what is there today: no regression anywhere.
+#
+# An inactive timeline leaves both custom properties at their initial 0px,
+# so a drawing that does not overflow gets no fade either.
+EDGE_CSS = """
+@property --edge-l{syntax:"<length>";inherits:false;initial-value:0px}
+@property --edge-r{syntax:"<length>";inherits:false;initial-value:0px}
+@media(max-width:700px){
+  @supports (animation-timeline: scroll(self inline)){
+    .fig-pan{
+      mask-image:linear-gradient(to right,
+        transparent 0, #000 var(--edge-l),
+        #000 calc(100% - var(--edge-r)), transparent 100%);
+      animation:figEdgeL linear both, figEdgeR linear both;
+      animation-timeline:scroll(self inline);
+    }
+    @keyframes figEdgeL{0%{--edge-l:0px} 9%{--edge-l:26px} 100%{--edge-l:26px}}
+    @keyframes figEdgeR{0%{--edge-r:26px} 91%{--edge-r:26px} 100%{--edge-r:0px}}
+    @media(prefers-reduced-motion:reduce){.fig-pan{animation-duration:1ms}}
+  }
 }
 """
 
@@ -123,12 +190,19 @@ def figure(src, caption):
     """
     svg = (ROOT / "diagrams" / src).read_text(encoding="utf-8")
     w, h = DIM.search(svg).groups()
+    cap = _html.escape(caption)
+    # The focus attributes belong to SCROLL_A11Y, so they come and go with it.
+    # The wrapper itself always exists: it is the scroller, and the caption
+    # must sit outside it so it is neither panned nor faded with the drawing.
+    a11y = (f' tabindex="0" role="group" aria-label="{cap} — pans sideways"'
+            if SCROLL_A11Y else "")
     return (f'<figure class="fig">'
+            f'<div class="fig-pan"{a11y}>'
             f'<object type="image/svg+xml" data="../diagrams/{src}" '
-            f'style="aspect-ratio:{w}/{h};--nat:{w}px" aria-label="{_html.escape(caption)}">'
-            f'<img src="../diagrams/{src}" alt="{_html.escape(caption)}" '
+            f'style="aspect-ratio:{w}/{h};--nat:{w}px" aria-label="{cap}">'
+            f'<img src="../diagrams/{src}" alt="{cap}" '
             f'style="--nat:{w}px" loading="lazy">'
-            f'</object>'
+            f'</object></div>'
             f'<figcaption>{_html.escape(caption)} '
             f'<a href="../diagrams/{src}" target="_blank" rel="noopener">open full size</a>'
             f'</figcaption></figure>')
@@ -197,7 +271,7 @@ def main():
 <style>
 {css}
 h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
-{CSS}
+{CSS}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}
 {FOOT_CSS}
 </style>
 </head>
