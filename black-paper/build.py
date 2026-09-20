@@ -87,8 +87,8 @@ def main():
     if not m:
         raise SystemExit("build: the opening line is gone from paper.md")
     body = (body[:m.start()]
-            + '<p class="lede">' + re.sub(r"</?strong>", "", m.group(1)) + "</p>"
             + stats(PERCEPTION)
+            + '<p class="lede">' + re.sub(r"</?strong>", "", m.group(1)) + "</p>"
             + body[m.end():])
 
     doc = f"""<!doctype html>

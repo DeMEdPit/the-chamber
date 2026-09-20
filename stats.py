@@ -56,7 +56,7 @@ PERCEPTION = [
 ]
 
 CSS = """
-.stats{margin:0 0 40px;padding:18px 20px;border:1px solid var(--line);
+.stats{margin:0 0 30px;padding:18px 20px;border:1px solid var(--line);
   border-radius:10px;background:linear-gradient(180deg,#0c0c0c,#060606);
   display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px}
 .stat{display:flex;flex-direction:column;gap:3px;min-width:0}
