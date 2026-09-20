@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="rel" viewBox="0 0 1080 880" width="1080" height="880" role="img" aria-label="What each release of the series added, and what it carried forward">
+<title>What each release added</title>
+<style>
+  .t{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;fill:#f4f4ef}
+  .title{font-size:19px;letter-spacing:.4px}
+  .sub{font-size:12.5px;fill:#aaa9a3}
+  .hd{font-size:12.5px} .hdd{font-size:10.5px;fill:#8a8984}
+  .row{font-size:12.5px;fill:#d8d7d1}
+  .cell{font-size:9.5px;fill:#39ff88} .cellb{font-size:9.5px;fill:#6aa9ff}
+  .cella{font-size:9.5px;fill:#9dffd0}
+  .dim{font-size:11.5px;fill:#aaa9a3} .tag{font-size:10px;letter-spacing:.4px}
+
+  /* Hover or focus a release to dim the others. The hit layer comes first so
+     the sibling combinator can reach the columns; the columns never take the
+     pointer themselves. Shown as a plain image none of it fires, and the
+     default state - everything lit - is what you see.
+
+     A click PINS a column (data-sel on the root) and clicking it again
+     unpins it. That part needs script, because focusing an already-focused
+     element cannot unfocus it. Without script the hover and focus rules
+     below still work and ALL still resets, so nothing here depends on it. */
+  .col{pointer-events:none;transition:opacity .15s}
+  .hit{fill:none;pointer-events:all;cursor:pointer;outline:none}
+  .hit:focus-visible{stroke:#9dffd0;stroke-opacity:.6;stroke-width:2}
+  svg:not([data-sel]) #hit-c0:hover ~ .col:not(.c0),
+  svg:not([data-sel]) #hit-c0:focus-visible ~ .col:not(.c0),
+  svg[data-sel="0"] .col:not(.c0) { opacity:.3 }
+  svg:not([data-sel]) #hit-c1:hover ~ .col:not(.c1),
+  svg:not([data-sel]) #hit-c1:focus-visible ~ .col:not(.c1),
+  svg[data-sel="1"] .col:not(.c1) { opacity:.3 }
+  svg:not([data-sel]) #hit-c2:hover ~ .col:not(.c2),
+  svg:not([data-sel]) #hit-c2:focus-visible ~ .col:not(.c2),
+  svg[data-sel="2"] .col:not(.c2) { opacity:.3 }
+  svg:not([data-sel]) #hit-c3:hover ~ .col:not(.c3),
+  svg:not([data-sel]) #hit-c3:focus-visible ~ .col:not(.c3),
+  svg[data-sel="3"] .col:not(.c3) { opacity:.3 }
+  svg:not([data-sel]) #hit-c4:hover ~ .col:not(.c4),
+  svg:not([data-sel]) #hit-c4:focus-visible ~ .col:not(.c4),
+  svg[data-sel="4"] .col:not(.c4) { opacity:.3 }
+</style>
+<rect x="0" y="0" width="1080" height="880" fill="#0b0b0b"/>
+<text class="t title" x="40" y="42">What each release added</text>
+<text class="t sub" x="40" y="63">One capability a row. A named cell is where it first appeared, or where it was built again.</text>
+<rect x="616" y="30" width="11" height="11" rx="2" fill="#39ff88"/><text class="t tag" x="634" y="40" fill="#39ff88">new here</text>
+<rect x="722" y="30" width="11" height="11" rx="2" fill="none" stroke="#9dffd0"/><text class="t tag" x="740" y="40" fill="#9dffd0">built again</text>
+<circle cx="856" cy="35" r="3.5" fill="#575652"/><text class="t tag" x="868" y="40" fill="#aaa9a3">carried</text>
+<rect x="968" y="30" width="11" height="11" rx="2" fill="#6aa9ff"/><text class="t tag" x="986" y="40" fill="#6aa9ff">not ours</text>
+<rect x="40" y="160" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="181">A Commodore 64 that runs from chain state</text>
+<text class="t row" x="48" y="219">A page assembled on chain, with no server</text>
+<rect x="40" y="236" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="257">Base64 encoding inside a contract</text>
+<text class="t row" x="48" y="295">An ERC-721 that renders its own artwork</text>
+<rect x="40" y="312" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="333">Firmware published on chain</text>
+<text class="t row" x="48" y="371">Source archived on chain</text>
+<rect x="40" y="388" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="409">A frozen program with a hole in it</text>
+<text class="t row" x="48" y="447">Facts the chain already had, written in</text>
+<rect x="40" y="464" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="485">Many tokens over one program</text>
+<text class="t row" x="48" y="523">Artwork images held in many parts</text>
+<rect x="40" y="540" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="561">A learner living in the hole</text>
+<text class="t row" x="48" y="599">A result the chain had to compute</text>
+<rect x="40" y="616" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="637">New bytes persisted after deployment</text>
+<text class="t row" x="48" y="675">A chain of revisions, each with a parent</text>
+<rect x="40" y="692" width="1000" height="34" fill="#101010"/>
+<text class="t row" x="48" y="713">A token that changes after it is minted</text>
+<rect x="40" y="108" width="84" height="26" rx="4" fill="#141414" stroke="#2e2e2e"/>
+<text class="t tag" x="82" y="125" text-anchor="middle" fill="#aaa9a3">ALL</text>
+<text class="t tag" x="136" y="118" fill="#8a8984">hover or tap a release to</text>
+<text class="t tag" x="136" y="132" fill="#8a8984">dim the others · ALL resets</text>
+<rect class="hit" id="hit-all" x="40" y="108" width="84" height="26" rx="4" tabindex="0"><title>show every release</title></rect>
+<rect class="hit" id="hit-c0" x="408" y="96" width="120" height="632" rx="4" tabindex="0"><title>minimal64</title></rect>
+<rect class="hit" id="hit-c1" x="536" y="96" width="120" height="632" rx="4" tabindex="0"><title>READY 64</title></rect>
+<rect class="hit" id="hit-c2" x="664" y="96" width="120" height="632" rx="4" tabindex="0"><title>OpenROMs 1</title></rect>
+<rect class="hit" id="hit-c3" x="792" y="96" width="120" height="632" rx="4" tabindex="0"><title>The Chamber</title></rect>
+<rect class="hit" id="hit-c4" x="920" y="96" width="120" height="632" rx="4" tabindex="0"><title>Perception</title></rect>
+<g class="col c0">
+<rect x="408" y="96" width="120" height="54" rx="4" fill="#141414" stroke="#2a4667"/>
+<text class="t hd" x="468.0" y="121" text-anchor="middle" fill="#6aa9ff">minimal64</text>
+<text class="t hdd" x="468.0" y="139" text-anchor="middle">2022</text>
+<rect x="414" y="164" width="108" height="19" rx="3" fill="#14243a" stroke="#6aa9ff" stroke-width="1"/>
+<text class="t cellb" x="468.0" y="178" text-anchor="middle">minimal64</text>
+</g>
+<g class="col c1">
+<rect x="536" y="96" width="120" height="54" rx="4" fill="#141414" stroke="#2e2e2e"/>
+<text class="t hd" x="596.0" y="121" text-anchor="middle" fill="#f4f4ef">READY 64</text>
+<text class="t hdd" x="596.0" y="139" text-anchor="middle">30 Aug</text>
+<circle cx="596.0" cy="176" r="3.5" fill="#575652"/>
+<rect x="542" y="202" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="596.0" y="216" text-anchor="middle">Launcher</text>
+<rect x="542" y="240" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="596.0" y="254" text-anchor="middle">Codec</text>
+<rect x="542" y="278" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="596.0" y="292" text-anchor="middle">PoC721</text>
+</g>
+<g class="col c2">
+<rect x="664" y="96" width="120" height="54" rx="4" fill="#141414" stroke="#2e2e2e"/>
+<text class="t hd" x="724.0" y="121" text-anchor="middle" fill="#f4f4ef">OpenROMs 1</text>
+<text class="t hdd" x="724.0" y="139" text-anchor="middle">3 Sep</text>
+<rect x="670" y="316" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="724.0" y="330" text-anchor="middle">ROMSet</text>
+<rect x="670" y="354" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="724.0" y="368" text-anchor="middle">Archive</text>
+</g>
+<g class="col c3">
+<rect x="792" y="96" width="120" height="54" rx="4" fill="#141414" stroke="#2e2e2e"/>
+<text class="t hd" x="852.0" y="121" text-anchor="middle" fill="#f4f4ef">The Chamber</text>
+<text class="t hdd" x="852.0" y="139" text-anchor="middle">8 Sep</text>
+<circle cx="852.0" cy="176" r="3.5" fill="#575652"/>
+<circle cx="804" cy="214" r="3.5" fill="#575652"/>
+<text class="t cell" x="816" y="217.5" fill="#8a8984">Launcher</text>
+<rect x="798" y="240" width="108" height="19" rx="3" fill="none" stroke="#9dffd0" stroke-width="0.9"/>
+<text class="t cella" x="852.0" y="254" text-anchor="middle">in Chamber</text>
+<rect x="798" y="278" width="108" height="19" rx="3" fill="none" stroke="#9dffd0" stroke-width="0.9"/>
+<text class="t cella" x="852.0" y="292" text-anchor="middle">Chamber</text>
+<rect x="798" y="392" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="852.0" y="406" text-anchor="middle">ChamberBase</text>
+<rect x="798" y="430" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="852.0" y="444" text-anchor="middle">42 bytes</text>
+<rect x="798" y="468" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="852.0" y="482" text-anchor="middle">64 tokens</text>
+<rect x="798" y="506" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="852.0" y="520" text-anchor="middle">ChamberImage</text>
+</g>
+<g class="col c4">
+<rect x="920" y="96" width="120" height="54" rx="4" fill="#141414" stroke="#2e2e2e"/>
+<text class="t hd" x="980.0" y="121" text-anchor="middle" fill="#f4f4ef">Perception</text>
+<text class="t hdd" x="980.0" y="139" text-anchor="middle">17 Sep</text>
+<circle cx="980.0" cy="176" r="3.5" fill="#575652"/>
+<rect x="926" y="202" width="108" height="19" rx="3" fill="none" stroke="#9dffd0" stroke-width="0.9"/>
+<text class="t cella" x="980.0" y="216" text-anchor="middle">PerceptionLauncher</text>
+<rect x="926" y="240" width="108" height="19" rx="3" fill="none" stroke="#9dffd0" stroke-width="0.9"/>
+<text class="t cella" x="980.0" y="254" text-anchor="middle">PerceptionCodec</text>
+<rect x="926" y="278" width="108" height="19" rx="3" fill="none" stroke="#9dffd0" stroke-width="0.9"/>
+<text class="t cella" x="980.0" y="292" text-anchor="middle">PerceptionChamber</text>
+<rect x="926" y="392" width="108" height="19" rx="3" fill="none" stroke="#9dffd0" stroke-width="0.9"/>
+<text class="t cella" x="980.0" y="406" text-anchor="middle">PerceptionProgram</text>
+<circle cx="932" cy="480" r="3.5" fill="#575652"/>
+<text class="t cell" x="944" y="483.5" fill="#8a8984">1, then 64</text>
+<circle cx="932" cy="518" r="3.5" fill="#575652"/>
+<text class="t cell" x="944" y="521.5" fill="#8a8984">PerceptionImage</text>
+<rect x="926" y="544" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="980.0" y="558" text-anchor="middle">Brain025</text>
+<rect x="926" y="582" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="980.0" y="596" text-anchor="middle">834 bytes</text>
+<rect x="926" y="620" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="980.0" y="634" text-anchor="middle">Blob</text>
+<rect x="926" y="658" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="980.0" y="672" text-anchor="middle">PerceptionLineage</text>
+<rect x="926" y="696" width="108" height="19" rx="3" fill="#11241a" stroke="#39ff88" stroke-width="1"/>
+<text class="t cell" x="980.0" y="710" text-anchor="middle">saveMind</text>
+</g>
+<line x1="40" y1="760" x2="1040" y2="760" stroke="#262626" stroke-width="1"/>
+<text class="t dim" x="40" y="786">OpenROMs pressing 1 is a side branch, not a rung: it publishes firmware, and neither artwork loads it — both boot bare.</text>
+<text class="t dim" x="40" y="808">The Chamber imports READY 64's Launcher verbatim and pins its bytecode. Base64 has now been written three times, each faster.</text>
+<text class="t dim" x="40" y="830">The escalation is in the hole: 42 bytes of facts the chain already had, then 834 bytes it had to compute and could be wrong about.</text>
+<script><![CDATA[
+(function(){
+  var s = document.getElementById("rel");
+  function toggle(el){
+    if (!el) return;
+    if (el.id === "hit-all") { s.removeAttribute("data-sel"); return; }
+    var n = el.id.slice(5).replace("c", "");
+    if (s.getAttribute("data-sel") === n) s.removeAttribute("data-sel");
+    else s.setAttribute("data-sel", n);
+  }
+  s.addEventListener("click", function(e){
+    var el = e.target.closest ? e.target.closest(".hit") : null;
+    toggle(el);
+    if (el && el.blur) el.blur();   // a click must not leave focus behind
+  });
+  s.addEventListener("keydown", function(e){
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    toggle(document.activeElement);
+  });
+})();
+]]></script>
+</svg>

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 800" width="920" height="800" role="img" aria-label="A save, end to end: teaching happens in a browser, verification happens on every node by re-derivation">
+<style>
+  .t{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;fill:#f4f4ef}
+  .title{font-size:19px;letter-spacing:.4px}
+  .sub{font-size:12.5px;fill:#aaa9a3}
+  .lane{font-size:11px;fill:#aaa9a3;letter-spacing:1.2px}
+  .name{font-size:14px}
+  .body{font-size:12.5px;fill:#d8d7d1}
+  .dim{font-size:11.5px;fill:#aaa9a3}
+  .step{font-size:12.5px;fill:#d8d7d1}
+  .box{fill:#141414;stroke:#2e2e2e;stroke-width:1}
+  .boxa{fill:#111a15;stroke:#39ff88;stroke-width:1.25}
+  .ln{stroke:#4a4a46;stroke-width:1.4;fill:none}
+  .lna{stroke:#39ff88;stroke-width:1.6;fill:none}
+</style>
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#4a4a46"/></marker>
+  <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#39ff88"/></marker>
+</defs>
+<rect x="0" y="0" width="920" height="800" fill="#0b0b0b"/>
+<text class="t title" x="40" y="42">A save, end to end</text>
+<text class="t sub"   x="40" y="63">The chain never watches the teaching. It re-derives it, and checks the answer against the claim.</text>
+
+<line x1="460" y1="96" x2="460" y2="700" stroke="#3a3a3a" stroke-width="1" stroke-dasharray="3 5"/>
+<text class="t lane" x="40"  y="88">OFF CHAIN · ONE BROWSER</text>
+<text class="t lane" x="880" y="88" text-anchor="end">ON CHAIN · EVERY NODE</text>
+
+<!-- left lane -->
+<rect class="box" x="40" y="120" width="360" height="64" rx="5"/>
+<text class="t name" x="64" y="148">a person teaches</text>
+<text class="t dim"  x="64" y="169">inside the running C64, on the token page</text>
+
+<path class="ln" d="M220,184 L220,210" marker-end="url(#a)"/>
+
+<rect class="box" x="40" y="216" width="360" height="64" rx="5"/>
+<text class="t name" x="64" y="244">the lessons pile up</text>
+<text class="t dim"  x="64" y="265">n UNSAVED · nothing has left the browser yet</text>
+
+<path class="ln" d="M220,280 L220,306" marker-end="url(#a)"/>
+
+<rect class="box" x="40" y="312" width="360" height="110" rx="5"/>
+<text class="t name" x="64" y="340">one envelope, built once</text>
+<text class="t dim"  x="64" y="362">the parent revision   ·   the parent hash</text>
+<text class="t dim"  x="64" y="382">the lessons themselves</text>
+<text class="t dim"  x="64" y="402">the claimed child hash</text>
+
+<path class="lna" d="M400,367 L512,367" marker-end="url(#ag)"/>
+<text class="t dim" x="456" y="356" text-anchor="middle" fill="#39ff88">one transaction</text>
+
+<!-- right lane -->
+<rect class="box" x="520" y="120" width="360" height="420" rx="5"/>
+<text class="t name" x="544" y="150">saveMind</text>
+<text class="t dim"  x="856" y="150" text-anchor="end">every check before any write</text>
+<line x1="544" y1="164" x2="856" y2="164" stroke="#262626" stroke-width="1"/>
+
+<text class="t step" x="544" y="192">1   the holder — never an operator</text>
+<text class="t step" x="544" y="220">2   the batch bound, 32 lessons</text>
+<text class="t step" x="544" y="248">3   the parent revision is not stale</text>
+<text class="t step" x="544" y="276">4   the parent bytes, the parent blob</text>
+<rect x="536" y="288" width="328" height="60" rx="4" fill="#111a15" stroke="#39ff88" stroke-width="1.1"/>
+<text class="t step" x="544" y="310" fill="#39ff88">5   replay every lesson from the parent</text>
+<text class="t step" x="544" y="334" fill="#39ff88">6   compare the result to the claim</text>
+<text class="t step" x="544" y="376">7   a save that changes nothing reverts</text>
+<text class="t step" x="544" y="404">8   admission — the slot is canonical</text>
+<text class="t step" x="544" y="432">9   persist, append, emit</text>
+<line x1="544" y1="456" x2="856" y2="456" stroke="#262626" stroke-width="1"/>
+<text class="t dim" x="544" y="482">Steps 5 and 6 are the whole claim.</text>
+<text class="t dim" x="544" y="502">Everything else guards them.</text>
+<text class="t dim" x="544" y="524">Stricter than our own reference.  F-014</text>
+
+<!-- outcomes -->
+<path class="ln" d="M700,540 L700,558 L608,558 L608,576" marker-end="url(#a)"/>
+<path class="ln" d="M700,540 L700,558 L792,558 L792,576" marker-end="url(#a)"/>
+<rect class="boxa" x="520" y="582" width="176" height="72" rx="5"/>
+<text class="t body" x="608" y="612" text-anchor="middle" fill="#39ff88">the head advances</text>
+<text class="t dim"  x="608" y="632" text-anchor="middle">a new revision</text>
+<rect class="box" x="704" y="582" width="176" height="72" rx="5"/>
+<text class="t body" x="792" y="612" text-anchor="middle">it reverts</text>
+<text class="t dim"  x="792" y="632" text-anchor="middle">nothing is written</text>
+
+<rect class="box" x="40" y="582" width="360" height="72" rx="5"/>
+<text class="t name" x="64" y="612">back in the browser</text>
+<text class="t dim"  x="64" y="634">the page re-reads the head after the receipt</text>
+<path d="M516,618 L406,618" stroke="#39ff88" stroke-width="1.4" fill="none" stroke-dasharray="4 4" marker-end="url(#ag)"/>
+
+<line x1="40" y1="700" x2="880" y2="700" stroke="#262626" stroke-width="1"/>
+<text class="t dim" x="40" y="726">What is validated: that the claimed brain is the necessary consequence of the claimed lessons under the stated rule.</text>
+<text class="t dim" x="40" y="748">What is not: whether the learning was any good, and who sat at the keyboard — savedBy is an address.  F-013, F-015</text>
+</svg>
