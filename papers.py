@@ -51,7 +51,7 @@ CSS = """
   grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .paper{display:flex;flex-direction:column;padding:22px;border:1px solid var(--line);
   border-radius:14px;background:linear-gradient(180deg,#0d0d0d,#060606)}
-.paper>img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border:1px solid var(--line);
+.paper>img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;border:1px solid var(--line);
   border-radius:10px;background:#000;margin-bottom:18px}
 .paper-kicker{font:700 .66rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
   letter-spacing:.16em;color:var(--accent)}
