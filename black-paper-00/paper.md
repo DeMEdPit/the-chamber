@@ -109,52 +109,61 @@ will not settle, and it is the only character that plays the intro tune.
 
 ## The dice came off the sound chip
 
-This is the part worth telling, because it is where the two machines met and
-one of them had to give way.
+This is the part worth telling, because it is where the claim the collection
+makes turned out to cost something.
 
-The Commodore 64 has a standard source of randomness, and nearly every C64
-game that needs one uses it. Register `$D41B` is read-only and returns the
-top eight bits of the SID's **voice three oscillator**. Set voice three to
-noise at a high frequency and every read hands you a fresh byte. Bit 7 of
-`$D418` silences that voice while leaving its oscillator running, so the
-classic arrangement is: voice three muted, read once a frame for the dice,
-and the music written for two voices.
+The Commodore 64 has no random number generator, but it has a standard
+substitute that nearly every game uses. Register `$D41B` is read-only and
+returns the top eight bits of the SID's **voice three oscillator**. Read it
+and you get a byte that depends on whatever voice three is doing.
 
-Both facts are reproduced faithfully by the emulator on chain, quirks
-included — if voice three is routed through the filter, the mute does
-nothing and it sounds anyway.
+The usual arrangement pays for that with a voice: set voice three to noise,
+silence it with bit 7 of `$D418`, and write the music for the other two.
+**Tony never paid it.** Sami Juntunen's soundtrack plays on all three
+voices, and the dice were taken on top of the music — the Wanderer and the
+Glitch shared a shift register that advanced on its own and was then XORed
+each frame with whatever `$D41B` happened to return.
 
-The Wanderer and the Glitch, the two characters that need to keep moving,
-were rolling on exactly that. Which meant a choice: keep the dice and write
-the music for two voices, or keep three voices and find the randomness
-somewhere else.
+So voice three was doing three jobs at once. Playing the tune. Driving the
+Dancer, who reads the envelope at `$D41C` and steps when it rises. And
+stirring the dice at `$D41B`.
 
-They found it somewhere else. **The dice come off the sound chip.** `$D41B`
-is now read nowhere in the program. The shift register is seeded instead
-from four bytes of the seed the contract stamps in — bytes 3, 15, 20 and 28,
-which the contract deliberately leaves untouched when it forces the trait
-bytes.
+Nothing about that sounds wrong, and nothing about it plays wrong. The
+first two jobs are exactly right and were never in question. **The third is
+the one that broke the collection's claim**, in a way no player would ever
+notice: dice stirred by a musical waveform are correlated with the tune, and
+they cannot be recomputed from the seed. To re-derive a Wanderer's path you
+would need to know where the music was at every frame — when playback
+started, which frames were skipped, the chip's exact state. A stranger
+holding the same program and the same seed has none of that.
+
+That is fine for a game. It is fatal for a piece whose whole claim is that
+anyone can check the render.
+
+So **the dice came off the sound chip.** `$D41B` is now read nowhere in the
+program. The shift register is seeded instead from four bytes of the seed
+the contract stamps in — bytes 3, 15, 20 and 28, which the contract
+deliberately leaves untouched when it forces the trait bytes — and advances
+once a frame with nothing stirred in.
 
 Those four bytes come from the block hash.
 
-> So the two characters who cannot hold still take their randomness from
-> Ethereum, and the SID gets all three of its voices back.
+> The dice moved so that a stranger could check the room.
 
 That was not the plan at the start. It is the answer the two machines
 arrived at, and it is a better one than the plan.
 
-**But one thing did not leave.** The Dancer still listens. The contract says
-so itself, in `characterSentence(1)`:
+**And nothing was given up.** The Dancer still listens, on the same voice.
+The contract says so itself, in `characterSentence(1)`:
 
 > Tony's cyan double dances to the tune: he steps with the bass line and
 > bounces on the hits, read from the sound chip.
 
-So the chip lost the dice and kept the music. What needed to be
-unpredictable went to the block, where unpredictability is the whole point
-of a hash. What needed to hear the tune went on hearing it. Two different
-uses of one chip, told apart only once it became clear they were different
-things — and the rarest ordinary character in the collection is the one
-still wired to the sound.
+Two different uses of one chip, told apart only once it became clear they
+were different things. What needed to be unpredictable went to the block,
+where unpredictability is the whole point of a hash. What needed to hear the
+tune went on hearing it — and the rarest ordinary character in the
+collection is the one still wired to the sound.
 
 ---
 

@@ -19,6 +19,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from md import convert, inline  # noqa: E402
 from token_embed import embed  # noqa: E402
 from footer import CSS as FOOT_CSS, footer  # noqa: E402
+from stats import CSS as STAT_CSS, stats, PERCEPTION  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -87,6 +88,7 @@ def main():
         raise SystemExit("build: the opening line is gone from paper.md")
     body = (body[:m.start()]
             + '<p class="lede">' + re.sub(r"</?strong>", "", m.group(1)) + "</p>"
+            + stats(PERCEPTION)
             + body[m.end():])
 
     doc = f"""<!doctype html>
@@ -117,6 +119,7 @@ def main():
 <style>
 {css}
 .mindprint-banner{{margin:26px 0 44px;padding:0}}
+{STAT_CSS}
 .lede{{margin:0 0 34px;color:var(--muted);font-weight:450;line-height:1.4;
   font-size:clamp(1.15rem,4.2vw,1.45rem)}}
 h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word;margin-bottom:0}}

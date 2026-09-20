@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 from md import convert  # noqa: E402
 from gallery import gallery, CSS as GAL_CSS  # noqa: E402
 from footer import CSS as FOOT_CSS, footer  # noqa: E402
+from stats import CSS as STAT_CSS, stats, CHAMBER  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 SITE = "https://demedpit.github.io/the-chamber"
@@ -52,6 +53,7 @@ def main():
         raise SystemExit("build: the opening line is gone from paper.md")
     body = (body[:m.start()]
             + '<p class="lede">' + re.sub(r"</?strong>", "", m.group(1)) + "</p>"
+            + stats(CHAMBER)
             + body[m.end():])
 
     # The eight characters close the behaviours section, so the ladder
@@ -96,6 +98,7 @@ pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}
 code{{overflow-wrap:anywhere;word-break:break-word}}
 .room-banner{{margin:26px 0 44px;padding:0}}
+{STAT_CSS}
 .lede{{margin:0 0 34px;color:var(--muted);font-weight:450;line-height:1.4;
   font-size:clamp(1.15rem,4.2vw,1.45rem)}}
 .room-banner img{{width:100%;height:auto;display:block;border:1px solid var(--line);
