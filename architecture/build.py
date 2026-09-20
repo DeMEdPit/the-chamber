@@ -43,8 +43,10 @@ CSS = """
   color:var(--accent2)}
 .seam > .about{color:var(--muted);font-size:.94rem;margin:0 0 26px;max-width:62ch}
 .fig{margin:0 0 30px}
-.fig img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px}
+.fig object,.fig img{width:100%;height:auto;display:block;border:1px solid var(--line);
+  border-radius:6px;background:#0b0b0b}
 .fig figcaption{color:var(--muted);font-size:.8rem;margin-top:8px}
+.fig figcaption a{color:var(--accent2);font-size:.78rem}
 .find{border-top:1px solid var(--line);padding:22px 0 6px}
 .find h3{font-size:1.02rem;margin:0 0 10px;line-height:1.35;font-weight:700}
 .find h3 .fid{color:var(--accent);font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -64,8 +66,8 @@ CSS = """
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
   .fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .fig img{min-width:680px}
-  .fig figcaption::after{content:" — scroll sideways to read it";color:var(--muted)}
+  .fig object,.fig img{min-width:680px}
+  .fig figcaption a::before{content:"— "}
 }
 """
 
@@ -104,9 +106,31 @@ def card(f):
     return "\n".join(bits)
 
 
+DIM = re.compile(r'width="(\d+)" height="(\d+)"')
+
+
 def figure(src, caption):
-    return (f'<figure class="fig"><img src="diagrams/{src}" alt="{_html.escape(caption)}" '
-            f'loading="lazy"><figcaption>{_html.escape(caption)}</figcaption></figure>')
+    """An <object>, not an <img>.
+
+    An SVG loaded through <img> is a flat picture: no hover, no tap, no
+    script. Through <object> it is a live document, so the diagrams that
+    carry interaction keep it - and because each object is its own document,
+    two diagrams sharing element ids (01 and 07 share six) cannot collide,
+    which inlining them both would have caused.
+
+    The aspect ratio is read from the file so the box never has to be told
+    twice and cannot drift from the drawing.
+    """
+    svg = (ROOT / "diagrams" / src).read_text(encoding="utf-8")
+    w, h = DIM.search(svg).groups()
+    return (f'<figure class="fig">'
+            f'<object type="image/svg+xml" data="../diagrams/{src}" '
+            f'style="aspect-ratio:{w}/{h}" aria-label="{_html.escape(caption)}">'
+            f'<img src="../diagrams/{src}" alt="{_html.escape(caption)}" loading="lazy">'
+            f'</object>'
+            f'<figcaption>{_html.escape(caption)} '
+            f'<a href="../diagrams/{src}" target="_blank" rel="noopener">open full size</a>'
+            f'</figcaption></figure>')
 
 
 def main():
