@@ -1,0 +1,747 @@
+{
+ "generated": {
+  "date": "2026-09-21",
+  "from": "d4a62e4",
+  "toolchain": "forge 1.5.1, solc 0.8.30, evm cancun, bytecode_hash ipfs",
+  "tool": "scripts/export-surface.py"
+ },
+ "test": "A thing is not open if using it needs private code, privileged authority, undocumented state or a server. Every read below needs a node and nothing else; each write says who may call it.",
+ "works": [
+  {
+   "key": "perception",
+   "name": "Perception Chamber Canary",
+   "contract": "PerceptionChamber",
+   "address": "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127",
+   "deployed": "2026-09-17",
+   "deploy_commit": "74e9963",
+   "tokens": 1,
+   "etherscan": "https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127#code",
+   "groups": [
+    {
+     "title": "the mind",
+     "rows": [
+      {
+       "name": "brain",
+       "sig": "brain(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the head brain's 834 bytes, from its blob",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "head",
+       "sig": "head(uint256)",
+       "params": "uint256 tokenId",
+       "returns": "uint32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the head revision index of an existing token: 0 at genesis, n after n saves",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "revision",
+       "sig": "revision(uint256,uint32)",
+       "params": "uint256 tokenId, uint32 r",
+       "returns": "(address brain, uint32 parent, uint16 lessons, uint16 educationCount, uint8 learner, address education, uint64 savedAtBlock, bytes32 canonicalHash, address savedBy)",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "revision `r` of an existing token; 0 is the implicit genesis record",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "education",
+       "sig": "education(uint256,uint32)",
+       "params": "uint256 id, uint32 r",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the ordered accepted lesson stream of revision r, from its blob (empty for genesis)",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "educationHashOf",
+       "sig": "educationHashOf(uint256,uint32)",
+       "params": "uint256 tokenId, uint32 r",
+       "returns": "bytes32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the education blob's bytes hashed: derived, never stored (zero for genesis)",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "revisionIdOf",
+       "sig": "revisionIdOf(uint256,uint32)",
+       "params": "uint256 tokenId, uint32 r",
+       "returns": "bytes32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the global, domain-separated name of a revision; derivable by anyone from the record",
+       "hand": "",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the learner, as a service",
+     "rows": [
+      {
+       "name": "replay",
+       "sig": "replay(bytes,bytes)",
+       "params": "bytes parent, bytes lessons",
+       "returns": "bytes child, uint16 educationCount",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "the same replay saveMind runs, as a view, so a save can be checked before it is sent",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "canonicalHashOf",
+       "sig": "canonicalHashOf(bytes)",
+       "params": "bytes slot",
+       "returns": "bytes32",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "sha256 of a slot: the canonical content identity",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "requireAdmissible",
+       "sig": "requireAdmissible(bytes)",
+       "params": "bytes slot",
+       "returns": "",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "reverts with the reason if `slot` is not an admissible BRAIN025 slot; returns otherwise",
+       "hand": "",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the program",
+     "rows": [
+      {
+       "name": "prg",
+       "sig": "prg()",
+       "params": "",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the frozen program",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "prgWithBrain",
+       "sig": "prgWithBrain(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes p",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the program with the head brain written at the slot's file offset: a derived file, stamped         nowhere, the same thing a holder can make by hand from prg() and brain(id)",
+       "hand": "",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the work",
+     "rows": [
+      {
+       "name": "tokenURI",
+       "sig": "tokenURI(uint256)",
+       "params": "uint256 id",
+       "returns": "string",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the token's metadata as a data URI, entirely on chain: the JSON, the image and the page inside it",
+       "source": "hand"
+      },
+      {
+       "name": "json",
+       "sig": "json(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the JSON before base64, for readers and tests",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "page",
+       "sig": "page(uint256)",
+       "params": "uint256 id",
+       "returns": "string",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the page before base64",
+       "hand": "",
+       "source": "notice"
+      },
+      {
+       "name": "lineageJSON",
+       "sig": "lineageJSON(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the state the page embeds: the head, and at most LINEAGE_WINDOW recent revisions, oldest first.         Bounded on purpose, so tokenURI does not grow with the history; every revision stays readable         from revision(id, r).",
+       "hand": "",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the one write",
+     "rows": [
+      {
+       "name": "saveMind",
+       "sig": "saveMind(uint256,uint32,bytes32,bytes,bytes32)",
+       "params": "uint256 tokenId, uint32 expectedParentRevision, bytes32 expectedParentHash, bytes lessons, bytes32 claimedChildHash",
+       "returns": "uint32 revisionIndex, address brain, address education",
+       "mutability": "nonpayable",
+       "who": "the token's holder, and no operator or approval",
+       "notice": "advance the canonical history of `tokenId` by one revision",
+       "hand": "",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the pointers and constants",
+     "rows": [
+      {
+       "name": "program",
+       "sig": "program()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the frozen program's contract, pinned at deploy",
+       "source": "hand"
+      },
+      {
+       "name": "launcher",
+       "sig": "launcher()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the page's contract, pinned at deploy",
+       "source": "hand"
+      },
+      {
+       "name": "image",
+       "sig": "image()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the image's contract, pinned at deploy",
+       "source": "hand"
+      },
+      {
+       "name": "metadata",
+       "sig": "metadata()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the words' contract, pinned at deploy",
+       "source": "hand"
+      },
+      {
+       "name": "MAX_BATCH",
+       "sig": "MAX_BATCH()",
+       "params": "",
+       "returns": "uint16",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the most lessons one `saveMind` accepts; set at construction, never changed",
+       "hand": "the most lessons one save may carry",
+       "source": "notice"
+      },
+      {
+       "name": "LINEAGE_WINDOW",
+       "sig": "LINEAGE_WINDOW()",
+       "params": "",
+       "returns": "uint32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "how many recent revisions the page embeds; the whole history stays readable from revision()",
+       "hand": "how many recent revisions the page embeds",
+       "source": "notice"
+      },
+      {
+       "name": "SUPPLY_CAP",
+       "sig": "SUPPLY_CAP()",
+       "params": "",
+       "returns": "uint16",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the collection's ceiling; a deployment mints 1..SUPPLY_CAP tokens in its constructor and never more",
+       "hand": "the most tokens a deployment may mint",
+       "source": "notice"
+      },
+      {
+       "name": "totalSupply",
+       "sig": "totalSupply()",
+       "params": "",
+       "returns": "uint256",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "how many tokens exist",
+       "source": "hand"
+      },
+      {
+       "name": "GENESIS_BRAIN",
+       "sig": "GENESIS_BRAIN()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "the genesis brain's blob: STOP || the blank slot, persisted once by this contract, shared by all",
+       "hand": "the blank slot every token starts from, one shared blob",
+       "source": "notice"
+      },
+      {
+       "name": "GENESIS_HASH",
+       "sig": "GENESIS_HASH()",
+       "params": "",
+       "returns": "bytes32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the blank slot's canonical hash",
+       "source": "hand"
+      },
+      {
+       "name": "LEARNER_BRAIN025",
+       "sig": "LEARNER_BRAIN025()",
+       "params": "",
+       "returns": "uint8",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the learner's identifier, recorded in every revision",
+       "source": "hand"
+      },
+      {
+       "name": "REVISION_DOMAIN",
+       "sig": "REVISION_DOMAIN()",
+       "params": "",
+       "returns": "bytes32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the domain separator that names revisions",
+       "source": "hand"
+      }
+     ]
+    }
+   ],
+   "erc721": [
+    "approve(address,uint256)",
+    "balanceOf(address)",
+    "getApproved(uint256)",
+    "isApprovedForAll(address,address)",
+    "name()",
+    "ownerOf(uint256)",
+    "safeTransferFrom(address,address,uint256)",
+    "safeTransferFrom(address,address,uint256,bytes)",
+    "setApprovalForAll(address,bool)",
+    "supportsInterface(bytes4)",
+    "symbol()",
+    "transferFrom(address,address,uint256)"
+   ],
+   "ungrouped": [],
+   "counts": {
+    "functions": 40,
+    "reads": 34,
+    "with_notice": 20
+   }
+  },
+  {
+   "key": "chamber",
+   "name": "The Chamber",
+   "contract": "Chamber",
+   "address": "0x75FD5A9c4440c38561A0099B216F825b7C6db924",
+   "deployed": "2026-09-08",
+   "deploy_commit": "4124590",
+   "tokens": 64,
+   "etherscan": "https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924#code",
+   "groups": [
+    {
+     "title": "the program",
+     "rows": [
+      {
+       "name": "prg",
+       "sig": "prg(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "The program this token runs right now: the base with the 42-byte parameter block written. Save it as a .prg and it runs on a real C64; the copy is stamped with the block you took it at.",
+       "hand": "the frozen program with this token's 42-byte stamp written in for this block: the seed, the block's last eight digits, the behaviour and the colour",
+       "source": "notice"
+      },
+      {
+       "name": "renderBlock",
+       "sig": "renderBlock()",
+       "params": "",
+       "returns": "bytes32 h, uint256 n",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "The seed and floor number a render uses: the previous block's hash, or a substitute when a client returns zero for it, and that block's number, which is what the floor carves.",
+       "hand": "the block a render uses right now, the previous one, and its hash",
+       "source": "notice"
+      },
+      {
+       "name": "seedOf",
+       "sig": "seedOf(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes32",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "The 32 seed bytes this token gets at this block: the block hash mixed with the token id, with the three room-class values forced in. Bytes 3, 15, 20 and 28 are the dice's and are left to the hash.",
+       "hand": "the 32 seed bytes this token gets at this block: the block hash mixed with the id, the token's classes forced into the low bits",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the work",
+     "rows": [
+      {
+       "name": "tokenURI",
+       "sig": "tokenURI(uint256)",
+       "params": "uint256 id",
+       "returns": "string",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the token's metadata as a data URI, entirely on chain",
+       "source": "hand"
+      },
+      {
+       "name": "json",
+       "sig": "json(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "The metadata before base64, for readers and tests.",
+       "hand": "the same JSON before base64",
+       "source": "notice"
+      },
+      {
+       "name": "attributes",
+       "sig": "attributes(uint8,uint8,uint8,uint8,uint8,bytes32)",
+       "params": "uint8 beh, uint8 col, uint8 wall, uint8 bats, uint8 candle, bytes32 base",
+       "returns": "bytes",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the traits, as marketplace attributes",
+       "source": "hand"
+      },
+      {
+       "name": "description",
+       "sig": "description(uint256)",
+       "params": "uint256 id",
+       "returns": "bytes",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "The description as it reads right now, at this block.",
+       "hand": "the description every marketplace shows",
+       "source": "notice"
+      },
+      {
+       "name": "description",
+       "sig": "description(uint256,uint256)",
+       "params": "uint256 id, uint256 renderedFrom",
+       "returns": "bytes",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "The description: what this buddy does, the room he was born into, what moves, the block this render came from in full (the floor carries only its last eight digits), how to take the program, and the credits.",
+       "hand": "the description every marketplace shows",
+       "source": "notice"
+      },
+      {
+       "name": "image",
+       "sig": "image()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the image: the character alone in his colour, an animated SVG built in the contract",
+       "source": "hand"
+      }
+     ]
+    },
+    {
+     "title": "the table",
+     "rows": [
+      {
+       "name": "characterName",
+       "sig": "characterName(uint8)",
+       "params": "uint8 beh",
+       "returns": "string",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the character a behaviour number names",
+       "source": "hand"
+      },
+      {
+       "name": "characterSentence",
+       "sig": "characterSentence(uint8)",
+       "params": "uint8 beh",
+       "returns": "string",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the one sentence the description carries for a behaviour",
+       "source": "hand"
+      },
+      {
+       "name": "wallName",
+       "sig": "wallName(uint8)",
+       "params": "uint8 wall",
+       "returns": "string",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "",
+       "hand": "a wall code as a word",
+       "source": "hand"
+      },
+      {
+       "name": "batsName",
+       "sig": "batsName(uint8)",
+       "params": "uint8 bats",
+       "returns": "string",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "",
+       "hand": "a bats code as a word",
+       "source": "hand"
+      },
+      {
+       "name": "colourName",
+       "sig": "colourName(uint8)",
+       "params": "uint8 c",
+       "returns": "string",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "",
+       "hand": "a colour number as a word",
+       "source": "hand"
+      },
+      {
+       "name": "tableRow",
+       "sig": "tableRow(uint256)",
+       "params": "uint256 id",
+       "returns": "uint8 behaviour, uint8 colour, uint8 wall, uint8 bats, uint8 candle",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "The table row, decoded, for anyone checking the collection's promise.",
+       "hand": "this token's row of the table: character, behaviour, colour, wall, bats, candle",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the words",
+     "rows": [
+      {
+       "name": "README",
+       "sig": "README()",
+       "params": "",
+       "returns": "string",
+       "mutability": "pure",
+       "who": "anyone",
+       "notice": "The whole story, one click away on any contract explorer.",
+       "hand": "the words: what this is, how to read it, credits and licences",
+       "source": "notice"
+      }
+     ]
+    },
+    {
+     "title": "the pointers and constants",
+     "rows": [
+      {
+       "name": "renderer",
+       "sig": "renderer()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "One program and one page for all sixty-four, set once here and never again: there is no setter, and the collection cannot be made to mix.",
+       "hand": "the page renderer, READY 64's Launcher, pinned",
+       "source": "notice"
+      },
+      {
+       "name": "base",
+       "sig": "base()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the base program's data contract",
+       "source": "hand"
+      },
+      {
+       "name": "SUPPLY",
+       "sig": "SUPPLY()",
+       "params": "",
+       "returns": "uint256",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "sixty-four",
+       "source": "hand"
+      },
+      {
+       "name": "totalSupply",
+       "sig": "totalSupply()",
+       "params": "",
+       "returns": "uint256",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "how many tokens exist",
+       "source": "hand"
+      },
+      {
+       "name": "locked",
+       "sig": "locked()",
+       "params": "",
+       "returns": "bool",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "true since 8 September 2026",
+       "source": "hand"
+      },
+      {
+       "name": "minter",
+       "sig": "minter()",
+       "params": "",
+       "returns": "address",
+       "mutability": "view",
+       "who": "anyone",
+       "notice": "",
+       "hand": "the zero address: nobody",
+       "source": "hand"
+      }
+     ]
+    },
+    {
+     "title": "writes, both spent",
+     "rows": [
+      {
+       "name": "mint",
+       "sig": "mint(address,uint256[])",
+       "params": "address to, uint256[] ids",
+       "returns": "",
+       "mutability": "nonpayable",
+       "who": "nobody: the minter is zero",
+       "notice": "Mint token ids from the table, in any order, in any number of transactions, until `lock()`. Each id exists once.",
+       "hand": "in the ABI; the minter is the zero address, so nobody can call it",
+       "source": "notice"
+      },
+      {
+       "name": "lock",
+       "sig": "lock()",
+       "params": "",
+       "returns": "",
+       "mutability": "nonpayable",
+       "who": "nobody: already done",
+       "notice": "Renounce minting. Only once every one of the sixty-four exists: a lock on an incomplete collection would be permanent, so the contract refuses it rather than trusting a script to check first. After this there is no privileged caller.",
+       "hand": "in the ABI; done once, on 8 September 2026, and it cannot be undone",
+       "source": "notice"
+      }
+     ]
+    }
+   ],
+   "erc721": [
+    "approve(address,uint256)",
+    "balanceOf(address)",
+    "getApproved(uint256)",
+    "isApprovedForAll(address,address)",
+    "name()",
+    "ownerOf(uint256)",
+    "safeTransferFrom(address,address,uint256)",
+    "safeTransferFrom(address,address,uint256,bytes)",
+    "setApprovalForAll(address,bool)",
+    "supportsInterface(bytes4)",
+    "symbol()",
+    "transferFrom(address,address,uint256)"
+   ],
+   "ungrouped": [],
+   "counts": {
+    "functions": 36,
+    "reads": 29,
+    "with_notice": 11
+   }
+  }
+ ],
+ "not_exposed": [
+  {
+   "what": "asking a mind what it would do",
+   "why": "the forward pass and argmax are internal to the learner library, inlined into the token; they run on every lesson of every save and are not callable on their own. For now you run the learner yourself. A decision for the 64-token release."
+  },
+  {
+   "what": "the retina table as a view",
+   "why": "the 240-byte vocabulary is a parameter of the interpreter in the code and pinned in the deployed replay; a different world needs a later contract."
+  },
+  {
+   "what": "who taught",
+   "why": "no contract can say. `savedBy` is the address that committed a save, not who held the joystick."
+  },
+  {
+   "what": "the contract source on GitHub",
+   "why": "the source is public as verified code on Etherscan; a public repository is a parked decision."
+  }
+ ],
+ "recipes": [
+  {
+   "title": "Read a mind",
+   "text": "The head brain of the canary, 834 bytes, from any node.",
+   "code": "cast call 0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127 'brain(uint256)(bytes)' 1 --rpc-url $RPC"
+  },
+  {
+   "title": "Pull a program out and run it off the chain",
+   "text": "Any Chamber token's program, stamped with the block you pulled it at. Save the hex as a file and it is an ordinary C64 program; a browser emulator will boot it.",
+   "code": "cast call 0x75FD5A9c4440c38561A0099B216F825b7C6db924 'prg(uint256)(bytes)' 55 --rpc-url $RPC | python3 -c \"import sys;open('chamber-55.prg','wb').write(bytes.fromhex(sys.stdin.read().strip()[2:]))\""
+  },
+  {
+   "title": "Train a brain without owning a token",
+   "text": "The same replay the contract uses to judge a save, as a free call: hand it any admissible 834-byte parent and any lesson stream, get the child back.",
+   "code": "cast call 0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127 'replay(bytes,bytes)(bytes,uint16)' $PARENT_HEX $LESSONS_HEX --rpc-url $RPC"
+  },
+  {
+   "title": "Pin a revision for ever",
+   "text": "Every revision's brain is its own data contract. Read the record, take the blob's address, and read the bytes straight from it - skipping the first byte, which is a STOP.",
+   "code": "cast call 0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127 'revision(uint256,uint32)' 1 3 --rpc-url $RPC   # the first word is the brain blob's address\ncast code $BLOB --rpc-url $RPC   # 0x00 then the 834 bytes"
+  }
+ ]
+}
