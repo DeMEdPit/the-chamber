@@ -197,11 +197,21 @@ h1{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}
 .fig figcaption{color:var(--muted);font-size:.8rem;margin-top:8px}
 .fig figcaption a{color:var(--accent2);font-size:.78rem}
 .find{border-top:1px solid var(--line);padding:22px 0 6px}
-.find h3{font-size:1.02rem;margin:0 0 10px;line-height:1.35;font-weight:700}
-.find h3 .fid{color:var(--accent);font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+/* :is(h3,h4) because a finding's heading level depends on where it sits -
+   h4 inside a seam, h3 under the method or the series. These rules were
+   scoped to h3 alone, so every finding inside a seam lost its ID spacing
+   and fell back to the page's default link styling: a bright underlined
+   title that looked like it went somewhere. */
+.find :is(h3,h4){font-size:1.02rem;margin:0 0 10px;line-height:1.35;font-weight:700}
+.find :is(h3,h4) .fid{color:var(--accent);
+  font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
   letter-spacing:.09em;margin-right:10px;vertical-align:.1em}
-.find h3 a.anchor{color:inherit;border:0;text-decoration:none}
-.find h3 a.anchor:hover{color:var(--accent2)}
+/* The title IS a link - to its own anchor, so a finding can be cited - but
+   it is not a place you travel to, so it does not advertise itself as one.
+   The hover colour is the whole affordance. */
+.find :is(h3,h4) a.anchor{color:inherit;border:0;text-decoration:none}
+.find :is(h3,h4) a.anchor:hover,
+.find :is(h3,h4) a.anchor:focus-visible{color:var(--accent2)}
 .find p{margin:0 0 12px}
 .find .meta{color:var(--muted);font-size:.86rem;margin:0 0 6px}
 .find .meta b{color:var(--ink);font-weight:400}
