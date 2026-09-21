@@ -79,6 +79,14 @@ shows:
 > The program can be pulled out with `prg(N)` and run on real hardware; the
 > copy you take is stamped with the block you took it at.
 
+We have run it on an emulator that is not ours: lvllvl.com, nopsta's own
+browser Commodore 64, a fuller machine than the one he stored on the chain,
+with a BASIC and a KERNAL in place. Token 55's program, pulled from mainnet
+at block 26,027,224, booted there and put 26027224 in the floor. We have not
+yet run it on a physical machine. We expect it to work — the program asks
+the ROM for nothing, banks both ROMs out as it starts and installs its own
+interrupt handler — and *expect* is the word until it is done.
+
 ---
 
 ## Eight behaviours, not one
@@ -176,7 +184,7 @@ advertised on the page, because the artwork is the room, not the loader —
 but the machine underneath was never closed.
 
 That capability is inherited rather than invented. **READY 64**, released
-alongside the proof-of-concept token on 28 August 2026, is a Commodore 64
+two days after the proof-of-concept token, on 30 August 2026, is a Commodore 64
 assembled entirely from Ethereum with the keyboard handed to you —
 [`0x0444C081…fF53`](https://etherscan.io/address/0x0444C08150D830b3056926119DBEaB791669fF53).
 The Chamber keeps the door and shuts the front of it.
