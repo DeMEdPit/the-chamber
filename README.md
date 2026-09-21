@@ -1,41 +1,43 @@
 # The Chamber
 
 A series of Commodore 64 works that live on Ethereum, built one capability at
-a time. Two machines, 1982 and 2015, both small and completely specified —
-and one question asked a generation at a time: what separates behaviour that
-was written from behaviour that was learned?
+a time, each asking the same question in a new form: what separates behaviour
+that was written from behaviour that was learned?
 
 A working Commodore 64 lives inside Ethereum. Not a picture of one, and not a
-file on a server somewhere: **minimal64**, an emulator nopsta stored in
-contracts in 2022, where it has been ever since — written for new C64 software
-rather than the back catalogue, cycle-accurate by design, carrying its own
-252-byte Kernal and no BASIC or Character ROM. Anyone can boot it. Nobody has
-to host it.
+file on a server somewhere: minimal64, an emulator nopsta stored in contracts
+in 2022 and left open for others to use, where it has been ever since. Anyone
+can boot it. Nobody has to host it. Every Chamber runs on it.
 
 Every work here is an ERC-721 token that carries everything it needs. The
-emulator, the program, the program's state and the page you look at it
-through are assembled from chain state at the moment you ask for them: no
-server, no IPFS, no hosted file. Pull the program out of the contract and it
-runs on real 1982 hardware.
+emulator, the program, the program's state and the page you look at it through
+are assembled from chain state at the moment you ask for them: no server, no
+IPFS, no hosted file. The program can be pulled back out of the contract as an
+ordinary C64 file. The chain is where it is kept, not where it has to run: we
+have booted it, off the chain, on an emulator we did not write.
 
-What changes between works is the behaviour running inside. Each generation
-isolates a single question about behaviour and answers it in the smallest
-system that can — not a bigger model each time, but a sequence of capability
-boundaries, each one earned experimentally before the next is attempted.
+The series investigates machine intelligence by making learning deliberately
+small, embodied, inspectable and historical. It starts with behaviour that was
+written — eight characters doing what a program says — and moves to behaviour
+that is learned — a perceptron taught by hand inside the running game. Each
+Chamber isolates one boundary between the two and earns it before the next is
+attempted.
 
-None of this began with us. nopsta stored a working Commodore 64 on Ethereum
-in 2022 and left it open for others to use, and every Chamber runs on it. We
-are trying to leave the same kind of opening.
+What is learned is treated not only as computation but as an artifact, with an
+education, an identity, a provenance and a lineage. In Perception Chamber, a
+mind is 834 bytes; every revision of it, and the lessons that produced each
+one, are on chain, and the chain records no revision it cannot derive itself.
+Public state, a fixed specification and deterministic replay make those
+artifacts inspectable and reproducible. Ethereum is where their canonical
+histories persist independently of any one website or runtime.
 
-Each work is built so that it can be built on. The program can be pulled out
-and run elsewhere. Where there is a mind, its weights, every revision of them
-and the lessons that produced them can be read by anyone, and anyone can run
-the same replay the contract uses to judge a save. No owner, minter or
-upgrade path remains that could repoint, replace or take down any of it.
-
-What is not yet exposed is a way to ask a mind what it would do; for now you
-run the learner yourself. Whether anyone builds on this is not ours to say.
-Making sure they can is the part we answer for.
+The works are left open in the sense the machine beneath them was. Where there
+is a mind, its state and history can be read by anyone, and anyone can run the
+same replay the contract uses to judge a save. No owner, minter or upgrade
+path remains that could repoint, replace or take down any of it. What is not
+yet exposed is a direct way to ask a mind what it would do; for now you run
+the learner yourself. Whether anyone builds on this is not ours to say. Making
+sure they can is the part we answer for.
 
 <!-- github-only -->
 **Website — [chamber64.com](https://chamber64.com/)**
@@ -59,8 +61,8 @@ not all do the same thing; one of the eight appears on a single token.
 Each token's wall, bats and candle are fixed traits of that token. The room
 around them is drawn from the chain at every read: the render folds the
 previous block's hash into the seed, so the wall's pattern, and where the bats
-and the candle fall, differ every time the token is viewed. The traits never
-change. Their arrangement never repeats.
+and the candle fall, differ from block to block. The traits never change; the arrangement belongs to
+the block you saw it at.
 
 Behaviour here is **authored**. There is no learner and nothing is trained:
 the characters do what the program says they do. This is the genesis of the
@@ -87,7 +89,7 @@ bytes. Nothing is overwritten — every save adds a new immutable revision and
 advances the token to it, so a mind keeps its whole ancestry.
 
 That replay is the point of the work: the same learner exists in 6502 machine
-code and in Solidity, and the two are required to agree byte for byte.
+code, in Python and in Solidity, and all three are required to agree byte for byte.
 
 `0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127` — mainnet, 17 September 2026.
 
@@ -155,7 +157,9 @@ None of this would exist without **nopsta**. In 2022 he stored a working
 Commodore 64 — the emulator **minimal64** — inside Ethereum contracts, and in
 doing so made it possible to treat a C64 runtime itself as reusable on-chain
 infrastructure. Every Chamber boots from those contracts, read in place,
-exactly where he left them.
+exactly where he left them. He wrote it for new C64 software rather than the
+back catalogue, cycle-accurate by his own design, with its own 253-byte Kernal
+and no BASIC or Character ROM.
 
 He has since passed away. The Chamber series was created independently
 afterward, as an exploration of—and tribute to—the open computational

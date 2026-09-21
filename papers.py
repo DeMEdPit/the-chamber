@@ -180,14 +180,28 @@ def _next_card():
             "</article>") % (NEXT["kicker"], NEXT["title"], NEXT["line"], rows)
 
 
+
+def _findings_word():
+    """How many findings the architecture page publishes, as a word."""
+    import json as _json, pathlib as _pl
+    d = _json.loads((_pl.Path(__file__).parent / "architecture" / "findings.json").read_text(encoding="utf-8"))
+    n = len(d["findings"] if isinstance(d, dict) and "findings" in d else d)
+    ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven",
+            "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+    tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+    w = ones[n] if n < 20 else tens[n // 10] + ("-" + ones[n % 10] if n % 10 else "")
+    return w[:1].upper() + w[1:]
+
 ARCH = {
     "img": "diagrams/01-the-seams-card.svg",
     "alt": ("Four frames nested one inside the next, a light travelling inward "
             "from the outermost to the one at the centre"),
     "kicker": "THE WORKINGS",
     "title": "Architecture",
-    "line": ("Twenty-two findings from building these — each one naming the "
-             "source that backs it — and the seams they all sit on."),
+    # the count is read from the export, never typed: it went stale the day a
+    # finding was added, and F-021 is about exactly that
+    "line": (f"{_findings_word()} findings from building these — each one naming the "
+             "source that backs it — and the seams most of them sit on."),
     "href": "architecture/",
     "go": "READ THE ARCHITECTURE",
 }
