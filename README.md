@@ -23,6 +23,20 @@ isolates a single question about behaviour and answers it in the smallest
 system that can — not a bigger model each time, but a sequence of capability
 boundaries, each one earned experimentally before the next is attempted.
 
+None of this began with us. nopsta stored a working Commodore 64 on Ethereum
+in 2022 and left it open for others to use, and every Chamber runs on it. We
+are trying to leave the same kind of opening.
+
+Each work is built so that it can be built on. The program can be pulled out
+and run elsewhere. Where there is a mind, its weights, every revision of them
+and the lessons that produced them can be read by anyone, and anyone can run
+the same replay the contract uses to judge a save. No owner, minter or
+upgrade path remains that could repoint, replace or take down any of it.
+
+What is not yet exposed is a way to ask a mind what it would do; for now you
+run the learner yourself. Whether anyone builds on this is not ours to say.
+Making sure they can is the part we answer for.
+
 <!-- github-only -->
 **Website — [chamber64.com](https://chamber64.com/)**
 
