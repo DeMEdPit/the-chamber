@@ -123,6 +123,10 @@ CSS = """
 .fig figcaption{color:var(--muted);font-size:.8rem;margin-top:8px}
 .fig figcaption a{color:var(--accent2);font-size:.78rem}
 .find{border-top:1px solid var(--line);padding:22px 0 6px}
+/* Arriving from a shared link should not park the heading against the top
+   edge of the window. */
+.find,.act,.seam{scroll-margin-top:28px}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 /* :is(h3,h4) because a finding's heading level depends on where it sits -
    h4 inside a seam, h3 under the method or the series. These rules were
    scoped to h3 alone, so every finding inside a seam lost its ID spacing
@@ -259,6 +263,16 @@ def card(f, level=3):
 DIM = re.compile(r'width="(\d+)" height="(\d+)"')
 
 
+def slug(text):
+    """A stable, typeable fragment for a section heading.
+
+    "C64 ↔ Ethereum" becomes "c64-ethereum" - the arrow and the spaces are
+    not things anyone wants in a URL they are about to paste somewhere.
+    """
+    out = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return out or "section"
+
+
 def para(value, cls="arch-p"):
     """A paragraph of prose, or a visible admission that it is not written.
 
@@ -352,7 +366,8 @@ def main():
 
     # --- act 2: the map. 01 establishes the model; 07 is a comparison, and
     # is subordinated rather than given a second full-strength slot.
-    parts.append(f'<section class="act"><h2>{_html.escape(prose.SYSTEM_TITLE)}</h2>')
+    parts.append(f'<section class="act" id="{slug(prose.SYSTEM_TITLE)}">'
+                 f'<h2>{_html.escape(prose.SYSTEM_TITLE)}</h2>')
     parts.append(para(prose.SYSTEM))
     parts.append(figure("01-the-seams.svg"))
     parts.append(f'<p class="fig-lead">{_html.escape(prose.COMPARE_LABEL)}</p>')
@@ -361,13 +376,14 @@ def main():
     parts.append("</section>")
 
     # --- act 3: the five real seams
-    parts.append(f'<section class="act"><h2>{_html.escape(prose.SEAMS_TITLE)}</h2>')
+    parts.append(f'<section class="act" id="{slug(prose.SEAMS_TITLE)}">'
+                 f'<h2>{_html.escape(prose.SEAMS_TITLE)}</h2>')
     if prose.SEAMS_INTRO:
         parts.append(para(prose.SEAMS_INTRO))
     for name in sect("seam"):
         rows = findings_of(name)
         copy = prose.SEAM.get(name, {})
-        parts.append('<section class="seam">')
+        parts.append(f'<section class="seam" id="{slug(name)}">')
         parts.append(f'<h3>{_html.escape(name)}'
                      f'<span class="count">{len(rows)} finding'
                      f'{"" if len(rows) == 1 else "s"}</span></h3>')
@@ -387,7 +403,8 @@ def main():
              ["06-what-each-release-added.svg"])):
         for name in sect(kind):
             rows = findings_of(name)
-            parts.append(f'<section class="act"><h2>{_html.escape(title)}'
+            parts.append(f'<section class="act" id="{slug(title)}">'
+                         f'<h2>{_html.escape(title)}'
                          f'<span class="count">{len(rows)} finding'
                          f'{"" if len(rows) == 1 else "s"}</span></h2>')
             parts.append(para(copy))
@@ -398,7 +415,8 @@ def main():
 
     # --- act 5: the ending. Every finding is behind the reader now; this is
     # the machinery that makes them worth anything.
-    parts.append(f'<section class="act"><h2>{_html.escape(prose.APPARATUS_TITLE)}</h2>')
+    parts.append(f'<section class="act" id="{slug(prose.APPARATUS_TITLE)}">'
+                 f'<h2>{_html.escape(prose.APPARATUS_TITLE)}</h2>')
     parts.append(figure("02-the-layers.svg"))
     parts.append(para(prose.APPARATUS))
     parts.append("</section>")
