@@ -10,33 +10,17 @@
   .cella{font-size:9.5px;fill:#9dffd0}
   .dim{font-size:11.5px;fill:#aaa9a3} .tag{font-size:10px;letter-spacing:.4px}
 
-  /* Hover or focus a release to dim the others. The hit layer comes first so
-     the sibling combinator can reach the columns; the columns never take the
-     pointer themselves. Shown as a plain image none of it fires, and the
-     default state - everything lit - is what you see.
-
-     A click PINS a column (data-sel on the root) and clicking it again
-     unpins it. That part needs script, because focusing an already-focused
-     element cannot unfocus it. Without script the hover and focus rules
-     below still work and ALL still resets, so nothing here depends on it. */
+  /* The hit layer comes first in document order so the sibling combinator
+     can reach the columns; the columns never take the pointer themselves.
+     Shown as a plain image none of it fires, and the default state -
+     everything lit - is what you see. */
   .col{pointer-events:none;transition:opacity .15s}
-  .hit{fill:none;pointer-events:all;cursor:pointer;outline:none}
-  .hit:focus-visible{stroke:#9dffd0;stroke-opacity:.6;stroke-width:2}
-  svg:not([data-sel]) #hit-c0:hover ~ .col:not(.c0),
-  svg:not([data-sel]) #hit-c0:focus-visible ~ .col:not(.c0),
-  svg[data-sel="0"] .col:not(.c0) { opacity:.3 }
-  svg:not([data-sel]) #hit-c1:hover ~ .col:not(.c1),
-  svg:not([data-sel]) #hit-c1:focus-visible ~ .col:not(.c1),
-  svg[data-sel="1"] .col:not(.c1) { opacity:.3 }
-  svg:not([data-sel]) #hit-c2:hover ~ .col:not(.c2),
-  svg:not([data-sel]) #hit-c2:focus-visible ~ .col:not(.c2),
-  svg[data-sel="2"] .col:not(.c2) { opacity:.3 }
-  svg:not([data-sel]) #hit-c3:hover ~ .col:not(.c3),
-  svg:not([data-sel]) #hit-c3:focus-visible ~ .col:not(.c3),
-  svg[data-sel="3"] .col:not(.c3) { opacity:.3 }
-  svg:not([data-sel]) #hit-c4:hover ~ .col:not(.c4),
-  svg:not([data-sel]) #hit-c4:focus-visible ~ .col:not(.c4),
-  svg[data-sel="4"] .col:not(.c4) { opacity:.3 }
+  .hit{fill:none;pointer-events:all}
+  #hit-c0:hover ~ .col:not(.c0) { opacity:.3 }
+  #hit-c1:hover ~ .col:not(.c1) { opacity:.3 }
+  #hit-c2:hover ~ .col:not(.c2) { opacity:.3 }
+  #hit-c3:hover ~ .col:not(.c3) { opacity:.3 }
+  #hit-c4:hover ~ .col:not(.c4) { opacity:.3 }
 </style>
 <rect x="0" y="0" width="1080" height="880" fill="#0b0b0b"/>
 <text class="t title" x="40" y="42">What each release added</text>
@@ -68,16 +52,12 @@
 <text class="t row" x="48" y="675">A chain of revisions, each with a parent</text>
 <rect x="40" y="692" width="1000" height="34" fill="#101010"/>
 <text class="t row" x="48" y="713">A token that changes after it is minted</text>
-<rect x="40" y="108" width="84" height="26" rx="4" fill="#141414" stroke="#2e2e2e"/>
-<text class="t tag" x="82" y="125" text-anchor="middle" fill="#aaa9a3">ALL</text>
-<text class="t tag" x="136" y="118" fill="#8a8984">hover or tap a release to</text>
-<text class="t tag" x="136" y="132" fill="#8a8984">dim the others · ALL resets</text>
-<rect class="hit" id="hit-all" x="40" y="108" width="84" height="26" rx="4" tabindex="0"><title>show every release</title></rect>
-<rect class="hit" id="hit-c0" x="408" y="96" width="120" height="632" rx="4" tabindex="0"><title>minimal64</title></rect>
-<rect class="hit" id="hit-c1" x="536" y="96" width="120" height="632" rx="4" tabindex="0"><title>READY 64</title></rect>
-<rect class="hit" id="hit-c2" x="664" y="96" width="120" height="632" rx="4" tabindex="0"><title>OpenROMs 1</title></rect>
-<rect class="hit" id="hit-c3" x="792" y="96" width="120" height="632" rx="4" tabindex="0"><title>The Chamber</title></rect>
-<rect class="hit" id="hit-c4" x="920" y="96" width="120" height="632" rx="4" tabindex="0"><title>Perception</title></rect>
+<text class="t tag" x="40" y="125" fill="#8a8984">hover a release to dim the others</text>
+<rect class="hit" id="hit-c0" x="408" y="96" width="120" height="632" rx="4"><title>minimal64</title></rect>
+<rect class="hit" id="hit-c1" x="536" y="96" width="120" height="632" rx="4"><title>READY 64</title></rect>
+<rect class="hit" id="hit-c2" x="664" y="96" width="120" height="632" rx="4"><title>OpenROMs 1</title></rect>
+<rect class="hit" id="hit-c3" x="792" y="96" width="120" height="632" rx="4"><title>The Chamber</title></rect>
+<rect class="hit" id="hit-c4" x="920" y="96" width="120" height="632" rx="4"><title>Perception</title></rect>
 <g class="col c0">
 <rect x="408" y="96" width="120" height="54" rx="4" fill="#141414" stroke="#2a4667"/>
 <text class="t hd" x="468.0" y="121" text-anchor="middle" fill="#6aa9ff">minimal64</text>
@@ -158,26 +138,4 @@
 <text class="t dim" x="40" y="786">OpenROMs pressing 1 is a side branch, not a rung: it publishes firmware, and neither artwork loads it — both boot bare.</text>
 <text class="t dim" x="40" y="808">The Chamber imports READY 64's Launcher verbatim and pins its bytecode. Base64 has now been written three times, each faster.</text>
 <text class="t dim" x="40" y="830">The escalation is in the hole: 42 bytes of facts the chain already had, then 834 bytes it had to compute and could be wrong about.</text>
-<script><![CDATA[
-(function(){
-  var s = document.getElementById("rel");
-  function toggle(el){
-    if (!el) return;
-    if (el.id === "hit-all") { s.removeAttribute("data-sel"); return; }
-    var n = el.id.slice(5).replace("c", "");
-    if (s.getAttribute("data-sel") === n) s.removeAttribute("data-sel");
-    else s.setAttribute("data-sel", n);
-  }
-  s.addEventListener("click", function(e){
-    var el = e.target.closest ? e.target.closest(".hit") : null;
-    toggle(el);
-    if (el && el.blur) el.blur();   // a click must not leave focus behind
-  });
-  s.addEventListener("keydown", function(e){
-    if (e.key !== "Enter" && e.key !== " ") return;
-    e.preventDefault();
-    toggle(document.activeElement);
-  });
-})();
-]]></script>
 </svg>
