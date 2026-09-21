@@ -72,6 +72,10 @@ CSS = """
    reads as a label rather than a title. H3 is a seam inside the third act.
    They used to be the same level, which said the method was a seam. */
 .act{margin:76px 0 0}
+.act > h2 a,.seam > h3 a{color:inherit;border:0;text-decoration:none}
+.act > h2 a:hover,.seam > h3 a:hover,
+.act > h2 a:focus-visible,.seam > h3 a:focus-visible{color:var(--accent)}
+.seam > h3 a:hover,.seam > h3 a:focus-visible{color:var(--ink)}
 .act > h2{font:700 .82rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
   letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
   margin:0 0 22px;padding-bottom:13px;border-bottom:1px solid var(--line);
@@ -133,15 +137,16 @@ CSS = """
    and fell back to the page's default link styling: a bright underlined
    title that looked like it went somewhere. */
 .find :is(h3,h4){font-size:1.02rem;margin:0 0 10px;line-height:1.35;font-weight:700}
-.find :is(h3,h4) .fid{color:var(--accent);
+/* The ID is the permalink. The padding is not decoration: the visible
+   string is about 11px tall, and a touch target needs to be at least 24px
+   (WCAG 2.5.8). Negative margins cancel it so nothing moves. */
+.find :is(h3,h4) a.fid{color:var(--accent);
   font:700 .74rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
-  letter-spacing:.09em;margin-right:10px;vertical-align:.1em}
-/* The title IS a link - to its own anchor, so a finding can be cited - but
-   it is not a place you travel to, so it does not advertise itself as one.
-   The hover colour is the whole affordance. */
-.find :is(h3,h4) a.anchor{color:inherit;border:0;text-decoration:none}
-.find :is(h3,h4) a.anchor:hover,
-.find :is(h3,h4) a.anchor:focus-visible{color:var(--accent2)}
+  letter-spacing:.09em;vertical-align:.1em;text-decoration:none;border:0;
+  padding:7px 6px;margin:-7px 4px -7px -6px;border-radius:4px;
+  transition:background .15s,color .15s}
+.find :is(h3,h4) a.fid:hover,
+.find :is(h3,h4) a.fid:focus-visible{background:#11241a;color:var(--accent2)}
 .find p{margin:0 0 12px}
 .find .meta{color:var(--muted);font-size:.86rem;margin:0 0 6px}
 .find .meta b{color:var(--ink);font-weight:400}
@@ -246,9 +251,16 @@ def card(f, level=3):
     it.
     """
     anchor = f["id"].lower()
+    # The ID is the permalink, not the title. F-012 is not a place on a page
+    # - it is a citation handle for a claim that carries a receipt and a
+    # falsifier, and it already reads as one. Making it the link introduces
+    # no new visual vocabulary, and a reader who meets "see F-012" elsewhere
+    # knows what to reach for. The title is plain text: two links to one
+    # destination in one heading is one too many.
+    label = _html.escape(f"Permalink to {f['id']}: {f['title']}", quote=True)
     bits = [f'<article class="find" id="{anchor}">',
-            f'<h{level}><span class="fid">{f["id"]}</span>'
-            f'<a class="anchor" href="#{anchor}">{rich(f["title"])}</a></h{level}>',
+            f'<h{level}><a class="fid" href="#{anchor}" aria-label="{label}">'
+            f'{f["id"]}</a>{rich(f["title"])}</h{level}>',
             f'<p class="claim">{rich(f["claim"])}</p>']
     if f.get("receipt"):
         bits.append(f'<p class="meta"><b>Receipt.</b> {rich(f["receipt"])}</p>')
@@ -367,7 +379,8 @@ def main():
     # --- act 2: the map. 01 establishes the model; 07 is a comparison, and
     # is subordinated rather than given a second full-strength slot.
     parts.append(f'<section class="act" id="{slug(prose.SYSTEM_TITLE)}">'
-                 f'<h2>{_html.escape(prose.SYSTEM_TITLE)}</h2>')
+                 f'<h2><a href="#{slug(prose.SYSTEM_TITLE)}">'
+                 f'{_html.escape(prose.SYSTEM_TITLE)}</a></h2>')
     parts.append(para(prose.SYSTEM))
     parts.append(figure("01-the-seams.svg"))
     parts.append(f'<p class="fig-lead">{_html.escape(prose.COMPARE_LABEL)}</p>')
@@ -377,14 +390,15 @@ def main():
 
     # --- act 3: the five real seams
     parts.append(f'<section class="act" id="{slug(prose.SEAMS_TITLE)}">'
-                 f'<h2>{_html.escape(prose.SEAMS_TITLE)}</h2>')
+                 f'<h2><a href="#{slug(prose.SEAMS_TITLE)}">'
+                 f'{_html.escape(prose.SEAMS_TITLE)}</a></h2>')
     if prose.SEAMS_INTRO:
         parts.append(para(prose.SEAMS_INTRO))
     for name in sect("seam"):
         rows = findings_of(name)
         copy = prose.SEAM.get(name, {})
         parts.append(f'<section class="seam" id="{slug(name)}">')
-        parts.append(f'<h3>{_html.escape(name)}'
+        parts.append(f'<h3><a href="#{slug(name)}">{_html.escape(name)}</a>'
                      f'<span class="count">{len(rows)} finding'
                      f'{"" if len(rows) == 1 else "s"}</span></h3>')
         t = copy.get("tension")
@@ -404,7 +418,7 @@ def main():
         for name in sect(kind):
             rows = findings_of(name)
             parts.append(f'<section class="act" id="{slug(title)}">'
-                         f'<h2>{_html.escape(title)}'
+                         f'<h2><a href="#{slug(title)}">{_html.escape(title)}</a>'
                          f'<span class="count">{len(rows)} finding'
                          f'{"" if len(rows) == 1 else "s"}</span></h2>')
             parts.append(para(copy))
@@ -416,7 +430,8 @@ def main():
     # --- act 5: the ending. Every finding is behind the reader now; this is
     # the machinery that makes them worth anything.
     parts.append(f'<section class="act" id="{slug(prose.APPARATUS_TITLE)}">'
-                 f'<h2>{_html.escape(prose.APPARATUS_TITLE)}</h2>')
+                 f'<h2><a href="#{slug(prose.APPARATUS_TITLE)}">'
+                 f'{_html.escape(prose.APPARATUS_TITLE)}</a></h2>')
     parts.append(figure("02-the-layers.svg"))
     parts.append(para(prose.APPARATUS))
     parts.append("</section>")
