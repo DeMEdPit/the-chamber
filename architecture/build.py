@@ -18,6 +18,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
 from stats import CSS as STATS_CSS, stats  # noqa: E402
+import prose  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 TITLE = "The Chamber — Architecture"
@@ -37,12 +38,14 @@ BANNER = False       # the seams artwork as a header strip (OFF: it is the
 STATS = True         # the apparatus block, in the black papers' place
 
 # A diagram belongs to a seam, or to the two framing sections.
+# Which diagram belongs inside which seam. 01 and 07 open the page, 06
+# belongs to the series and 02 to the apparatus, so they are placed by act
+# rather than listed here.
 MAP = {
-    "C64 ↔ Ethereum": [("05-where-the-program-lives.svg",
-                        "The C64 address space beside our program")],
+    "C64 ↔ Ethereum": [("05-where-the-program-lives.svg", None)],
     "Process ↔ record — the learner": [
-        ("03-a-save.svg", "A save, end to end"),
-        ("04-three-implementations.svg", "One learner, written three times")],
+        ("03-a-save.svg", None),
+        ("04-three-implementations.svg", None)],
 }
 LEDE = ("Two machines — a Commodore 64 from 1982 and Ethereum from 2015 — and "
         "the seams between them. Everything below was found by building, and "
@@ -65,10 +68,45 @@ BANNER_HTML = ('<figure class="seams-banner">'
 
 CSS = """
 .arch-lede{font-size:1.24rem;line-height:1.55;color:var(--ink);max-width:54ch;margin:0 0 34px}
-.seam{margin:62px 0 0}
-.seam > h2{font-size:1.12rem;letter-spacing:.06em;text-transform:none;margin:0 0 6px;
-  color:var(--accent2)}
-.seam > .about{color:var(--muted);font-size:.94rem;margin:0 0 26px;max-width:62ch}
+/* FIVE ACTS. H2 is an act - THE SEAMS, THE METHOD, THE APPARATUS - and
+   reads as a label rather than a title. H3 is a seam inside the third act.
+   They used to be the same level, which said the method was a seam. */
+.act{margin:76px 0 0}
+.act > h2{font:700 .82rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+  margin:0 0 22px;padding-bottom:13px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:baseline;gap:18px}
+.seam{margin:52px 0 0}
+.seam > h3{font-size:1.2rem;font-weight:700;letter-spacing:-.01em;margin:0 0 12px;
+  color:var(--accent2);display:flex;justify-content:space-between;
+  align-items:baseline;gap:18px}
+/* the finding count is metadata. It used to be the only thing under the
+   heading, in the exact position where a reader needs to know why the
+   section matters. */
+.count{font:700 .6rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
+  white-space:nowrap;flex:none}
+/* the opposition. The thing the eye lands on under a seam heading. */
+.tension{font-size:1.08rem;line-height:1.5;color:var(--ink);max-width:54ch;
+  margin:0 0 18px}
+.arch-p{max-width:68ch;margin:0 0 15px;line-height:1.62}
+/* Dense technical prose is unreadable at full column width. Claims get an
+   editorial measure; receipts may run wider because code paths demand it. */
+.find .claim{max-width:70ch}
+.find .meta{max-width:88ch}
+/* The second seams diagram is a comparison, not a second prerequisite. */
+.fig-lead{font:700 .64rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.17em;text-transform:uppercase;color:var(--muted);margin:38px 0 10px}
+.fig-sub{max-width:76%}
+.fig-sub .fig-pan object,.fig-sub .fig-pan img{border-color:#1d1d1d}
+/* What assistive technology gets instead of the picture. */
+.fig-desc{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Unwritten copy should LOOK unwritten. */
+.todo{max-width:68ch;margin:0 0 15px;padding:13px 15px;border-radius:8px;
+  border:1px dashed #4d3c12;background:#14100405;color:#c9a227;
+  font:.84rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+.todo::before{content:"TO WRITE — ";letter-spacing:.12em;font-weight:700}
 .fig{margin:0 0 30px}
 .fig-pan object,.fig-pan img{width:100%;height:auto;display:block;
   border:1px solid var(--line);border-radius:6px;background:#0b0b0b;
@@ -100,6 +138,9 @@ CSS = """
    Never ENLARGED past the size it was drawn: min(680px, its own width). */
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
+  .fig-sub{max-width:none}
+  .act > h2,.seam > h3{display:block}
+  .count{display:block;margin-top:5px}
   .fig-pan{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .fig-pan object,.fig-pan img{min-width:min(680px,var(--nat))}
   .fig figcaption a::before{content:"— "}
@@ -182,7 +223,7 @@ def card(f):
     bits = [f'<article class="find" id="{anchor}">',
             f'<h3><span class="fid">{f["id"]}</span>'
             f'<a class="anchor" href="#{anchor}">{rich(f["title"])}</a></h3>',
-            f'<p>{rich(f["claim"])}</p>']
+            f'<p class="claim">{rich(f["claim"])}</p>']
     if f.get("receipt"):
         bits.append(f'<p class="meta"><b>Receipt.</b> {rich(f["receipt"])}</p>')
     if f.get("falsified"):
@@ -196,7 +237,19 @@ def card(f):
 DIM = re.compile(r'width="(\d+)" height="(\d+)"')
 
 
-def figure(src, caption):
+def para(value, cls="arch-p"):
+    """A paragraph of prose, or a visible admission that it is not written.
+
+    Unwritten copy should LOOK unwritten on the page. Absent copy is
+    invisible in a build and invisible in review; a marker is neither.
+    """
+    if isinstance(value, tuple) and value and value[0] == prose.TODO:
+        return f'<p class="todo">{_html.escape(value[1])}</p>'
+    return "".join(f'<p class="{cls}">{rich(b)}</p>'
+                   for b in value.strip().split("\n\n"))
+
+
+def figure(src, caption=None, sub=False):
     """An <object>, not an <img>.
 
     An SVG loaded through <img> is a flat picture: no hover, no tap, no
@@ -208,6 +261,14 @@ def figure(src, caption):
     The aspect ratio is read from the file so the box never has to be told
     twice and cannot drift from the drawing.
     """
+    meta = prose.FIG.get(src, {})
+    caption = caption or meta.get("caption", src)
+    # The description is what assistive technology gets INSTEAD of the
+    # picture, so it describes the relationship rather than transcribing the
+    # labels. Visually hidden - the caption is the visible line. Flip
+    # .fig-desc to a normal block to put it on the page for everyone.
+    desc = (f'<span class="fig-desc">{_html.escape(meta["desc"])}</span>'
+            if meta.get("desc") else "")
     svg = (ROOT / "diagrams" / src).read_text(encoding="utf-8")
     w, h = DIM.search(svg).groups()
     cap = _html.escape(caption)
@@ -216,7 +277,7 @@ def figure(src, caption):
     # must sit outside it so it is neither panned nor faded with the drawing.
     a11y = (f' tabindex="0" role="group" aria-label="{cap} — pans sideways"'
             if SCROLL_A11Y else "")
-    return (f'<figure class="fig">'
+    return (f'<figure class="fig{" fig-sub" if sub else ""}">'
             f'<div class="fig-pan"{a11y}>'
             f'<object type="image/svg+xml" data="../diagrams/{src}" '
             f'style="aspect-ratio:{w}/{h};--nat:{w}px" aria-label="{cap}">'
@@ -225,34 +286,81 @@ def figure(src, caption):
             f'</object></div>'
             f'<figcaption>{_html.escape(caption)} '
             f'<a href="../diagrams/{src}" target="_blank" rel="noopener">open full size</a>'
-            f'</figcaption></figure>')
+            f'{desc}</figcaption></figure>')
 
 
 def main():
     data = json.loads((HERE / "findings.json").read_text(encoding="utf-8"))
     css = (ROOT / "black-paper" / "paper.css").read_text(encoding="utf-8")
 
-    parts = [f'<p class="arch-lede">{rich(LEDE)}</p>',
-             figure("01-the-seams.svg",
-                    "The seams: four machines, each inside the next"),
-             figure("07-the-seams-chamber.svg",
-                    "The same walls in the Chamber — one arrow instead of three")]
+    # FIVE ACTS. The object, the map, the seams, what is not a seam, the
+    # apparatus. The reader learns, in order: what is this thing, what is a
+    # seam, where are they, what happened at each one, what did we learn
+    # that was not at a seam, and how would you know any of it is true.
+    #
+    # The page used to open with six unexplained numbers, a single thesis
+    # sentence, and then two near-duplicate diagrams at equal weight - two
+    # full screens before the first finding.
+    def sect(kind):
+        return [x["name"] for x in data["sections"] if x["kind"] == kind]
 
-    for seam in data["seams"]:
-        rows = [f for f in data["findings"] if f["seam"] == seam]
-        parts.append(f'<section class="seam"><h2>{_html.escape(seam)}</h2>')
-        parts.append(f'<p class="about">{len(rows)} finding'
-                     f'{"" if len(rows) == 1 else "s"}.</p>')
-        for src, cap in MAP.get(seam, []):
-            parts.append(figure(src, cap))
+    def findings_of(name):
+        return [f for f in data["findings"] if f["seam"] == name]
+
+    parts = [para(prose.OPENING, "arch-lede")]
+    if STATS:
+        parts.append(stats(data["apparatus"]))
+
+    # --- act 2: the map. 01 establishes the model; 07 is a comparison, and
+    # is subordinated rather than given a second full-strength slot.
+    parts.append(f'<section class="act"><h2>{_html.escape(prose.SYSTEM_TITLE)}</h2>')
+    parts.append(para(prose.SYSTEM))
+    parts.append(figure("01-the-seams.svg"))
+    parts.append(f'<p class="fig-lead">{_html.escape(prose.COMPARE_LABEL)}</p>')
+    parts.append(para(prose.COMPARE))
+    parts.append(figure("07-the-seams-chamber.svg", sub=True))
+    parts.append("</section>")
+
+    # --- act 3: the five real seams
+    parts.append(f'<section class="act"><h2>{_html.escape(prose.SEAMS_TITLE)}</h2>')
+    parts.append(para(prose.SEAMS_INTRO))
+    for name in sect("seam"):
+        rows = findings_of(name)
+        copy = prose.SEAM.get(name, {})
+        parts.append('<section class="seam">')
+        parts.append(f'<h3>{_html.escape(name)}'
+                     f'<span class="count">{len(rows)} finding'
+                     f'{"" if len(rows) == 1 else "s"}</span></h3>')
+        t = copy.get("tension")
+        parts.append(para(t, "tension") if t else "")
+        parts.append(para(copy.get("body", ("", ""))) if copy.get("body") else "")
+        for src, _cap in MAP.get(name, []):
+            parts.append(figure(src))
         parts.extend(card(f) for f in rows)
         parts.append("</section>")
+    parts.append("</section>")
 
-    parts.append('<section class="seam"><h2>How it is built</h2>'
-                 '<p class="about">The parts, and what each release added.</p>')
-    parts.append(figure("02-the-layers.svg", "The eight layers: artwork and apparatus"))
-    parts.append(figure("06-what-each-release-added.svg",
-                        "What each release added, and what it carried forward"))
+    # --- act 4: the two categories the notebook says are NOT seams
+    for kind, title, copy, figs in (
+            ("method", prose.METHOD_TITLE, prose.METHOD, []),
+            ("series", prose.SERIES_TITLE, prose.SERIES,
+             ["06-what-each-release-added.svg"])):
+        for name in sect(kind):
+            rows = findings_of(name)
+            parts.append(f'<section class="act"><h2>{_html.escape(title)}'
+                         f'<span class="count">{len(rows)} finding'
+                         f'{"" if len(rows) == 1 else "s"}</span></h2>')
+            parts.append(para(copy))
+            for src in figs:
+                parts.append(figure(src))
+            parts.extend(card(f) for f in rows)
+            parts.append("</section>")
+
+    # --- act 5: the ending. Every finding is behind the reader now; this is
+    # the machinery that makes them worth anything.
+    parts.append(f'<section class="act"><h2>{_html.escape(prose.APPARATUS_TITLE)}</h2>')
+    parts.append(figure("02-the-layers.svg"))
+    parts.append(para(prose.APPARATUS))
     parts.append("</section>")
 
     sha = data["source_commit"]
@@ -299,7 +407,6 @@ h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
 <main>
 <h1>Architecture</h1>
 {BANNER_HTML if BANNER else ""}
-{stats(data["apparatus"]) if STATS else ""}
 {"".join(parts)}
 {footer(CURRENT)}
 </main>

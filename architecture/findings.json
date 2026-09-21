@@ -1,19 +1,48 @@
 {
  "generated": "2026-09-21",
- "source_commit": "675f37625b790934e2741eef56996bf02339c6b8",
+ "source_commit": "cc66e9f498c7db5429271cc3926da4a87181c0d6",
  "source_repo": "DeMEdPit/akalabeth (private)",
  "counts": {
   "total": 25,
   "public": 22,
   "withheld": 3
  },
+ "sections": [
+  {
+   "name": "C64 ↔ Ethereum",
+   "kind": "seam"
+  },
+  {
+   "name": "C64 ↔ browser",
+   "kind": "seam"
+  },
+  {
+   "name": "Ethereum ↔ browser",
+   "kind": "seam"
+  },
+  {
+   "name": "Ethereum ↔ reader",
+   "kind": "seam"
+  },
+  {
+   "name": "Process ↔ record — the learner",
+   "kind": "seam"
+  },
+  {
+   "name": "The method itself",
+   "kind": "method"
+  },
+  {
+   "name": "The series arc",
+   "kind": "series"
+  }
+ ],
  "seams": [
   "C64 ↔ Ethereum",
   "C64 ↔ browser",
   "Ethereum ↔ browser",
   "Ethereum ↔ reader",
-  "Process ↔ record — the learner",
-  "The method itself"
+  "Process ↔ record — the learner"
  ],
  "findings": [
   {
@@ -237,7 +266,7 @@
   {
    "id": "F-024",
    "title": "OpenROMs pressing 1 is a side branch, not a rung",
-   "seam": "The method itself",
+   "seam": "The series arc",
    "claim": "The series reads as a ladder — a machine, then firmware, then a hole, then a learner — but the firmware step is not on the ladder. **Neither artwork loads it.** The Chamber's page does not even bind the ROM hooks; the Perception page binds them and never calls them. Both boot bare on minimal64's own minimal KERNAL, which is what makes nearly the whole 64 KB available (F-002). The pressing publishes firmware as its own finished object and doubles what the *workbench* can run; it is not a dependency of anything shipped. Two things the same look reveals: the Chamber **imports READY 64's `Launcher` verbatim** and pins its creation bytecode, so that is real reuse rather than a rewrite; and base64 has now been written three times — `Codec`, then inline in `Chamber.sol`, then `PerceptionCodec` — each faster than the last (F-003).",
    "receipt": "`chamber/script/ChamberBase.s.sol:6` (`import {Launcher} from \"rehearsal/Launcher.sol\"`) and `:66` (the bytecode pin); no `m64_setKernalROM` call in `player/tail-console.template.html` or `chamber-v2/page/tail.js` — bound at `chamber-v2/page/tail.js:31`, never invoked.",
    "falsified": "A ROM hook actually called on either shipped page.",
@@ -252,7 +281,7 @@
   ],
   [
    "Seams",
-   "6"
+   "5"
   ],
   [
    "The learner",
