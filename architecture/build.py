@@ -76,25 +76,26 @@ CSS = """
 .act > h2 a:hover,.seam > h3 a:hover,
 .act > h2 a:focus-visible,.seam > h3 a:focus-visible{color:var(--accent)}
 .seam > h3 a:hover,.seam > h3 a:focus-visible{color:var(--ink)}
+/* The count sits UNDER the heading at every width, not off to the right on
+   desktop. A number pushed to the far end of a wide column is a long way
+   from the thing it counts, and the eye has to travel there and back. */
 .act > h2{font:700 .82rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
   letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
-  margin:0 0 22px;padding-bottom:13px;border-bottom:1px solid var(--line);
-  display:flex;justify-content:space-between;align-items:baseline;gap:18px}
-.seam{margin:52px 0 0}
-.seam > h3{font-size:1.2rem;font-weight:700;letter-spacing:-.01em;margin:0 0 12px;
-  color:var(--accent2);display:flex;justify-content:space-between;
-  align-items:baseline;gap:18px}
+  margin:0 0 30px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.seam{margin:58px 0 0}
+.seam > h3{font-size:1.2rem;font-weight:700;letter-spacing:-.01em;
+  margin:0 0 30px;color:var(--accent2)}
 /* the finding count is metadata. It used to be the only thing under the
    heading, in the exact position where a reader needs to know why the
    section matters. */
-.count{font:700 .6rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
-  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
-  white-space:nowrap;flex:none}
+.count{display:block;margin-top:10px;
+  font:700 .6rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
 /* the opposition. The thing the eye lands on under a seam heading. */
 /* text-wrap:balance is for exactly this: two or three lines that should
    break evenly rather than leaving one word alone on the last line. */
 .tension{font-size:1.08rem;line-height:1.5;color:var(--ink);max-width:56ch;
-  margin:0 0 18px;text-wrap:balance}
+  margin:0 0 26px;text-wrap:balance}
 .arch-p{max-width:68ch;margin:0 0 15px;line-height:1.62}
 /* Dense technical prose is unreadable at full column width. Claims get an
    editorial measure; receipts may run wider because code paths demand it. */
@@ -162,8 +163,7 @@ CSS = """
    Never ENLARGED past the size it was drawn: min(680px, its own width). */
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
-  .act > h2,.seam > h3{display:block}
-  .count{display:block;margin-top:5px}
+
   .fig-pan{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .fig-pan object,.fig-pan img{min-width:min(680px,var(--nat))}
   .fig figcaption a::before{content:"— "}
