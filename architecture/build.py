@@ -87,8 +87,10 @@ CSS = """
   letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
   white-space:nowrap;flex:none}
 /* the opposition. The thing the eye lands on under a seam heading. */
-.tension{font-size:1.08rem;line-height:1.5;color:var(--ink);max-width:54ch;
-  margin:0 0 18px}
+/* text-wrap:balance is for exactly this: two or three lines that should
+   break evenly rather than leaving one word alone on the last line. */
+.tension{font-size:1.08rem;line-height:1.5;color:var(--ink);max-width:56ch;
+  margin:0 0 18px;text-wrap:balance}
 .arch-p{max-width:68ch;margin:0 0 15px;line-height:1.62}
 /* Dense technical prose is unreadable at full column width. Claims get an
    editorial measure; receipts may run wider because code paths demand it. */

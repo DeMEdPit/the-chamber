@@ -53,8 +53,8 @@ def todo(what):
 # change over time is the actual subject: "A browser has no reason to
 # preserve the behaviour of either."
 OPENING = """
-A Commodore 64 program, a Commodore 64 in software to run it on, and the
-page you look at both through are all held in Ethereum contracts. Ask for
+A Commodore 64 program, a Commodore 64 recreated in software to run it,
+and the page you look at both through are all held in Ethereum contracts. Ask for
 one of these tokens and those pieces are assembled at the moment you ask.
 Nothing we control is needed off the chain to put them back together.
 
@@ -69,8 +69,8 @@ them. We call those borders seams, and the page is arranged around them.
 SYSTEM_TITLE = "The system"
 SYSTEM = """
 Four systems, one inside the next. Ethereum on the outside; then the
-browser; then the Commodore 64 the browser starts; and at the centre,
-inside the program the machine is running, whatever that collection put in
+browser; then the Commodore 64 the browser starts. At the centre, inside
+the program running on that machine, sits whatever the collection put in
 the gap left open for it.
 
 A seam is a border in that picture: the place where one system hands
@@ -100,52 +100,109 @@ SEAMS_INTRO = None
 SEAM = {
     "C64 ↔ Ethereum": {
         "tension": "One machine rations address space. The other rations computation.",
-        "body": todo("60-140 words. The two ceilings, in the reader's terms. "
-                     "Stop before F-001's discovery that the binding one flips."),
+        "body": """
+A Commodore 64 has sixty-four kilobytes of address space and a memory map
+that was settled in 1982. Whatever you want the machine to do has to fit
+inside that, and the machine's own operating system is already living
+there.
+
+Ethereum's ceiling is not space but work. Every operation a contract
+performs costs *gas*, and only so much of it fits in a transaction or a
+call. Ask for too much at once and nothing happens at all.
+
+Put one piece of work across both and the question "does it fit?" stops
+having a single answer.
+""",
     },
     "C64 ↔ browser": {
-        "tension": todo("the opposition, one line"),
-        "body": todo("What the browser is to the machine, and why a runtime "
-                     "that can never be patched changes who has to be careful."),
+        "tension": "One was finished in 2022 and cannot be edited. "
+                   "The other is rebuilt with every work.",
+        "body": """
+The Commodore 64 here is nopsta's emulator, written in 2022 and stored in
+Ethereum contracts. That is the whole of it — there is no later version and
+no patch. Whatever it does and does not do, it will do and not do for as
+long as the contracts exist.
+
+The page that starts it is ours, and a new one goes out with every work.
+The two sides of this border age differently, and most of what we learned
+here came from finding out what the 2022 machine can actually be asked to
+do.
+""",
     },
     "Ethereum ↔ browser": {
-        "tension": todo("the opposition, one line"),
-        "body": todo("A page frozen on chain meets a browser that keeps "
-                     "moving. Owed from the opening, which cut it: a browser "
-                     "has no reason to preserve the behaviour of either."),
+        "tension": "The page is frozen the day it ships. "
+                   "The browser it opens in is not.",
+        "body": """
+A page stored in a contract is finished the day it goes out. The browser it
+will be opened in is not: browsers change, conventions move, and something
+safe today may not be in ten years. A browser has no reason to preserve the
+behaviour of a machine from 1982, or of a page written in 2026.
+
+So the question at this border is which of those dependencies are actually
+dangerous — and it is easy to worry about the wrong ones.
+""",
     },
     "Ethereum ↔ reader": {
-        "tension": todo("the opposition, one line"),
-        "body": todo("Two ways to ask a contract a question, and only one of "
-                     "them is adjudicated. Stop before F-012 says which."),
+        "tension": "Two ways to ask a contract a question. "
+                   "The same contract answers both.",
+        "body": """
+Asking a contract for a token's artwork costs nothing and happens at once.
+Saving something to that contract costs gas and has to be mined. The same
+contract answers both, which is why most descriptions of on-chain art treat
+them as one thing.
+""",
     },
     "Process ↔ record — the learner": {
-        "tension": todo("the opposition, one line"),
-        "body": todo("Teaching is something that happens. A revision is "
-                     "something that is recorded. The gap between them is "
-                     "what the chain has to close without having been there."),
+        "tension": "Teaching is something that happens. "
+                   "A revision is something that is recorded.",
+        "body": """
+Someone sits at a keyboard and teaches a small learner inside the running
+program. That is an event: it takes time, it happens in one browser, and
+nobody else is present for it. What ends up on Ethereum is not that event.
+It is a record — a starting state, a list of lessons, and a claim about
+what they produced.
+
+The chain was not there. It could not have been. Everything at this border
+is about what can be established afterwards, from the record alone, by
+someone who was not in the room.
+""",
     },
 }
 
 # --------------------------------------------------------------- act 4
 METHOD_TITLE = "The method"
-METHOD = todo(
-    "These came from the way the work was built and checked, rather than "
-    "from a boundary between systems. Say that plainly - it is what keeps "
-    "the seam idea honest, by letting it not explain everything.")
+METHOD = """
+Not every discovery sat on a border. Some came from the way the work was
+built and checked — decisions about tooling, about what to refuse, and
+about how a fact gets from one place to another without changing on the
+way.
+
+They are gathered here rather than forced into a seam. The seam idea is
+more useful for being allowed not to explain everything.
+"""
 
 SERIES_TITLE = "The series"
-SERIES = todo(
-    "Not a seam either: chronology and inheritance. What each release "
-    "added, what it carried forward, and what it deliberately did not do.")
+SERIES = """
+Five things have gone to mainnet, each carrying something the ones before
+it did not have. That sequence is not a seam either. It is chronology, and
+inheritance: what was built new, what was carried forward unchanged, and
+what was built a second time because the first version was not worth
+reusing.
+"""
 
 # --------------------------------------------------------------- act 5
 APPARATUS_TITLE = "The apparatus"
-APPARATUS = todo(
-    "The ending. The reader has now seen every finding; this is the "
-    "machinery that makes them trustworthy, and F-019 is its claim. Roughly "
-    "half the project is the proof of the other half - and that ratio is "
-    "invisible from outside, which is the reason this page exists.")
+# Spare. The page has demonstrated the rigour for several thousand pixels
+# by now and does not need to celebrate it. This returns to F-019 rather
+# than restating it.
+APPARATUS = """
+Three of the layers above make the work. Most of the rest exist so that
+claims about those three can be checked by someone who was not here when
+they were built.
+
+That ratio is what F-019 is about, and it is invisible from outside. It is
+most of the reason this page exists.
+"""
 
 # --------------------------------------------------------- figure captions
 #
