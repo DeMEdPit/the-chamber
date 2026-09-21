@@ -5,7 +5,7 @@ a time, each asking the same question in a new form: what separates behaviour
 that was written from behaviour that was learned?
 
 A working Commodore 64 lives inside Ethereum. Not a picture of one, and not a
-file on a server somewhere: minimal64, an emulator nopsta stored in contracts
+file on a server somewhere: minimal64, an emulator [nopsta](https://nopsta.com) stored in contracts
 in 2022 and left open for others to use, where it has been ever since. Anyone
 can boot it. Nobody has to host it. Every Chamber runs on it.
 
