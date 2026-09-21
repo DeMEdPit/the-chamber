@@ -45,7 +45,7 @@
 </defs>
 <rect x="0" y="0" width="920" height="690" fill="#0b0b0b"/>
 <text class="t title" x="40" y="42">The seams</text>
-<text class="t sub"   x="40" y="63">Four machines, each inside the next. Every finding so far sits on one of these walls.</text>
+<text class="t sub"   x="40" y="63">Four systems, one inside the next. Findings cluster at the borders between them.</text>
 
 <rect class="box"  x="220" y="86"  width="660" height="486" rx="5"/>
 <rect class="box"  x="268" y="138" width="564" height="382" rx="5"/>
@@ -90,6 +90,5 @@
 <text class="t dim" x="40" y="552">judged by every node</text>
 
 <line x1="40" y1="606" x2="880" y2="606" stroke="#262626" stroke-width="1"/>
-<text class="t dim" x="40" y="632">The program crosses every wall: held on Ethereum, served through the browser, run by the C64.</text>
-<text class="t dim" x="40" y="654">Nothing interesting has come from inside one machine.  F-019 – F-023 are about how we work, not a wall.</text>
+<text class="t dim" x="40" y="632">The program crosses every border: held on Ethereum, served through the browser, run by the C64.</text>
 </svg>

@@ -41,20 +41,28 @@ def todo(what):
 
 
 # --------------------------------------------------------------- act 1
+# Two paragraphs, not three. On a phone, three substantial paragraphs
+# before the first visual break is too long a walk - and the fix is fewer
+# words, never smaller type.
+#
+# The opening NAMES seams. The system DEFINES one. That division stops the
+# two saying the same thing a short scroll apart, and it keeps the word in
+# the reader's hands before the stat block says SEAMS 5.
+#
+# Cut from here and owed to the Ethereum ↔ browser seam, where browser
+# change over time is the actual subject: "A browser has no reason to
+# preserve the behaviour of either."
 OPENING = """
-A Commodore 64 program, a Commodore 64 to run it on, and the page you look
-at both through are all held in Ethereum contracts. Ask for one of these
-tokens and those pieces are assembled at the moment you ask. Nothing we
-control is needed off the chain to put them back together.
+A Commodore 64 program, a Commodore 64 in software to run it on, and the
+page you look at both through are all held in Ethereum contracts. Ask for
+one of these tokens and those pieces are assembled at the moment you ask.
+Nothing we control is needed off the chain to put them back together.
 
 That arrangement puts several systems inside one another, and each has
 rules the others have never heard of. A Commodore 64 — the home computer of
 1982 — has no concept of a transaction. Ethereum has no concept of a raster
-line. A browser has no reason to preserve the behaviour of either.
-
-Almost everything on this page was found where two of those systems meet
-and one of them had to satisfy the other. We call those borders seams, and
-the page is arranged around them because that is where the work was.
+line. Almost everything on this page was found at a border between two of
+them. We call those borders seams, and the page is arranged around them.
 """
 
 # --------------------------------------------------------------- act 2
@@ -102,7 +110,9 @@ SEAM = {
     },
     "Ethereum ↔ browser": {
         "tension": todo("the opposition, one line"),
-        "body": todo("A page frozen on chain meets a browser that keeps moving."),
+        "body": todo("A page frozen on chain meets a browser that keeps "
+                     "moving. Owed from the opening, which cut it: a browser "
+                     "has no reason to preserve the behaviour of either."),
     },
     "Ethereum ↔ reader": {
         "tension": todo("the opposition, one line"),
