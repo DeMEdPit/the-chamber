@@ -41,29 +41,50 @@ def todo(what):
 
 
 # --------------------------------------------------------------- act 1
-OPENING = todo(
-    "Two short paragraphs, 120-180 words. Three jobs and no others: what "
-    "this system physically consists of, what a seam is, and why the page "
-    "is arranged around seams. Then the numbers, which now read as evidence "
-    "about something the reader has just met.")
+OPENING = """
+A Commodore 64 program, a Commodore 64 to run it on, and the page you look
+at both through are all held in Ethereum contracts. Ask for one of these
+tokens and those pieces are assembled at the moment you ask. Nothing we
+control is needed off the chain to put them back together.
+
+That arrangement puts several systems inside one another, and each has
+rules the others have never heard of. A Commodore 64 — the home computer of
+1982 — has no concept of a transaction. Ethereum has no concept of a raster
+line. A browser has no reason to preserve the behaviour of either.
+
+Almost everything on this page was found where two of those systems meet
+and one of them had to satisfy the other. We call those borders seams, and
+the page is arranged around them because that is where the work was.
+"""
 
 # --------------------------------------------------------------- act 2
 SYSTEM_TITLE = "The system"
-SYSTEM = todo(
-    "The moment the idea becomes spatial. Four nested systems; the borders "
-    "between them are the seams. Enough to read the diagram below, and not "
-    "one sentence more.")
+SYSTEM = """
+Four systems, one inside the next. Ethereum on the outside; then the
+browser; then the Commodore 64 the browser starts; and at the centre,
+inside the program the machine is running, whatever that collection put in
+the gap left open for it.
+
+A seam is a border in that picture: the place where one system hands
+something to another, and the rules change.
+"""
 
 COMPARE_LABEL = "Compare with the Chamber"
-COMPARE = todo(
-    "One or two sentences. The outer architecture barely changes between "
-    "the two collections; what changes is the path by which behaviour "
-    "enters the work. That is the series' argument, and it is the only "
-    "reason this second diagram is here.")
+# Descriptive, not interpretive. What changed and what it does to the paths
+# is orientation; what the change MEANS belongs to The series, later.
+COMPARE = """
+The outer arrangement is almost unchanged. What differs is the centre, and
+what the centre does to the ways in and out. The Chamber's gap holds a
+stamp, and there is one path to it: a read. Perception's holds a learner,
+and there are three.
+"""
 
 # --------------------------------------------------------------- act 3
 SEAMS_TITLE = "The seams"
-SEAMS_INTRO = todo("One sentence or none, setting up the five that follow.")
+# None. "The following five sections are seams" adds nothing that the first
+# heading and its tension line do not already say. The style sheet allows
+# one sentence or none; this is the none.
+SEAMS_INTRO = None
 
 # Per seam: a tension line, then the orientation. The tension line is the
 # thing the eye lands on under the heading - it replaced "4 findings.",

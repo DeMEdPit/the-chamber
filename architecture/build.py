@@ -97,8 +97,11 @@ CSS = """
 /* The second seams diagram is a comparison, not a second prerequisite. */
 .fig-lead{font:700 .64rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;
   letter-spacing:.17em;text-transform:uppercase;color:var(--muted);margin:38px 0 10px}
-.fig-sub{max-width:76%}
-.fig-sub .fig-pan object,.fig-sub .fig-pan img{border-color:#1d1d1d}
+/* Subordinated by spacing, border and label - NOT by scale. Shrinking a
+   text-heavy drawing to 76% takes its 11px labels to about 8.5px, which is
+   the same mistake the phone rule made with the memory map. */
+.fig-sub .fig-pan object,.fig-sub .fig-pan img{border-color:#1a1a1a;opacity:.92}
+.fig-sub figcaption{color:#7c7b76}
 /* What assistive technology gets instead of the picture. */
 .fig-desc{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
   overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -138,7 +141,6 @@ CSS = """
    Never ENLARGED past the size it was drawn: min(680px, its own width). */
 @media(max-width:700px){
   .arch-lede{font-size:1.06rem;max-width:none}
-  .fig-sub{max-width:none}
   .act > h2,.seam > h3{display:block}
   .count{display:block;margin-top:5px}
   .fig-pan{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -218,11 +220,19 @@ def rich(t):
     return "".join(out)
 
 
-def card(f):
+def card(f, level=3):
+    """One finding. `level` is its depth in the outline, not its styling.
+
+    Inside a seam a finding is a child of that seam (h2 act > h3 seam > h4
+    finding). Under the method or the series it sits directly beneath the
+    act, so it is an h3 there. They were all h3 before, which told a screen
+    reader that F-001 was a sibling of "C64 ↔ Ethereum" rather than part of
+    it.
+    """
     anchor = f["id"].lower()
     bits = [f'<article class="find" id="{anchor}">',
-            f'<h3><span class="fid">{f["id"]}</span>'
-            f'<a class="anchor" href="#{anchor}">{rich(f["title"])}</a></h3>',
+            f'<h{level}><span class="fid">{f["id"]}</span>'
+            f'<a class="anchor" href="#{anchor}">{rich(f["title"])}</a></h{level}>',
             f'<p class="claim">{rich(f["claim"])}</p>']
     if f.get("receipt"):
         bits.append(f'<p class="meta"><b>Receipt.</b> {rich(f["receipt"])}</p>')
@@ -289,6 +299,23 @@ def figure(src, caption=None, sub=False):
             f'{desc}</figcaption></figure>')
 
 
+def unwritten():
+    """Every prose slot still carrying a TODO marker."""
+    out = []
+
+    def walk(name, v):
+        if isinstance(v, tuple) and v and v[0] == prose.TODO:
+            out.append(name)
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                walk(f"{name}.{k}", x)
+
+    for name in dir(prose):
+        if not name.startswith("_") and name.isupper() or name == "SEAM":
+            walk(name, getattr(prose, name))
+    return out
+
+
 def main():
     data = json.loads((HERE / "findings.json").read_text(encoding="utf-8"))
     css = (ROOT / "black-paper" / "paper.css").read_text(encoding="utf-8")
@@ -323,7 +350,8 @@ def main():
 
     # --- act 3: the five real seams
     parts.append(f'<section class="act"><h2>{_html.escape(prose.SEAMS_TITLE)}</h2>')
-    parts.append(para(prose.SEAMS_INTRO))
+    if prose.SEAMS_INTRO:
+        parts.append(para(prose.SEAMS_INTRO))
     for name in sect("seam"):
         rows = findings_of(name)
         copy = prose.SEAM.get(name, {})
@@ -336,7 +364,7 @@ def main():
         parts.append(para(copy.get("body", ("", ""))) if copy.get("body") else "")
         for src, _cap in MAP.get(name, []):
             parts.append(figure(src))
-        parts.extend(card(f) for f in rows)
+        parts.extend(card(f, level=4) for f in rows)
         parts.append("</section>")
     parts.append("</section>")
 
@@ -414,8 +442,15 @@ h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
 </html>
 """
     (HERE / "index.html").write_text(doc, encoding="utf-8")
+    todos = unwritten()
     print(f"architecture/index.html {len(doc):,} bytes, "
-          f"{data['counts']['public']} findings, {len(data['seams'])} seams")
+          f"{data['counts']['public']} findings, {len(data['seams'])} seams"
+          + (f", {len(todos)} unwritten" if todos else ""))
+    # Absence must never be read as completion. --strict is what a release
+    # runs; the default is drafting mode, where an unwritten paragraph shows
+    # on the page in amber and says so.
+    if todos and "--strict" in sys.argv:
+        sys.exit("refusing: prose not written —\n  " + "\n  ".join(todos))
 
 
 if __name__ == "__main__":
