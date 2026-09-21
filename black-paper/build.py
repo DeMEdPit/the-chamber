@@ -232,7 +232,7 @@ code{{overflow-wrap:anywhere;word-break:break-word}}
 </head>
 <body>
 <main>
-<p class="kicker">THE CHAMBER · BLACK PAPER 01</p>
+<p class="kicker"><a href="../">THE CHAMBER</a> · BLACK PAPER 01</p>
 {body}
 {footer(CURRENT)}
 </main>

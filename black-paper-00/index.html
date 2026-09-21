@@ -31,6 +31,8 @@ html,body{background:#000}
 body{margin:0;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}
 main{width:min(900px,calc(100% - 36px));margin:auto;padding:72px 0 120px}
 .kicker{font:700 .76rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);letter-spacing:.16em;margin-bottom:20px}
+.kicker a{color:inherit;text-decoration:none}
+.kicker a:hover,.kicker a:focus-visible{text-decoration:underline;text-underline-offset:.2em}
 h1{font-size:clamp(1.8rem,9vw,6.4rem);line-height:.9;letter-spacing:-.055em;margin:0 0 20px;white-space:nowrap;width:100%}
 h1+h2{border:0;margin-top:0;padding-top:0;color:var(--muted);font-size:1.45rem;font-weight:450}
 h2{margin:70px 0 18px;padding-top:12px;border-top:1px solid var(--line);font-size:1.9rem;letter-spacing:-.025em}
@@ -210,7 +212,7 @@ code{overflow-wrap:anywhere;word-break:break-word}
 </head>
 <body>
 <main>
-<p class="kicker">THE CHAMBER · BLACK PAPER 00</p>
+<p class="kicker"><a href="../">THE CHAMBER</a> · BLACK PAPER 00</p>
 <h1>The Chamber</h1>
 <figure class="room-banner"><img src="room.svg" alt="A Chamber room: stone pillars either side, a brick back wall, and a lit candle at the centre" width="320" height="66" decoding="async"></figure>
 <dl class="stats" aria-label="At a glance"><div class="stat"><dt>Tokens</dt><dd>64</dd></div><div class="stat"><dt>Contracts</dt><dd>16</dd></div><div class="stat"><dt>The program</dt><dd>46,877 B</dd></div><div class="stat"><dt>Written in</dt><dd>42 B</dd></div><div class="stat"><dt>One render</dt><dd>409 KB · ~61M gas</dd></div><div class="stat"><dt>On chain</dt><dd>8 Sep 2026</dd></div></dl><p class="lede">Eight characters, one mechanic each, in a room the chain redraws every time you look.</p>
