@@ -172,8 +172,14 @@ async function setFirmware(mode) {
       setState('reading', 'REBUILDING');
       node = node || new Node(catalogue.endpoints, catalogue.chainId, say);
       await ensureMachine();
-      if (was) pendingAsk = was;
-      else { setState('idle', mode === 'on' ? 'READY' : 'THE MACHINE IS ON'); renderNow(); markOffered(null, null); }
+      if (mode === 'on') {
+        // the switch shows the firmware: READY, and LOAD runs a program under it
+        setState('idle', 'READY'); say(`${FIRMWARE_NAME} is at READY; LOAD runs a program under it`); renderNow(); markOffered(null, null);
+      } else if (was) {
+        pendingAsk = was;   // bare again, as on chain: the program that was playing runs again
+      } else {
+        setState('idle', 'THE MACHINE IS ON'); veil('BARE · press LOAD to run a program'); renderNow(); markOffered(null, null);
+      }
     } else {
       say(mode === 'on' ? `firmware on: the machine will boot ${FIRMWARE_NAME} when it starts` : 'firmware off: the machine will start bare');
     }
@@ -214,6 +220,7 @@ async function load(work, token) {
     const buf = program.bytes.slice().buffer;
     const loaded = await machine.request('load', { kind: 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
     playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened };
+    veil('');
     setState('running', 'RUNNING');
     say(`running ${program.label}`);
     renderNow();
@@ -328,6 +335,7 @@ els.reset.addEventListener('click', async () => {
   playing = null;
   setState('idle', firmwareMode === 'on' ? 'READY' : 'RESET');
   say(firmwareMode === 'on' ? `the machine was reset; ${FIRMWARE_NAME} is at READY` : 'the machine was reset; it is on and bare');
+  if (firmwareMode !== 'on') veil('BARE · press LOAD to run a program');
   renderNow();
   markOffered(null, null);
 });
