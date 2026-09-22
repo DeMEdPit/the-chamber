@@ -91,7 +91,8 @@ try {
   check(prov && prov.program.status === 'PINNED' && prov.stamp.status === 'CONTRACT-CONSISTENT' && prov.stamp.stampedAt === 4999 && prov.machine.status === 'PINNED' && /ethereum/.test(prov.machine.source) && prov.mode === 'PURE' && prov.intervened === false,
         `the provenance as JSON: ${prov ? JSON.stringify({ program: prov.program.status, stamp: prov.stamp.status, machine: prov.machine.source }) : 'none'}`);
   const linkA = await pg.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, state: document.getElementById('link-state').textContent, node: document.getElementById('link-node').textContent, block: document.getElementById('link-block').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
-  check(linkA.phase === 'held' && linkA.state === 'HELD' && linkA.node === '/rpc' && /^block [\d,]+ · [0-9a-f]{12}…$/.test(linkA.block) && linkA.cells.join() === 'held', `THE CHAIN strip: ${linkA.state} · ${linkA.node} · ${linkA.block} · cells ${linkA.cells.join()}`);
+  check(linkA.phase === 'held' && linkA.state === 'HELD' && linkA.node === '/rpc' && /^#\d+$/.test(linkA.block) && linkA.cells.join() === 'held', `THE CHAIN badge: ${linkA.state} · ${linkA.node} · ${linkA.block} · cells ${linkA.cells.join()}`);
+  check(await pg.evaluate(() => /^\/rpc · block [\d,]+ · [0-9a-f]{64}$/.test(document.getElementById('link').title)), 'the badge\'s title carries the whole node name, the block and its full hash');
   const readsA = A.log.filter((r) => ['eth_call', 'eth_getCode'].includes(r.method));
   check(readsA.length > 0 && readsA.every((r) => /^0x[0-9a-f]+$/.test(String(r.params[1]))), `every contract read is at a block, none at latest (${readsA.length} reads)`);
   const lastCall = readsA.filter((r) => r.method === 'eth_call').pop();

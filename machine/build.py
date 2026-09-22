@@ -200,25 +200,28 @@ h1{{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}}
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 {MONO};letter-spacing:.16em;pointer-events:none}}
 .veil[hidden]{{display:none}}
 .hint{{margin:10px 0 0;font-size:.85rem;color:var(--muted)}}
-.link{{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:10px 0 0;padding:8px 2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  font:600 .64rem/1.5 {MONO};letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}}
-.link .lk{{color:var(--accent)}}
-.link .ls{{color:var(--ink)}}
-.link .ls::before{{content:"";display:inline-block;width:7px;height:7px;margin:0 7px 1px 0;border-radius:50%;background:#333;vertical-align:middle}}
+.screen{{position:relative}}
+.link{{position:absolute;top:100%;right:10px;margin-top:-1px;display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto;column-gap:9px;row-gap:0;
+  align-items:center;padding:4px 9px 5px;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;background:var(--panel);
+  font:600 .58rem/1.5 {MONO};letter-spacing:.1em;text-transform:uppercase;color:var(--muted);max-width:calc(100% - 20px);white-space:nowrap}}
+.link .lk{{grid-column:1;grid-row:1;color:var(--accent)}}
+.link .ls{{grid-column:2;grid-row:1;color:var(--ink)}}
+.link .ln{{grid-column:1;grid-row:2;color:var(--ink);text-transform:none;letter-spacing:.03em}}
+.link .lb{{grid-column:2;grid-row:2;text-transform:none;letter-spacing:.03em}}
+.link .le{{grid-column:3;grid-row:1/3;display:inline-flex;gap:4px;margin-left:2px}}
+.link .ls::before{{content:"";display:inline-block;width:6px;height:6px;margin:0 6px 1px 0;border-radius:50%;background:#333;vertical-align:middle}}
 .link[data-phase="seeking"] .ls::before,.link[data-phase="reading"] .ls::before{{background:var(--accent);animation:linkPulse .9s ease-in-out infinite}}
 .link[data-phase="held"] .ls::before{{background:var(--accent)}}
 .link[data-phase="refused"] .ls::before,.link[data-phase="lost"] .ls::before{{background:#ff9d9d}}
 .link[data-phase="refused"] .ls,.link[data-phase="lost"] .ls{{color:#ff9d9d}}
-.link .ln{{color:var(--ink);text-transform:none;letter-spacing:.02em;overflow-wrap:anywhere}}
-.link .lb{{text-transform:none;letter-spacing:.02em}}
-.link .le{{display:inline-flex;gap:5px;margin-left:auto}}
-.link .le i{{display:block;width:9px;height:9px;border:1px solid #3a3a3a;border-radius:2px;background:var(--panel)}}
+.link .le i{{display:block;width:8px;height:8px;border:1px solid #3a3a3a;border-radius:2px;background:var(--panel)}}
 .link .le i[data-state="in-use"]{{background:var(--accent);border-color:var(--accent)}}
 .link .le i[data-state="held"]{{background:#0f1a14;border-color:var(--accent)}}
 .link .le i[data-state="demoted"]{{border-color:#555;background:#161616}}
 .link .le i[data-state="set-aside"]{{border-color:#ff9d9d;background:#2a1414}}
 @keyframes linkPulse{{0%,100%{{opacity:.25}}50%{{opacity:1}}}}
 @media(prefers-reduced-motion:reduce){{.link .ls::before{{animation:none}}}}
+p.hint{{margin-top:52px}}
 .touch{{display:none;margin:14px 0 0;grid-template-columns:auto auto;justify-content:space-between;gap:16px;align-items:center;touch-action:none;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}}
 .touch .ring{{width:184px;height:184px;display:block;touch-action:none}}
@@ -232,7 +235,7 @@ h1{{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}}
   touch-action:none;user-select:none;-webkit-user-select:none}}
 .touch button.down{{border-color:var(--accent);color:var(--accent);background:#0f1a14}}
 .touch .fire{{width:120px;height:120px;border-radius:50%;font-size:.9rem;margin-right:8px}}
-@media(pointer:coarse){{.touch{{display:grid}}}}
+@media(pointer:coarse){{.touch{{display:grid}}p.hint{{margin-top:10px}}}}
 @media(max-width:360px){{.touch .ring{{width:160px;height:160px}}.touch .fire{{width:104px;height:104px}}}}
 .column{{min-width:0;display:flex;flex-direction:column;gap:14px}}
 .panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}}
@@ -400,15 +403,15 @@ proof-of-concept token from before the series and the demo its programs are buil
 checked the same way; choose any other program below.</p>
 <div class="machine">
   <div class="stage">
-    <div class="frame" id="frame" aria-label="READY 64, the machine">
-      <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
-    </div>
-    <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain">
-      <span class="lk">THE CHAIN</span>
-      <span class="ls" id="link-state">OFF</span>
-      <span class="ln" id="link-node">no node yet</span>
-      <span class="lb" id="link-block"></span>
-      <span class="le" id="link-endpoints" aria-label="the endpoints, in the order they are tried"></span>
+    <div class="screen">
+      <div class="frame" id="frame" aria-label="READY 64, the machine">
+        <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
+      </div>
+      <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain" title="no node yet">
+        <span class="lk">THE CHAIN</span><span class="ls" id="link-state">OFF</span>
+        <span class="ln" id="link-node">no node yet</span><span class="lb" id="link-block"></span>
+        <span class="le" id="link-endpoints" aria-label="the endpoints, in the order they are tried"></span>
+      </div>
     </div>
     <div class="touch" id="touch" aria-label="joystick" data-ways="4">
       {ring_svg()}

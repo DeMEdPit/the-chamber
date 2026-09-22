@@ -63,11 +63,18 @@ function veil(text) {
 
 // ------------------------------------------------------------------ the link: an instrument on the node's own state
 const LINK_WORDS = { off: 'OFF', seeking: 'SEEKING', reading: 'READING', held: 'HELD', refused: 'REFUSED', lost: 'LOST' };
+/** The distinctive part of a node's name for the badge (publicnode, llamarpc, drpc, ankr, merkle, 1rpc); the whole name stays in the title and in NOW PLAYING. */
+const shortHost = (h) => { const host = String(h).replace(/^https?:\/\//, '').split('/')[0]; const parts = host.split('.'); return parts.length >= 2 ? parts[parts.length - 2] : h; };
 function renderLink(st) {
   els.link.dataset.phase = st.phase;
   els.linkState.textContent = LINK_WORDS[st.phase] || st.phase.toUpperCase();
-  els.linkNode.textContent = st.host || (st.phase === 'off' ? 'no node yet' : 'no node');
-  els.linkBlock.textContent = st.block ? `block ${num(st.block)} · ${SHORT(st.blockHash)}${st.phase === 'reading' && st.reads ? ` · ${st.reads} read${st.reads === 1 ? '' : 's'}` : ''}${st.setAside ? ` · ${st.setAside} set aside` : ''}` : (st.setAside ? `${st.setAside} set aside` : '');
+  els.linkNode.textContent = st.host ? shortHost(st.host) : (st.phase === 'off' ? 'no node yet' : 'no node');
+  const bits = [];
+  if (st.block) bits.push(`#${st.block}`);
+  if (st.phase === 'reading' && st.reads) bits.push(`${st.reads} read${st.reads === 1 ? '' : 's'}`);
+  if (st.setAside) bits.push(`${st.setAside} set aside`);
+  els.linkBlock.textContent = bits.join(' · ');
+  els.link.title = st.host ? `${st.host}${st.block ? ` · block ${num(st.block)} · ${st.blockHash}` : ''}` : 'no node yet';
   els.linkEndpoints.textContent = '';
   for (const e of st.endpoints) {
     const i = document.createElement('i');
