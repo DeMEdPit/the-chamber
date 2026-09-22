@@ -87,6 +87,18 @@ try {
   check(!!running, `LOAD on Chamber token 5 reaches RUNNING (${stateText})`);
   const now = await pg.evaluate(() => document.getElementById('now').textContent);
   check(/PINNED/.test(now) && /CONTRACT-CONSISTENT/.test(now) && /block 4,999/.test(now) && /PURE/.test(now), 'NOW PLAYING: the program PINNED, the stamp CONTRACT-CONSISTENT at the block, the mode PURE');
+  // NOW PLAYING in two groups, and its links: every one opens in a new tab and goes to the contract, the token, the block or the emulator's parts on the explorer
+  const groups = await pg.evaluate(() => [...document.querySelectorAll('#now .grp')].map((g) => g.textContent).join('|'));
+  check(groups === 'THE PROGRAM|THE MACHINE', `NOW PLAYING is two groups, the program and the machine (${groups})`);
+  const links = await pg.evaluate(() => { const cat = window.machinePage.catalogue; const chamber = cat.works.find((w) => w.key === 'chamber').address; const p = window.machinePage.provenance();
+    const rows = Object.fromEntries([...document.querySelectorAll('#now .nl')].map((r) => [r.querySelector('.k').textContent, [...r.querySelectorAll('a')].map((a) => ({ t: a.textContent, h: a.getAttribute('href'), ok: a.target === '_blank' && /\bnoopener\b/.test(a.rel) && /\bnoreferrer\b/.test(a.rel) }))]));
+    return { rows, chamber, block: p.observation.block, parts: cat.machine.parts.map((x) => x.address), root: cat.machine.firmware.root }; });
+  const every = Object.values(links.rows).flat();
+  check(every.length === 7 && every.every((a) => a.ok), `every link in NOW PLAYING opens in a new tab with noopener noreferrer (${every.length} links)`);
+  check(links.rows.PROGRAM.map((a) => a.h).join() === `https://etherscan.io/address/${links.chamber},https://etherscan.io/nft/${links.chamber}/5` && links.rows.PROGRAM.map((a) => a.t).join() === 'contract,token 5', `the program's contract and token 5 link to the explorer (${links.rows.PROGRAM.map((a) => a.t).join(', ')})`);
+  check(links.rows.NODE.length === 1 && links.rows.NODE[0].h === `https://etherscan.io/block/${links.block}` && links.rows.NODE[0].t === `block ${links.block.toLocaleString('en-US')}`, `the block the read was made at links to the explorer (${links.rows.NODE.map((a) => a.t).join()})`);
+  check(links.rows.EMULATOR.map((a) => a.h).join() === links.parts.map((a) => `https://etherscan.io/address/${a}`).join(), `the emulator's four contracts link to the explorer, in the catalogue's order (${links.rows.EMULATOR.map((a) => a.t).join(', ')})`);
+  check(!links.rows.FIRMWARE.length && !links.rows.BYTES.length && !links.rows.STAMP.length && !links.rows.INPUT.length && !links.rows.MODE.length, 'no link on a hash, the firmware when off, the input or the mode');
   const prov = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
   check(prov && prov.program.status === 'PINNED' && prov.stamp.status === 'CONTRACT-CONSISTENT' && prov.stamp.stampedAt === 4999 && prov.machine.status === 'PINNED' && /ethereum/.test(prov.machine.source) && prov.mode === 'PURE' && prov.intervened === false,
         `the provenance as JSON: ${prov ? JSON.stringify({ program: prov.program.status, stamp: prov.stamp.status, machine: prov.machine.source }) : 'none'}`);
@@ -131,6 +143,7 @@ try {
   check(provFile && provFile.program.status === 'YOUR FILE' && !('pins' in provFile.program) && provFile.node === null && provFile.observation === null && provFile.file && provFile.file.name === 'hello.prg' && provFile.file.size === 20 && provFile.program.load === 0x0801 && /^[0-9a-f]{64}$/.test(provFile.program.sha256) && provFile.machine.status === 'PINNED',
         `the provenance of a file claims nothing of the chain: YOUR FILE, no pins, no node, no observation; the machine still ${provFile && provFile.machine.status}`);
   check(requests.length === requestsBefore, `the file made no request of any kind (${requests.length - requestsBefore})`);
+  check(await pg.evaluate(() => { const rows = [...document.querySelectorAll('#now .nl')]; const i = rows.findIndex((r) => r.querySelector('.k').textContent === 'EMULATOR'); return i > 0 && rows.slice(0, i).every((r) => !r.querySelector('a')); }), 'a file of yours gets no link: nothing is claimed of it');
   check(await pg.evaluate(() => !document.querySelector('#rows .row.now') && document.getElementById('door').dataset.state === 'ok' && /^hello\.prg · 20 bytes · running/.test(document.getElementById('door-text').textContent)), 'no row of the chain is marked while a file plays; the door says what it ran');
   const refusals = [
     ['two.prg', Buffer.from([0x01, 0x08]), 'PRG_TOO_SHORT', /two-byte load address/],
@@ -156,9 +169,17 @@ try {
   const playingNamed = (name) => pg.evaluate((n) => (document.getElementById('state').dataset.phase === 'running' && new RegExp(n).test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null), name);
   check(await pg.evaluate(() => document.getElementById('firmware').value === 'auto') && /^AUTO · bare · no call into a ROM$/.test(await whyText()), `the switch reads auto and its line says why the machine is bare for the file playing (${await whyText()})`);
   check(await pg.evaluate(() => /a phone on silent stays silent/.test(document.getElementById('sound').parentElement.textContent) && /click the machine to give it your keys/.test(document.querySelector('.keys').textContent)), 'THE KEYS carries the sound and keyboard facts the sentence used to');
+  const keys = await pg.evaluate(() => ({ groups: [...document.querySelectorAll('.keys .grp')].map((g) => g.textContent).join('|'), open: document.getElementById('how-auto').open, summary: document.querySelector('#how-auto summary').textContent, target: document.querySelector('#how-auto a').getAttribute('href'), targetExists: !!document.getElementById('about-controls'),
+    diag: getComputedStyle(document.querySelector('dt.touch-only')).display, silent: getComputedStyle(document.querySelector('span.touch-only')).display, hints: [...document.querySelectorAll('.keys dd')].map((d) => d.querySelectorAll('.hint').length <= 1).every(Boolean),
+    lede: document.querySelector('.lede').textContent, subheads: [...document.querySelectorAll('.about h3')].map((h) => h.id).join() }));
+  check(keys.groups === 'PLAY|MACHINE', `THE KEYS is grouped: ${keys.groups.replace('|', ', ')}`);
+  check(!keys.open && keys.summary === 'HOW AUTO DECIDES' && keys.target === '#about-controls' && keys.targetExists, 'the firmware\'s decision stays visible and the reasoning sits behind HOW AUTO DECIDES, closed, linking to the account below');
+  check(keys.diag === 'none' && keys.silent === 'none' && keys.hints, 'on a fine pointer DIAGONALS and the phone note are not shown; every control has at most one line under it');
+  check(/Load a program from Ethereum or bring a \.prg of your own\./.test(keys.lede), 'the lede says what you can do here');
+  check(keys.subheads === 'about-machine,about-programs,about-words,about-controls', `the prose is under four subheads (${keys.subheads})`);
   const stub = (...code) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, ...code]);
   await pg.setInputFiles('#file', { name: 'kernal.prg', mimeType: 'application/octet-stream', buffer: stub(0xa9, 0x93, 0x20, 0xd2, 0xff, 0xa9, 0x43, 0x20, 0xd2, 0xff, 0x60) });   // LDA #147 ; JSR CHROUT ; LDA #'C' ; JSR CHROUT ; RTS
-  const autoOn = await until(async () => { const t = await playingNamed('kernal\\.prg'); return t && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum.*AUTO: calls the KERNAL 2 times \(CHROUT\)/.test(t) ? t : null; }, 90000, 500);
+  const autoOn = await until(async () => { const t = await playingNamed('kernal\\.prg'); return t && /FIRMWARE.*on · OpenROMs pressing 1 \(contract · repository\) · PINNED · from ethereum.*AUTO: calls the KERNAL 2 times \(CHROUT\)/.test(t) ? t : null; }, 90000, 500);
   check(!!autoOn, 'AUTO: a file that calls the KERNAL gets the firmware, the machine rebuilt with the pressing from the chain, the reason in NOW PLAYING');
   const wroteC = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 3)), 15000);
   check(!!wroteC, 'the file ran under the firmware: CHROUT cleared the screen and wrote C at $0400');
@@ -173,26 +194,28 @@ try {
   check(!!basicRan, 'a BASIC program: AUTO keeps the firmware, the reason names the program');
   check(!!(await until(() => screenHasLine('HI'), 20000, 500)), 'the firmware RUN it: HI on the screen');
   await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
-  const bareAgain = await until(async () => { const t = await playingNamed('hello\\.prg'); return t && /FIRMWARE.*off · the program runs bare, as it does on chain · AUTO: no call into a ROM/.test(t) ? t : null; }, 90000, 500);
+  const bareAgain = await until(async () => { const t = await playingNamed('hello\\.prg'); return t && /FIRMWARE.*off · AUTO: no call into a ROM/.test(t) ? t : null; }, 90000, 500);
   check(!!bareAgain, 'a file that needs nothing: AUTO rebuilds the machine bare and runs it');
   const wroteB2 = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 2)), 15000);
   check(!!wroteB2, 'it ran on the bare machine (screen code 2 at $0400, fresh memory)');
   check(await pg.evaluate(() => window.machinePage.input === 'joystick') && /INPUT.*joystick in port 2.*nothing reads port 2 or the matrix; the stick, as for the series/.test(await nowText()), 'the stick is the input for a file that reads nothing, said why');
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
-  const chainBare = await until(async () => { const t = await playingNamed('Tony: Born for Adventure'); return t && /FIRMWARE.*off · the program runs bare, as it does on chain · AUTO: a program of the chain runs bare, as it does on chain/.test(t) ? t : null; }, 90000, 500);
+  const chainBare = await until(async () => { const t = await playingNamed('Tony: Born for Adventure'); return t && /FIRMWARE.*off · AUTO: a program of the chain runs bare, as it does on chain/.test(t) ? t : null; }, 90000, 500);
   check(!!chainBare, 'a program of the chain after a file: bare, as on chain, the reason said');
   // the firmware switch: on shows the firmware at READY, LOAD runs a program under it, RESET brings READY back, off is bare again
   const screenHasReady = () => pg.evaluate(() => window.machinePage.machine.request('screen').then((r) => (/READY\./.test(r.text) && /OPEN ROMS C64/.test(r.text) ? r.text : null)).catch(() => null));
   await pg.selectOption('#firmware', 'on');
-  const fwOn = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'READY' && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 90000, 500);
+  const fwOn = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'READY' && /FIRMWARE.*on · OpenROMs pressing 1 \(contract · repository\) · PINNED · from ethereum.*by the switch/.test(document.getElementById('now').textContent)), 90000, 500);
   check(!!fwOn, 'FIRMWARE on: the machine rebuilt with OpenROMs pressing 1 from the chain, PINNED, and the state is READY');
-  check(await pg.evaluate(() => /MACHINE.*PINNED · minimal64-2022 · from ethereum, through/.test(document.getElementById('now').textContent)), 'the emulator keeps its own source under the firmware (no "from undefined")');
+  check(await pg.evaluate(() => /EMULATOR.*PINNED · minimal64-2022 \(.*\) · from ethereum, through/.test(document.getElementById('now').textContent)), 'the emulator keeps its own source under the firmware (no "from undefined")');
+  const fwLinks = await pg.evaluate(() => { const cat = window.machinePage.catalogue; const row = [...document.querySelectorAll('#now .nl')].find((r) => r.querySelector('.k').textContent === 'FIRMWARE'); return { links: [...row.querySelectorAll('a')].map((a) => `${a.textContent}=${a.getAttribute('href')}`), root: cat.machine.firmware.root }; });
+  check(fwLinks.links.join() === `contract=https://etherscan.io/address/${fwLinks.root},repository=https://github.com/DeMEdPit/openroms-ethereum-pressing-1`, `the firmware on links to the pressing's contract and repository (${fwLinks.links.map((l) => l.split('=')[0]).join(', ')})`);
   check(!!(await until(screenHasReady, 15000, 500)), 'the OpenROMs banner and READY on the screen, no reset needed');
   check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard'), 'the keyboard is the input under the firmware');
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
-  const underFw = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 30000, 500);
+  const underFw = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /FIRMWARE.*on · OpenROMs pressing 1 \(contract · repository\) · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 30000, 500);
   check(!!underFw, 'LOAD under the firmware: the program runs, NOW PLAYING says firmware on, PINNED, from the chain');
   const fwProv = await pg.evaluate(() => { const p = window.machinePage.provenance(); return p && p.firmware && p.firmware.mode === 'on' && p.firmware.status === 'PINNED' && /ethereum/.test(p.firmware.source); });
   check(fwProv, 'the provenance says firmware on, PINNED, from ethereum');
@@ -204,7 +227,7 @@ try {
   check(!!fwOff, 'FIRMWARE off with nothing playing: the machine rebuilt bare, the veil says so, the stick the input again');
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
-  const running4 = await until(() => pg.evaluate(() => /FIRMWARE.*off · the program runs bare/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running' && document.getElementById('veil').hidden), 30000, 500);
+  const running4 = await until(() => pg.evaluate(() => /FIRMWARE.*off · bare, as on chain · by the switch/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running' && document.getElementById('veil').hidden), 30000, 500);
   check(!!running4, 'a program runs bare again after the switch, the veil gone');
   await pg.click('#reset');
   const reset = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'RESET'), 5000);
@@ -249,7 +272,7 @@ try {
     const shapeIdle = await pw.evaluate(() => ({ now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent) }));
     check(shape0.rows >= 250 && shape0.log === logWant && shape0.log === shapeRun.log, `at ${w}x${h}: the list (${shape0.rows}) and the log (${shape0.log}, ${logWant} wanted at this height) are their full size before anything arrives`);
     // the first paint may already show the first program's rows when the rig is quick: either set is right, the five machine rows in both, the idle set exact after RESET
-    const IDLE = 'PROGRAM,BYTES,CHECK,MACHINE,FIRMWARE,INPUT,MODE,NODE', TAIL = 'MACHINE,FIRMWARE,INPUT,MODE,NODE';
+    const IDLE = 'PROGRAM,BYTES,CHECK,EMULATOR,FIRMWARE,INPUT,MODE,NODE', TAIL = 'EMULATOR,FIRMWARE,INPUT,MODE,NODE';
     check((shape0.labels.join() === IDLE || shape0.labels.slice(-5).join() === TAIL) && shapeIdle.labels.join() === IDLE && shapeRun.labels.slice(-5).join() === TAIL, `at ${w} wide: NOW PLAYING keeps its rows (${shape0.labels.length} at first paint, ${shapeRun.labels.length} running, ${shapeIdle.labels.length} idle)`);
     check(Math.abs(shape0.now - shapeRun.now) <= 48 && Math.abs(shapeIdle.now - shapeRun.now) <= 48, `at ${w} wide: NOW PLAYING holds its height, first paint ${shape0.now}, running ${shapeRun.now}, idle ${shapeIdle.now}`);
     const badge = await pw.evaluate(() => { const l = document.getElementById('link').getBoundingClientRect(), f = document.getElementById('frame').getBoundingClientRect(); return { right: f.right - l.right, left: l.left - f.left, block: document.getElementById('link-block').innerText }; });
@@ -269,8 +292,9 @@ try {
     if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w}x${h}: the log under the machine, NOW PLAYING beside it, the stage sticky (${lay.sticky})`);
     else check(lay.rows < lay.door && lay.door < lay.now.top && lay.now.top < lay.log.top && lay.log.top < lay.fw && lay.fw < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: the chain, a file, NOW PLAYING, the log, the keys, the way out`);
     check(!lay.hint, `at ${w} wide: no sentence under the machine; its facts are in THE KEYS`);
-    const head = await pw.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); return { h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize), frameTop: document.getElementById('frame').getBoundingClientRect().top, lede: document.querySelector('.lede').getBoundingClientRect().height }; });
-    check(head.h1 <= 42 && head.lede < (w < 1140 ? 120 : 60) && head.frameTop < 280, `at ${w}x${h}: a compact header, the title ${head.h1}px, the lede ${Math.round(head.lede)}px tall (wrapping under the title), the machine ${Math.round(head.frameTop)}px from the top`);
+    const head = await pw.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); const l = document.querySelector('.lede').getBoundingClientRect(); return { h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize), frameTop: document.getElementById('frame').getBoundingClientRect().top, lede: l.height, ledeW: l.width, main: document.querySelector('main').getBoundingClientRect().width, column: document.querySelector('.column').getBoundingClientRect().width }; });
+    check(head.h1 <= 42 && head.lede < (w < 1140 ? 160 : 130) && head.ledeW <= Math.min(560, w) && head.frameTop < 300, `at ${w}x${h}: a compact header, the title ${head.h1}px, the lede a block ${Math.round(head.ledeW)} wide and ${Math.round(head.lede)}px tall, the machine ${Math.round(head.frameTop)}px from the top`);
+    if (w >= 1140) check(head.main === Math.min(1300, w - 36) && head.column >= (w >= 1336 ? 500 : 300), `at ${w} wide: the page is ${head.main} wide, the player at 768 and the panel ${Math.round(head.column)}`);
     if (w >= 1140) {
       // the site scrolls smoothly, so the test scrolls instantly and reads settled positions
       const scrolled = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); const before = document.getElementById('lab-now').getBoundingClientRect().top; window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const out = { frame: document.getElementById('frame').getBoundingClientRect().top, now: document.getElementById('lab-now').getBoundingClientRect().top, before }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
@@ -298,6 +322,7 @@ try {
   const tRunning = await until(() => pt.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
   const shown = await pt.evaluate(() => matchMedia('(pointer:coarse)').matches && getComputedStyle(document.getElementById('touch')).display === 'grid');
   check(!!tRunning && shown, 'on a coarse pointer the ring and FIRE show, the machine running');
+  check(await pt.evaluate(() => getComputedStyle(document.querySelector('dt.touch-only')).display === 'block' && getComputedStyle(document.querySelector('dd.touch-only')).display === 'block' && getComputedStyle(document.querySelector('span.touch-only')).display === 'inline'), 'on a coarse pointer DIAGONALS and the phone note show in THE KEYS');
   // the ring is brought fully into view before it is pressed: the strip above it pushed its lower half past a phone's viewport
   // the site scrolls smoothly, so the scroll is asked for instantly and the rect read after it has settled
   const ringRect = async () => { await pt.evaluate(() => document.getElementById('ring').scrollIntoView({ block: 'center', behavior: 'instant' })); await new Promise((r) => setTimeout(r, 150)); return pt.evaluate(() => { const r = document.getElementById('ring').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2, top: r.top }; }); };

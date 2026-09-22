@@ -29,6 +29,10 @@ let firmwareMode = 'auto';   // the switch: 'auto' decides per program; 'off' ba
 let firmwareOn = false;      // the machine as built: with the ROMs, or bare
 let firmwareWhy = 'a program of the chain runs bare, as it does on chain';   // what decided the build, for the words
 const FIRMWARE_NAME = 'OpenROMs pressing 1';
+const PRESSING_REPO = 'https://github.com/DeMEdPit/openroms-ethereum-pressing-1';   // the pressing's public repository: its source, its build and its record
+// the explorer the links open, by the catalogue's chain: a second source for every claim NOW PLAYING makes; an unknown chain gets no links
+const EXPLORERS = { 1: 'https://etherscan.io', 11155111: 'https://sepolia.etherscan.io' };
+const explorer = () => (catalogue && EXPLORERS[catalogue.chainId]) || null;
 const state = { phase: 'off' };
 const LOG_LINES = 14;
 const fullLog = [];
@@ -416,44 +420,67 @@ function provenance() {
   if (p.kind === 'slotted') out.mind = { status: p.statuses.mind, head: f.head, headStatus: p.statuses.head, canonicalHash: f.canonicalHash, brainBlob: f.brainBlob };
   return out;
 }
+/** A row: the key, then the value as text or as parts, a part being text or a link {text, href} that opens in a new tab so the machine plays on. */
 function line(k, v, cls) {
   const d = document.createElement('div');
   d.className = 'nl' + (cls ? ' ' + cls : '');
   const a = document.createElement('span'); a.className = 'k'; a.textContent = k;
-  const b = document.createElement('span'); b.className = 'v'; b.textContent = v;
+  const b = document.createElement('span'); b.className = 'v';
+  for (const part of Array.isArray(v) ? v : [v]) {
+    if (part && typeof part === 'object') {
+      const l = document.createElement('a');
+      l.href = part.href; l.target = '_blank'; l.rel = 'noopener noreferrer'; l.textContent = part.text;
+      b.appendChild(l);
+    } else b.appendChild(document.createTextNode(String(part)));
+  }
   d.append(a, b);
   return d;
 }
+/** A link part when there is somewhere to link to, the text alone when there is not. */
+const link = (text, href) => (href ? { text, href } : text);
+/** A group's heading inside NOW PLAYING. */
+function heading(text) { const d = document.createElement('div'); d.className = 'grp'; d.textContent = text; return d; }
+/** Links joined by a separator, as parts. */
+const joined = (parts, sep = ' · ') => parts.flatMap((x, i) => (i ? [sep, x] : [x]));
 const DASH = '—';
 /** The machine's rows, present from the first paint and filled as the facts arrive, so the panel keeps its shape. */
 function machineRows() {
-  const mf = machineFacts, fw = mf && mf.firmware;
+  const mf = machineFacts, fw = mf && mf.firmware, ex = explorer();
+  const sw = firmwareMode === 'auto' ? `AUTO: ${firmwareWhy}` : 'by the switch';
+  // the emulator's four contracts and, when the firmware is on, the pressing's contract and repository: where the bytes live, for anyone to compare
+  const parts = catalogue && catalogue.machine && catalogue.machine.parts ? catalogue.machine.parts : [];
+  const partLinks = ex ? joined(parts.map((pt) => link(pt.name.replace(/^minimal64 /, ''), `${ex}/address/${pt.address}`))) : [];
+  const emulator = mf ? [`${mf.status} · ${mf.name}`, ...(partLinks.length ? [' (', ...partLinks, ')'] : []), ` · from ${mf.source}`] : `${DASH} · READY 64 starts with the first LOAD`;
+  const root = catalogue && catalogue.machine && catalogue.machine.firmware && catalogue.machine.firmware.root;
+  const pressing = [FIRMWARE_NAME, ...(ex && root ? [' (', link('contract', `${ex}/address/${root}`), ' · ', link('repository', PRESSING_REPO), ')'] : [])];
   let firmware;
-  const sw = firmwareMode === 'auto' ? `AUTO: ${firmwareWhy}` : `${firmwareMode} by the switch`;
-  if (fw && fw.mode === 'on') firmware = `on · ${FIRMWARE_NAME} · ${fw.status} · from ${fw.source} · ${sw}`;
-  else if (!mf && firmwareMode === 'on') firmware = `on · ${FIRMWARE_NAME} boots first when the machine starts`;
-  else if (!mf) firmware = `${firmwareMode === 'auto' ? 'AUTO · decided by the program when it loads' : 'off · the program runs bare, as it does on chain'}`;
-  else firmware = `off · the program runs bare, as it does on chain · ${sw}`;
+  if (fw && fw.mode === 'on') firmware = ['on · ', ...pressing, ` · ${fw.status} · from ${fw.source} · ${sw}`];
+  else if (!mf && firmwareMode === 'on') firmware = ['on · ', ...pressing, ' boots first when the machine starts'];
+  else if (!mf) firmware = firmwareMode === 'auto' ? 'AUTO · decided by the program when it loads' : 'off · bare, as on chain · by the switch';
+  else firmware = firmwareMode === 'auto' ? `off · ${sw}` : 'off · bare, as on chain · by the switch';
   const obs = playing && playing.program.facts.observation;
-  const host = obs ? `${obs.node} · read at block ${num(obs.block)} · hash ${SHORT(obs.blockHash)}` : (node && node.url ? node.url.replace(/^https?:\/\//, '') : null);
   const aside = node && node.quarantined.size ? ` · ${node.quarantined.size} set aside this visit` : '';
+  const host = obs ? [`${obs.node} · read at `, link(`block ${num(obs.block)}`, ex ? `${ex}/block/${obs.block}` : null), ` · hash ${SHORT(obs.blockHash)}`, aside]
+    : node && node.url ? [node.url.replace(/^https?:\/\//, ''), aside] : null;
   return [
-    ['MACHINE', mf ? `${mf.status} · ${mf.name} · from ${mf.source}` : `${DASH} · READY 64 starts with the first LOAD`, mf ? '' : 'muted'],
+    ['EMULATOR', emulator, mf ? '' : 'muted'],
     ['FIRMWARE', firmware, ''],
-    ['INPUT', (inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix') + (inputWhy ? ` · ${inputWhy}` : ''), ''],
+    ['INPUT', (inputMode === 'joystick' ? 'joystick in port 2' : 'keyboard · the C64 matrix') + (inputWhy ? ` · ${inputWhy}` : ''), ''],
     ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
-    ['NODE', (host || DASH) + aside, host ? '' : 'muted'],
+    ['NODE', host || DASH, host ? '' : 'muted'],
   ];
 }
 /** The program's rows: what is playing, what was refused, or the dashes of nothing yet; always the same shape. */
 function programRows(code, text) {
   if (playing) {
-    const p = playing.program, f = p.facts;
-    const rows = [['PROGRAM', p.label, '']];
+    const p = playing.program, f = p.facts, ex = explorer();
+    // the program's contract and its token on the explorer: the same bytes, read by anyone; a file of yours links nowhere, since nothing is claimed of it
+    const where = p.kind !== 'file' && ex ? [' (', link('contract', `${ex}/address/${f.contract}`), ' · ', link(`token ${f.token}`, `${ex}/nft/${f.contract}/${f.token}`), ')'] : [];
+    const rows = [['PROGRAM', [p.label, ...where], '']];
     if (p.kind === 'stamped') {
-      rows.push(['ROOM', `${f.row.colourName.toLowerCase()} · ${f.row.wallName.toLowerCase()} wall · ${f.row.batsName.toLowerCase()} bats · ${f.row.candleName.toLowerCase()}`, '']);
+      rows.push(['ROOM', `${f.row.colourName.toLowerCase()} · ${f.row.wallName.toLowerCase()} wall · ${f.row.batsName.toLowerCase()} ${f.row.batsName === 'One' ? 'bat' : 'bats'} · ${f.row.candleName.toLowerCase()}`, '']);
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the stamp equal to the pinned base · sha256 ${SHORT(f.sha256)}`, '']);
-      rows.push(['STAMP', `${p.statuses.stamp} · block ${num(f.stampedAt)} · the row's character and colour, the block's digits and the seed from the node's block hash all agree`, '']);
+      rows.push(['STAMP', `${p.statuses.stamp} · block ${num(f.stampedAt)} · the character, the colour, the digits and the seed agree with the node's block hash`, '']);
     } else if (p.kind === 'slotted') {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`, '']);
       rows.push(['MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`, '']);
@@ -462,7 +489,7 @@ function programRows(code, text) {
       rows.push(['SCAN', scanWords(f.scan), '']);
       if (f.known) rows.push(['KNOWN', f.known.words, '']);
       const start = firmwareOn && f.load !== 0x0801 ? ` · the firmware starts only a program at $0801: type SYS ${f.load} at READY` : !firmwareOn && !f.scan.entry ? ' · a bare machine starts nothing without a SYS in a BASIC stub: switch FIRMWARE on' : '';
-      rows.push(['CHECK', 'no chain claim · a file of yours, read in this browser and sent nowhere; its shape checked, a load address and a size within 64K' + start, '']);
+      rows.push(['CHECK', 'no chain claim · read in this browser and sent nowhere · its shape checked: a load address and a size within 64K' + start, '']);
     } else {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes`, '']);
       rows.push(['PIN', `keccak256 ${SHORT(f.keccak256)} equals the pin`, '']);
@@ -487,7 +514,10 @@ function programRows(code, text) {
 function renderNow(code, text) {
   els.firmwareWhy.textContent = firmwareMode !== 'auto' ? `${firmwareMode.toUpperCase()} by the switch` : !machineFacts ? 'AUTO · decides when a program loads' : `AUTO · ${firmwareOn ? 'on' : 'bare'} · ${firmwareWhy}`;
   els.now.textContent = '';
-  for (const [k, v, cls] of programRows(code, text).concat(machineRows())) els.now.appendChild(line(k, v, cls));
+  els.now.appendChild(heading('THE PROGRAM'));
+  for (const [k, v, cls] of programRows(code, text)) els.now.appendChild(line(k, v, cls));
+  els.now.appendChild(heading('THE MACHINE'));
+  for (const [k, v, cls] of machineRows()) els.now.appendChild(line(k, v, cls));
   els.json.value = playing ? JSON.stringify(provenance(), null, 1) : '';
 }
 
