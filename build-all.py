@@ -4,7 +4,8 @@
     python3 build-all.py               # into the working tree, as published
     SITE_OUT=/tmp/site python3 build-all.py   # elsewhere, for a comparison
 
-The order is the registry's; the alias pages come last. Each builder is run
+The order is the registry's: the pages, then the builders that are not pages
+(the machine documents), then the alias pages. Each builder is run
 as its own process so that it sees exactly what a person running it by hand
 would see. Standard library only.
 """
@@ -15,7 +16,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
-from registry import PAGES  # noqa: E402
+from registry import PAGES, BUILDERS  # noqa: E402
 
 
 def builders():
@@ -35,6 +36,10 @@ def main():
         r = subprocess.run([sys.executable, str(b)], cwd=ROOT, env=env)
         if r.returncode != 0:
             raise SystemExit(f"build-all: {key} failed ({b})")
+    for b in BUILDERS:
+        r = subprocess.run([sys.executable, str(ROOT / b.script)], cwd=ROOT, env=env)
+        if r.returncode != 0:
+            raise SystemExit(f"build-all: {b.key} failed ({b.script})")
     r = subprocess.run([sys.executable, str(ROOT / "page.py")], cwd=ROOT, env=env)
     if r.returncode != 0:
         raise SystemExit("build-all: the alias pages failed")

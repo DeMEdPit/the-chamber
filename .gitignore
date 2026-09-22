@@ -7,3 +7,6 @@ node_modules/
 .vscode/
 .idea/
 __pycache__/
+machine/test/evidence/
+package.json
+package-lock.json

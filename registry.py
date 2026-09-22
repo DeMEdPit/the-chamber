@@ -44,6 +44,21 @@ PAGES = (
 BY_KEY = {p.key: p for p in PAGES}
 
 
+@dataclass(frozen=True)
+class Builder:
+    """A builder that writes documents which are not pages of the shell."""
+    key: str
+    script: str           # the builder, root-relative
+    generates: tuple      # the files it writes, root-relative; check-site reproduces each
+
+
+# build-all runs these after the pages; check-site rebuilds and compares every
+# generated file, so a hand edit to a built document fails the check.
+BUILDERS = (
+    Builder("machine", "machine/build.py", ("machine/core.html", "machine/standalone.html")),
+)
+
+
 def page(key):
     return BY_KEY[key]
 

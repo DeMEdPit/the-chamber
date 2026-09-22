@@ -1,0 +1,841 @@
+<!doctype html>
+<!--
+  SPDX-License-Identifier: GPL-2.0-only
+
+  THE MACHINE: the machine document. READY 64 is the machine inside it.
+
+  One source, two builds (machine/build.py):
+    machine/core.html         EMBEDDED: fed every byte by a host page over a
+                              MessagePort; carries a policy whose connect-src
+                              is data: alone (nopsta's build fetches its own
+                              WebAssembly from a data URL inside its script;
+                              a data URL reaches no network) and no network
+                              code at all; meant to be loaded in a frame
+                              sandboxed to scripts only.
+    machine/standalone.html   STANDALONE: reads the machine from Ethereum
+                              mainnet itself, as the launcher core does, and
+                              boots to READY; for the bench, for a stranger
+                              and for the copy-and-run case.
+  The regions that differ are marked EMBEDDED / STANDALONE on their own
+  lines; the build keeps one set and drops the markers. Nothing here decides
+  which build it is at run time.
+
+  What it does: reads, or is handed, the four parts of minimal64, the C64
+  emulator nopsta stored on Ethereum in 2022, checks each against the sha256
+  pinned below, runs them; takes the OpenROMs firmware (pressing 1) when it
+  is given or found, fills the emulator's ROM hooks, and boots. Edge to edge,
+  no text, no frame. Whatever is around this picture is the host's.
+
+  The bridge (protocol 1, machine/PROTOCOL.md): a host transfers one
+  MessagePort into this document; everything after runs on that port with
+  request ids. Program bytes travel as ArrayBuffers, never as markup. Writes
+  to the machine from outside (poke) are refused until the host turns LAB
+  on, and the first one that lands is reported as INTERVENED for the life
+  of this document.
+
+  Licence: GPL-2.0-only. The player glue derives from nopsta's own GPL
+  example player (minimal64/example/) by way of the READY 64 launcher core,
+  so it carries the same licence. The emulator arriving from the chain is
+  GPL-2.0 (github.com/nopsta/minimal64). The firmware is OpenROMs,
+  LGPL-3.0-or-later. Nothing here is theirs to endorse; the credits travel
+  in the bytes. machine/LICENSES.md has the texts and the sources.
+
+  Standalone use:
+    standalone.html                boot the firmware machine to READY
+    standalone.html?mode=bare      the bare machine, no firmware
+    standalone.html?prg=<hex>      boot, then inject and run this PRG
+    standalone.html?input=joystick arrows and Z/X/space are joystick port 2
+    standalone.html?rpc=<url>      try this RPC first
+  From script (same origin): window.READY64, the API block at the end.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<!--@EMBEDDED-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' data:; style-src 'unsafe-inline'; connect-src data:; base-uri 'none'; form-action 'none'">
+<!--@END-EMBEDDED-->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>READY 64</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
+               touch-action: none; overscroll-behavior: none; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { image-rendering: pixelated; display: block;
+           width: 100vw; height: calc(100vw * 272 / 384); max-height: 100vh;
+           max-width: calc(100vh * 384 / 272); }
+  #status { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 8px 12px;
+            font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; color: #9f9f9f;
+            background: rgba(0,0,0,.6); white-space: pre-wrap; }
+  #status[hidden] { display: none; }
+</style>
+</head>
+<body>
+<canvas id="screen" width="384" height="272"></canvas>
+<p id="status"></p>
+<script>
+'use strict';
+
+/*@EMBEDDED*/
+var BUILD = 'embedded';
+/*@END-EMBEDDED*/
+/*@STANDALONE*/
+var BUILD = 'standalone';
+/*@END-STANDALONE*/
+
+/* ------------------------------------------------------------ config
+   Everything this document trusts is here. Addresses are mainnet. The four
+   emulator parts are pinned by the sha256 of their payload (the bytes after
+   the STOP prefix), captured from the chain in 2026 and equal to the hashes
+   in the READY 64 provenance record and in machine/parts/MANIFEST.json,
+   which the build holds equal to these. Whoever hands this document the
+   parts, it checks them against these pins before running them. The
+   firmware is not pinned here: it is found through the release root and
+   checked against the ROM set contract's own stated hashes, so a later
+   pressing is one address change; a host that hands the ROMs in has done
+   that check itself and says so in its own provenance. */
+var CONFIG = {
+  chainId: 1,
+  rpcs: [
+    'https://ethereum-rpc.publicnode.com',
+    'https://eth.llamarpc.com',
+    'https://eth.drpc.org',
+    'https://gateway.tenderly.co/public/mainnet',
+    'https://cloudflare-eth.com'
+  ],
+  emulator: [
+    { name: 'gunzip helper', addr: '0x1Cc49e603B4b205Be0E74f8833971Bea5beccEC9',
+      sha256: 'ac9c3eaaa9bbb413b9e6826e12cfc685e69819811147c09e6bd9ec749443edae' },
+    { name: 'minimal64 part 0', addr: '0xEF13021d5302c3fCe437A3C281A286479ba60008',
+      sha256: '6124c18b000acfc4e986754f58c7ce4d212d220693e0f981ad4492a6afa5fc8d' },
+    { name: 'minimal64 part 1', addr: '0x9A463234988C0F77ca1252Fc974DfD6b50AAA6Ba',
+      sha256: '94250fe97b8c4cc957e36b7527cd19f60a17d5af6024692cb4de60ba8b75047f' },
+    { name: 'minimal64 part 2', addr: '0xf6Fb8cefFff7239d9689acDF1FBF5376C9996dA5',
+      sha256: '31f2789c39cbec739bf3cb5c911498ec8097f1623bc2c052f81b36a807ff6ad2' }
+  ],
+  /* OpenROMs C64 firmware, pressing 1: the release root. */
+  firmwareRoot: '0xE0a71d57FB514C8f5793e26937559935350b3406',
+  selectors: {
+    roms: '0x9670b2c4',            /* Release.roms() -> ROMSet */
+    kernal: '0xc9d4a352',          /* ROMSet.kernal() -> DataBlob */
+    basic: '0x15e8b345',
+    chargen: '0x57e0538e',
+    kernalSha: '0x0aa0f7b1',       /* ROMSet.KERNAL_SHA256() */
+    basicSha: '0xa4e3a60f',
+    chargenSha: '0x4730b6ac'
+  }
+};
+
+/* ------------------------------------------------------------ protocol
+   The bridge's constants. PROTOCOL is the version a host must speak;
+   CAPABILITIES is what this document can do, stated in hello so a host
+   renders its controls from facts. A new capability is a new entry and a
+   new message, never a change to an old one (machine/PROTOCOL.md). */
+var PROTOCOL = 1;
+var MACHINE = 'minimal64-2022';
+var CAPABILITIES = {
+  loads: ['prg'],
+  input: ['keyboard', 'joystick2'],
+  firmware: true,
+  screenText: true,
+  peek: true,
+  poke: true,
+  snapshots: false
+};
+var LIMITS = { prg: 65538, text: 4096, machine: 1048576, peek: 65536 };
+
+/* ------------------------------------------------------------ mode
+   Defaults; the standalone build reads its address for these, the embedded
+   build is told by message. */
+var MODE = 'firmware';
+var INPUT = 'keyboard';
+var PRG_HEX = '';
+/*@STANDALONE*/
+var params = new URLSearchParams(location.search);
+if (params.get('mode') === 'bare') MODE = 'bare';
+if (params.get('input') === 'joystick') INPUT = 'joystick';
+if (params.get('rpc')) CONFIG.rpcs = [params.get('rpc')].concat(CONFIG.rpcs);
+PRG_HEX = (params.get('prg') || '').replace(/^0x/i, '');
+/*@END-STANDALONE*/
+
+/* ------------------------------------------------------------ status */
+var statusEl = document.getElementById('status');
+var listeners = [];
+var STATE = { phase: 'loading', mode: MODE, input: INPUT, log: [], fetched: 0, ms: 0, error: null,
+              program: null, intervened: false, lab: false, build: BUILD };
+function say(msg, done) {
+  STATE.log.push(msg);
+  statusEl.textContent = msg;
+  if (done) statusEl.hidden = true; else statusEl.hidden = false;
+  for (var i = 0; i < listeners.length; i++) { try { listeners[i](msg, STATE); } catch (e) {} }
+  if (msg) event('status', { text: msg });
+}
+function refusal(code, text) {
+  var e = new Error(text || code);
+  e.code = code;
+  return e;
+}
+function fail(msg) {
+  STATE.phase = 'failed'; STATE.error = msg;
+  say('failed: ' + msg);
+  throw new Error(msg);
+}
+function hexToBytes(hex) {
+  var h = hex.replace(/^0x/i, '');
+  var out = new Uint8Array(h.length / 2);
+  for (var i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+  return out;
+}
+async function sha256Hex(bytes) {
+  var d = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.prototype.map.call(new Uint8Array(d), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+/*@STANDALONE*/
+/* ------------------------------------------------------------ rpc
+   Plain JSON-RPC over fetch, one call at a time, failing over across the
+   list. Every read is a view: eth_getCode for bytes, eth_call for the few
+   getters the firmware lookup needs. This whole region is absent from the
+   embedded build, whose policy forbids every connection to a network. */
+var rpcInUse = null;
+async function rpc(method, p) {
+  var order = rpcInUse ? [rpcInUse].concat(CONFIG.rpcs.filter(function (u) { return u !== rpcInUse; })) : CONFIG.rpcs;
+  var lastErr = null;
+  for (var i = 0; i < order.length; i++) {
+    var url = order[i];
+    try {
+      var res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: p }) });
+      if (!res.ok) throw new Error('http ' + res.status);
+      var j = await res.json();
+      if (j.error) throw new Error(j.error.message || 'rpc error');
+      if (j.result === undefined || j.result === null) throw new Error('empty result');
+      rpcInUse = url;
+      STATE.rpc = url;
+      return j.result;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('no rpc answered');
+}
+/* A data contract's runtime is one STOP byte and then the payload. */
+async function getPayload(addr) {
+  var code = await rpc('eth_getCode', [addr, 'latest']);
+  var bytes = hexToBytes(code);
+  if (bytes.length < 2 || bytes[0] !== 0) throw new Error('not a data contract: ' + addr);
+  STATE.fetched += bytes.length;
+  return bytes.subarray(1);
+}
+async function callAddress(to, selector) {
+  var r = await rpc('eth_call', [{ to: to, data: selector }, 'latest']);
+  var h = r.replace(/^0x/i, '');
+  if (h.length < 64) throw new Error('short return from ' + to);
+  return '0x' + h.slice(24, 64);
+}
+async function callBytes32(to, selector) {
+  var r = await rpc('eth_call', [{ to: to, data: selector }, 'latest']);
+  var h = r.replace(/^0x/i, '');
+  if (h.length < 64) throw new Error('short return from ' + to);
+  return h.slice(0, 64);
+}
+
+/* ------------------------------------------------------------ fetch */
+async function fetchMachine() {
+  var t0 = performance.now();
+  var chain;
+  try { chain = await rpc('eth_chainId', []); }
+  catch (e) { throw refusal('RPC_UNAVAILABLE', 'no rpc answered: ' + (e && e.message || e)); }
+  if (parseInt(chain, 16) !== CONFIG.chainId) fail('wrong chain: ' + chain);
+  var parts = [];
+  for (var i = 0; i < CONFIG.emulator.length; i++) {
+    var p = CONFIG.emulator[i];
+    say('reading the machine from ethereum, ' + (i + 1) + ' of 4');
+    parts.push(await getPayload(p.addr));
+  }
+  var roms = null;
+  if (MODE === 'firmware') {
+    say('finding the firmware through the release root');
+    var romset = await callAddress(CONFIG.firmwareRoot, CONFIG.selectors.roms);
+    var addrs = { kernal: await callAddress(romset, CONFIG.selectors.kernal),
+                  basic: await callAddress(romset, CONFIG.selectors.basic),
+                  chargen: await callAddress(romset, CONFIG.selectors.chargen) };
+    var want = { kernal: await callBytes32(romset, CONFIG.selectors.kernalSha),
+                 basic: await callBytes32(romset, CONFIG.selectors.basicSha),
+                 chargen: await callBytes32(romset, CONFIG.selectors.chargenSha) };
+    roms = {};
+    var names = ['kernal', 'basic', 'chargen'];
+    for (var k = 0; k < names.length; k++) {
+      say('reading the firmware from ethereum, ' + (k + 1) + ' of 3');
+      var rb = await getPayload(addrs[names[k]]);
+      var rh = await sha256Hex(rb);
+      if (rh !== want[names[k]]) throw refusal('HASH_MISMATCH', names[k] + ' ROM does not match the hash the ROM set states');
+      roms[names[k]] = rb;
+    }
+    STATE.firmware = { romset: romset, addresses: addrs, sha256: want };
+  }
+  STATE.ms = Math.round(performance.now() - t0);
+  return { parts: parts, roms: roms };
+}
+/*@END-STANDALONE*/
+
+/* ------------------------------------------------------------ emulator
+   The four parts concatenate to two script tags: a data-URI script that
+   defines gunzip and b64GzScript, then an inline script whose one call
+   inflates the emulator and appends it to the document. Both are run here
+   exactly as a page assembled by the on-chain launcher would run them,
+   just by hand instead of by the parser. */
+function runEmulatorParts(parts) {
+  var text = '';
+  var dec = new TextDecoder();
+  for (var i = 0; i < parts.length; i++) text += dec.decode(parts[i]);
+  var m = text.match(/<script src="(data:text\/javascript;base64,[^"]+)"><\/script>/);
+  if (!m) fail('the gunzip helper did not look like a script tag');
+  var inline = text.slice(m.index + m[0].length).match(/<script>([\s\S]*?)<\/script>/);
+  if (!inline) fail('the emulator parts did not look like a script');
+  return new Promise(function (resolve, reject) {
+    var s1 = document.createElement('script');
+    s1.src = m[1];
+    s1.onload = function () {
+      try {
+        var s2 = document.createElement('script');
+        s2.textContent = inline[1];
+        document.body.appendChild(s2);          /* runs b64GzScript, defines M64 */
+        if (typeof M64 !== 'function') throw new Error('M64 did not appear');
+        resolve();
+      } catch (e) { reject(e); }
+    };
+    s1.onerror = function () { reject(new Error('the gunzip helper script failed to load')); };
+    document.body.appendChild(s1);
+  });
+}
+
+/* ------------------------------------------------------------ binding
+   (from nopsta's m64-wrappers.js by way of player/tail.template.html) */
+var m64 = null;
+var m64_init, m64_audioInit, m64_injectAndRunPrg, m64_joystickPush, m64_joystickRelease,
+    m64_keyPush, m64_keyRelease, m64_getPixelBuffer, m64_getPixelBufferWidth,
+    m64_getAudioBuffer, m64_update, m64_setKernalROM, m64_setBASICROM, m64_setCharacterROM,
+    m64_cpuRead, m64_cpuWrite;
+var ROMS = null;
+
+function bind() {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () { reject(refusal('START_FAILED', 'the emulator did not initialise within 20 s')); }, 20000);
+    try {
+      m64 = M64({ onAbort: function (what) { clearTimeout(timer); reject(refusal('START_FAILED', 'the emulator aborted: ' + what)); } });
+    } catch (e) { clearTimeout(timer); reject(refusal('START_FAILED', 'the emulator did not start: ' + (e && e.message || e))); return; }
+    m64_init             = m64.cwrap('m64_init', null, ['number', 'number']);
+    m64_audioInit        = m64.cwrap('m64_audioInit', null, ['number', 'number']);
+    m64_injectAndRunPrg  = m64.cwrap('m64_injectAndRunPrg', null, ['array', 'number', 'number']);
+    m64_joystickPush     = m64.cwrap('m64_joystickPush', null, ['number', 'number']);
+    m64_joystickRelease  = m64.cwrap('m64_joystickRelease', null, ['number', 'number']);
+    m64_keyPush          = m64.cwrap('m64_keyPush', null, ['number']);
+    m64_keyRelease       = m64.cwrap('m64_keyRelease', null, ['number']);
+    m64_getPixelBuffer      = m64.cwrap('m64_getPixelBuffer', 'number');
+    m64_getPixelBufferWidth = m64.cwrap('m64_getPixelBufferWidth', 'number');
+    m64_getAudioBuffer      = m64.cwrap('m64_getAudioBuffer', 'number');
+    m64_update              = m64.cwrap('m64_update', 'number', ['number']);
+    m64_setKernalROM        = m64.cwrap('m64_setKernalROM', null, ['array', 'number']);
+    m64_setBASICROM         = m64.cwrap('m64_setBASICROM', null, ['array', 'number']);
+    m64_setCharacterROM     = m64.cwrap('m64_setCharacterROM', null, ['array', 'number']);
+    m64_cpuRead             = m64.cwrap('m64_cpuRead', 'number', ['number']);
+    m64_cpuWrite            = m64.cwrap('m64_cpuWrite', null, ['number', 'number']);
+    m64['onRuntimeInitialized'] = function () { clearTimeout(timer); resolve(); };
+  });
+}
+
+/* ------------------------------------------------------------ video */
+var canvas = document.getElementById('screen');
+var pixelWidth = 0, pixelHeight = 272, ctx = null, imageData = null, lastTs = false;
+function frame(ts) {
+  if (lastTs !== false) {
+    var dt = ts - lastTs;
+    if (dt > 200) dt = 16.666;
+    if (m64_update(dt)) {
+      var ptr = m64_getPixelBuffer();
+      var len = pixelWidth * pixelHeight * 4;
+      imageData.data.set(m64.HEAPU8.subarray(ptr, ptr + len));
+      ctx.putImageData(imageData, 0, 0);
+    }
+  }
+  lastTs = ts;
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------ audio
+   (from nopsta's m64-webaudio.js; a browser needs one gesture first) */
+var audioBufferSize = 0, audioContext = false, gainNode = false, volume = 0.8;
+var audioNextPlayTime = 0, audioBufferDurationSecs = 0, audioSampleFrequency = 0;
+var pushAudioLastTime = 0, pauseCounter = 0;
+function pushAudio() {
+  if (audioContext.currentTime - pushAudioLastTime > (audioBufferSize * 2) / audioSampleFrequency) {
+    pushAudioLastTime = audioContext.currentTime; pauseCounter = 10; return;
+  }
+  pushAudioLastTime = audioContext.currentTime;
+  if (pauseCounter > 0) { pauseCounter--; return; }
+  if (audioContext.currentTime + audioBufferDurationSecs * 2 < audioNextPlayTime) return;
+  audioNextPlayTime += audioBufferDurationSecs;
+  var src = audioContext.createBufferSource();
+  src.addEventListener('ended', pushAudio);
+  var buf = audioContext.createBuffer(1, audioBufferSize, audioSampleFrequency);
+  src.connect(gainNode);
+  var ptr = m64_getAudioBuffer();
+  buf.getChannelData(0).set(m64.HEAPF32.subarray(ptr >> 2, (ptr >> 2) + audioBufferSize));
+  src.buffer = buf;
+  src.start(audioNextPlayTime);
+}
+function runTimer() {
+  pushAudio();
+  var src = audioContext.createBufferSource();
+  src.addEventListener('ended', runTimer);
+  src.connect(audioContext.destination);
+  src.buffer = audioContext.createBuffer(1, audioBufferSize / 4, audioSampleFrequency);
+  src.start(audioContext.currentTime);
+}
+function setupAudioNodes() {
+  if (audioContext.state !== 'running' || gainNode) return;
+  gainNode = audioContext.createGain();
+  gainNode.gain.value = volume;
+  gainNode.connect(audioContext.destination);
+  audioNextPlayTime = audioContext.currentTime + 3 * audioBufferDurationSecs;
+  m64_audioInit(audioBufferSize, audioContext.sampleRate);
+  runTimer();
+  setInterval(pushAudio, 4);
+}
+function startAudio() {
+  if (!m64) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try {
+    audioBufferSize = 4096;
+    if (!audioContext) {
+      audioContext = new AC();
+      audioSampleFrequency = audioContext.sampleRate;
+      audioBufferDurationSecs = audioBufferSize / audioSampleFrequency;
+      audioContext.onstatechange = setupAudioNodes;
+    }
+    if (audioContext.state !== 'running') audioContext.resume();
+    setupAudioNodes();
+  } catch (e) {}
+}
+document.addEventListener('pointerdown', startAudio);
+document.addEventListener('keydown', startAudio);
+document.addEventListener('touchend', function (e) { startAudio(); e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+
+/* ------------------------------------------------------------ input
+   Joystick on port 2 and the full keyboard matrix, from the READY 64
+   workbench. Which one the arrow keys feed is the input mode. */
+var joyKeys = { ArrowUp: 1, ArrowDown: 2, ArrowLeft: 4, ArrowRight: 8, KeyZ: 16, KeyX: 16, Space: 16 };
+var keyMap = {
+  Backquote: 0, Digit1: 1, Digit2: 2, Digit3: 3, Digit4: 4, Digit5: 5, Digit6: 6, Digit7: 7,
+  Digit8: 8, Digit9: 9, Digit0: 10, NumpadAdd: 11, Minus: 12, NumpadSubtract: 12, Home: 14,
+  Backspace: 15, Delete: 15, ControlLeft: 16, ControlRight: 16, KeyQ: 17, KeyW: 18, KeyE: 19,
+  KeyR: 20, KeyT: 21, KeyY: 22, KeyU: 23, KeyI: 24, KeyO: 25, KeyP: 26, BracketLeft: 27,
+  BracketRight: 28, NumpadMultiply: 28, Backslash: 29, Escape: 30, KeyA: 31, KeyS: 32, KeyD: 33,
+  KeyF: 34, KeyG: 35, KeyH: 36, KeyJ: 37, KeyK: 38, KeyL: 39, Quote: 40, Semicolon: 41, Equal: 42,
+  Enter: 43, NumpadEnter: 43, Tab: 44, ShiftLeft: 45, KeyZ: 46, KeyX: 47, KeyC: 48, KeyV: 49,
+  KeyB: 50, KeyN: 51, KeyM: 52, Comma: 53, Period: 54, Slash: 55, ShiftRight: 56, Space: 59,
+  F1: 60, F3: 61, F5: 62, F7: 63, End: 64
+};
+var cursorMap = { ArrowDown: { key: 57, shift: false }, ArrowUp: { key: 57, shift: true },
+                  ArrowRight: { key: 58, shift: false }, ArrowLeft: { key: 58, shift: true } };
+var symbolMap = {
+  ':': { key: 40, shift: false }, ';': { key: 41, shift: false }, '+': { key: 11, shift: false },
+  '-': { key: 12, shift: false }, '=': { key: 42, shift: false }, '*': { key: 28, shift: false },
+  '@': { key: 27, shift: false }, '/': { key: 55, shift: false }, ',': { key: 53, shift: false },
+  '.': { key: 54, shift: false }, '!': { key: 1, shift: true }, '"': { key: 2, shift: true },
+  '#': { key: 3, shift: true }, '$': { key: 4, shift: true }, '%': { key: 5, shift: true },
+  '&': { key: 6, shift: true }, "'": { key: 7, shift: true }, '(': { key: 8, shift: true },
+  ')': { key: 9, shift: true }, '<': { key: 53, shift: true }, '>': { key: 54, shift: true },
+  '?': { key: 55, shift: true }, '[': { key: 40, shift: true }, ']': { key: 41, shift: true }
+};
+var heldKeys = {}, heldJoy = {}, syntheticShift = 0, shiftSuppress = 0, heldSymShift = {};
+function physicalShiftHeld() {
+  for (var c in heldKeys) if (heldKeys[c] === 45 || heldKeys[c] === 56) return true;
+  return false;
+}
+function releaseAll() {
+  if (!m64) return;
+  for (var c in heldKeys) m64_keyRelease(heldKeys[c]);
+  heldKeys = {};
+  if (syntheticShift > 0) { m64_keyRelease(45); syntheticShift = 0; }
+  for (var j in heldJoy) m64_joystickRelease(1, heldJoy[j]);
+  heldJoy = {}; shiftSuppress = 0; heldSymShift = {};
+}
+window.addEventListener('blur', releaseAll);
+document.addEventListener('visibilitychange', function () { if (document.hidden) releaseAll(); });
+
+document.addEventListener('keydown', function (e) {
+  if (!m64 || STATE.phase !== 'running') return;
+  if (INPUT === 'joystick') {
+    var bit = joyKeys[e.code];
+    if (bit && !(e.code in heldJoy)) { heldJoy[e.code] = bit; m64_joystickPush(1, bit); }
+    if (bit) e.preventDefault();
+    return;
+  }
+  if (e.repeat) { e.preventDefault(); return; }
+  var sym = symbolMap[e.key];
+  if (sym && !(e.code in heldKeys)) {
+    if (sym.shift) { if (syntheticShift === 0 && !physicalShiftHeld()) m64_keyPush(45); syntheticShift++; }
+    else { if (shiftSuppress === 0 && physicalShiftHeld()) { m64_keyRelease(45); m64_keyRelease(56); } shiftSuppress++; }
+    m64_keyPush(sym.key); heldKeys[e.code] = sym.key; heldSymShift[e.code] = sym.shift;
+    e.preventDefault(); return;
+  }
+  var cur = cursorMap[e.code];
+  if (cur) {
+    if (cur.shift) { if (syntheticShift === 0 && !physicalShiftHeld()) m64_keyPush(45); syntheticShift++; }
+    m64_keyPush(cur.key); heldKeys[e.code] = cur.key; e.preventDefault(); return;
+  }
+  var key = keyMap[e.code];
+  if (key !== undefined) { m64_keyPush(key); heldKeys[e.code] = key; e.preventDefault(); }
+});
+document.addEventListener('keyup', function (e) {
+  if (!m64) return;
+  if (INPUT === 'joystick') {
+    if (e.code in heldJoy) { m64_joystickRelease(1, heldJoy[e.code]); delete heldJoy[e.code]; e.preventDefault(); }
+    return;
+  }
+  if (e.code in heldSymShift) {
+    var wasShifted = heldSymShift[e.code];
+    delete heldSymShift[e.code];
+    m64_keyRelease(heldKeys[e.code]); delete heldKeys[e.code];
+    if (wasShifted) { if (--syntheticShift <= 0) { syntheticShift = 0; if (!physicalShiftHeld()) m64_keyRelease(45); } }
+    else if (--shiftSuppress <= 0) {
+      shiftSuppress = 0;
+      for (var c in heldKeys) if (heldKeys[c] === 45 || heldKeys[c] === 56) m64_keyPush(heldKeys[c]);
+    }
+    e.preventDefault(); return;
+  }
+  var cur = cursorMap[e.code];
+  if (cur && e.code in heldKeys) {
+    m64_keyRelease(cur.key); delete heldKeys[e.code];
+    if (cur.shift && --syntheticShift <= 0) { syntheticShift = 0; if (!physicalShiftHeld()) m64_keyRelease(45); }
+    e.preventDefault(); return;
+  }
+  if (e.code in heldKeys) {
+    var released = heldKeys[e.code]; delete heldKeys[e.code];
+    if (released === 45 && syntheticShift > 0) { e.preventDefault(); return; }
+    m64_keyRelease(released); e.preventDefault();
+  }
+});
+/* a quick tap on a touch screen is a pulse of fire on port 2 */
+var tap = null;
+document.addEventListener('pointerdown', function (e) {
+  if (e.pointerType !== 'touch') return;
+  tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now() };
+});
+document.addEventListener('pointerup', function (e) {
+  if (!tap || e.pointerId !== tap.id || !m64) return;
+  var still = Math.abs(e.clientX - tap.x) < 12 && Math.abs(e.clientY - tap.y) < 12;
+  var quick = Date.now() - tap.t < 250;
+  tap = null;
+  if (still && quick) { m64_joystickPush(1, 16); setTimeout(function () { m64_joystickRelease(1, 16); }, 90); }
+});
+
+/* ------------------------------------------------------------ typing
+   Type text into the machine through the keyboard matrix with human
+   timing: a key is held for a few frames so the KERNAL's scan sees it.
+   Letters arrive as the C64's unshifted letters (PETSCII upper case),
+   which is what a BASIC listing wants. */
+function charToPress(ch) {
+  if (ch === '\n') return { key: 43, shift: false };
+  if (ch === ' ') return { key: 59, shift: false };
+  if (/[A-Za-z]/.test(ch)) return { key: keyMap['Key' + ch.toUpperCase()], shift: false };
+  if (/[0-9]/.test(ch)) return { key: keyMap['Digit' + ch], shift: false };
+  if (symbolMap[ch]) return symbolMap[ch];
+  if (ch === '^') return { key: 29, shift: false };
+  if (ch === '←') return { key: 0, shift: false };
+  return null;
+}
+var typing = false;
+function typeText(text, opts) {
+  opts = opts || {};
+  var hold = opts.hold || 70, gap = opts.gap || 45, lineGap = opts.lineGap || 350;
+  return new Promise(function (resolve) {
+    if (!m64 || typing) { resolve(false); return; }
+    typing = true;
+    var i = 0;
+    function next() {
+      if (i >= text.length) { typing = false; resolve(true); return; }
+      var ch = text[i++];
+      var p = charToPress(ch);
+      if (!p) { setTimeout(next, gap); return; }
+      if (p.shift) m64_keyPush(45);
+      m64_keyPush(p.key);
+      setTimeout(function () {
+        m64_keyRelease(p.key);
+        if (p.shift) m64_keyRelease(45);
+        setTimeout(next, ch === '\n' ? lineGap : gap);
+      }, ch === '\n' ? hold + 30 : hold);
+    }
+    next();
+  });
+}
+
+/* ------------------------------------------------------------ programs
+   A PRG is a two-byte load address and a payload that must fit below 64K
+   with no wrap. Every refusal has a code beneath its sentence. */
+function checkPRG(bytes) {
+  if (bytes.length > LIMITS.prg) return { code: 'FILE_TOO_LARGE', text: 'not loaded: ' + bytes.length + ' bytes; a PRG is at most ' + LIMITS.prg };
+  if (bytes.length < 3) return { code: 'PRG_TOO_SHORT', text: 'not loaded: too short to be a PRG' };
+  var loadAddr = bytes[0] | (bytes[1] << 8);
+  if (loadAddr + (bytes.length - 2) > 0x10000) return { code: 'PRG_ADDRESS_OVERFLOW', text: 'not loaded: would run past 64K' };
+  return null;
+}
+function loadPRG(bytes, label) {
+  if (!m64 || STATE.phase !== 'running') return { ok: false, code: 'NOT_READY', text: 'the machine is not running' };
+  var bad = checkPRG(bytes);
+  if (bad) { say(bad.text); return { ok: false, code: bad.code, text: bad.text }; }
+  var loadAddr = bytes[0] | (bytes[1] << 8);
+  releaseAll();
+  m64_injectAndRunPrg(bytes, bytes.length, 0);
+  STATE.program = { label: label || 'program', bytes: bytes.length, load: loadAddr };
+  say('running ' + STATE.program.label, true);
+  return { ok: true, label: STATE.program.label, load: loadAddr, bytes: bytes.length };
+}
+function reset() {
+  if (!m64) return;
+  releaseAll();
+  m64_init(1, 2);
+  STATE.program = null;
+}
+function screenText() {
+  if (!m64) return '';
+  var rows = [];
+  for (var y = 0; y < 25; y++) {
+    var s = '';
+    for (var x = 0; x < 40; x++) {
+      var c = m64_cpuRead(0x0400 + y * 40 + x) & 0x7f;
+      if (c === 0) s += '@'; else if (c >= 1 && c <= 26) s += String.fromCharCode(64 + c);
+      else if (c >= 32 && c <= 63) s += String.fromCharCode(c); else s += '.';
+    }
+    rows.push(s.replace(/\s+$/, ''));
+  }
+  return rows.join('\n').replace(/\n+$/, '');
+}
+
+/* ------------------------------------------------------------ start
+   From parts in hand, however they arrived: check each against its pin,
+   run them, bind, take the firmware if there is any, and boot. */
+var started = false;
+async function startFromParts(parts, roms) {
+  if (started) throw refusal('ALREADY_STARTED', 'the machine has already been started');
+  started = true;
+  STATE.phase = 'loading';
+  var t0 = performance.now();
+  var checked = 'unchecked';
+  if (parts.length !== CONFIG.emulator.length) throw refusal('BAD_MESSAGE', 'the machine is ' + CONFIG.emulator.length + ' parts');
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    say('checking the machine against its pins');
+    for (var i = 0; i < parts.length; i++) {
+      var h = await sha256Hex(parts[i]);
+      if (h !== CONFIG.emulator[i].sha256) throw refusal('HASH_MISMATCH', CONFIG.emulator[i].name + ' does not match its pinned hash');
+    }
+    checked = 'checked';
+  }
+  say('starting the machine');
+  await runEmulatorParts(parts);
+  await bind();
+  pixelWidth = m64_getPixelBufferWidth();
+  canvas.width = pixelWidth; canvas.height = pixelHeight;
+  canvas.style.height = 'calc(100vw * ' + pixelHeight + ' / ' + pixelWidth + ')';
+  canvas.style.maxWidth = 'calc(100vh * ' + pixelWidth + ' / ' + pixelHeight + ')';
+  ctx = canvas.getContext('2d');
+  imageData = ctx.getImageData(0, 0, pixelWidth, pixelHeight);
+  if (roms) {
+    ROMS = roms;
+    m64_setKernalROM(ROMS.kernal, ROMS.kernal.length);
+    m64_setBASICROM(ROMS.basic, ROMS.basic.length);
+    m64_setCharacterROM(ROMS.chargen, ROMS.chargen.length);
+  }
+  m64_init(1, 2);                                  /* PAL, 8580 SID */
+  STATE.phase = 'running';
+  STATE.mode = MODE = roms ? 'firmware' : 'bare';
+  STATE.ms = Math.round(performance.now() - t0);
+  requestAnimationFrame(frame);
+  say('', true);
+  return checked;
+}
+
+/* ------------------------------------------------------------ bridge
+   Protocol 1. A host posts {v: 1, type: 'port'} to this window with one
+   MessagePort transferred; from then on everything runs on that port. A
+   message with an id gets exactly one reply carrying the same id (ok,
+   ready, loaded, refused, screen, value, state). Messages without an id
+   from this side are events (hello, status, intervened, error). Reads are
+   always allowed; a write is refused until the host turns lab on, and the
+   first write that lands makes this document INTERVENED for good. */
+var port = null, labOn = false, intervened = false;
+function send(msg) { if (port) { try { port.postMessage(msg); } catch (e) {} } }
+function event(type, body) {
+  var m = { v: PROTOCOL, type: type };
+  if (body) for (var k in body) m[k] = body[k];
+  send(m);
+}
+function reply(req, body) {
+  var m = { v: PROTOCOL };
+  for (var k in body) m[k] = body[k];
+  if (req && req.id !== undefined) m.id = req.id;
+  send(m);
+}
+function refuse(req, code, text) { reply(req, { type: 'refused', code: code, text: text || code }); }
+function isBuffer(b) { return b instanceof ArrayBuffer; }
+function stateReport() {
+  return { type: 'state', phase: STATE.phase, build: BUILD, mode: MODE, input: INPUT, firmware: !!ROMS,
+           program: STATE.program, intervened: intervened, lab: labOn, error: STATE.error };
+}
+async function onRequest(m) {
+  if (!m || typeof m !== 'object' || m.v !== PROTOCOL || typeof m.type !== 'string') {
+    refuse(m, 'BAD_MESSAGE', 'a request is {v: 1, type, id?, ...}'); return;
+  }
+  switch (m.type) {
+    case 'machine': {
+      if (started) { refuse(m, 'ALREADY_STARTED', 'the machine has already been started'); return; }
+      var parts = m.parts, roms = m.roms || null, total = 0;
+      if (!Array.isArray(parts) || parts.length !== CONFIG.emulator.length) { refuse(m, 'BAD_MESSAGE', 'parts must be ' + CONFIG.emulator.length + ' ArrayBuffers'); return; }
+      for (var i = 0; i < parts.length; i++) { if (!isBuffer(parts[i])) { refuse(m, 'BAD_MESSAGE', 'part ' + i + ' is not an ArrayBuffer'); return; } total += parts[i].byteLength; }
+      if (total > LIMITS.machine) { refuse(m, 'FILE_TOO_LARGE', 'the parts are ' + total + ' bytes; at most ' + LIMITS.machine); return; }
+      var romBytes = null;
+      if (roms !== null) {
+        if (typeof roms !== 'object' || !isBuffer(roms.kernal) || !isBuffer(roms.basic) || !isBuffer(roms.chargen)) { refuse(m, 'BAD_MESSAGE', 'roms must be null or {kernal, basic, chargen} ArrayBuffers'); return; }
+        if (roms.kernal.byteLength !== 8192 || roms.basic.byteLength !== 8192 || roms.chargen.byteLength !== 4096) { refuse(m, 'BAD_MESSAGE', 'roms must be 8192, 8192 and 4096 bytes'); return; }
+        romBytes = { kernal: new Uint8Array(roms.kernal), basic: new Uint8Array(roms.basic), chargen: new Uint8Array(roms.chargen) };
+      }
+      MODE = romBytes ? 'firmware' : 'bare';
+      try {
+        var checked = await startFromParts(parts.map(function (b) { return new Uint8Array(b); }), romBytes);
+        reply(m, { type: 'ready', emulator: MACHINE, hashes: checked, firmware: !!romBytes, ms: STATE.ms });
+      } catch (e) {
+        STATE.phase = 'failed'; STATE.error = String(e && e.message || e);
+        say('failed: ' + STATE.error);
+        refuse(m, (e && e.code) || 'START_FAILED', STATE.error);
+      }
+      return;
+    }
+    case 'load': {
+      if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      if (CAPABILITIES.loads.indexOf(m.kind) < 0) { refuse(m, 'KIND_UNSUPPORTED', 'this machine loads: ' + CAPABILITIES.loads.join(', ')); return; }
+      if (!isBuffer(m.bytes)) { refuse(m, 'BAD_MESSAGE', 'bytes must be an ArrayBuffer'); return; }
+      if (m.bytes.byteLength > LIMITS.prg) { refuse(m, 'FILE_TOO_LARGE', 'not loaded: ' + m.bytes.byteLength + ' bytes; a PRG is at most ' + LIMITS.prg); return; }
+      var r = loadPRG(new Uint8Array(m.bytes), typeof m.label === 'string' ? m.label.slice(0, 80) : 'program');
+      if (r.ok) reply(m, { type: 'loaded', label: r.label, load: r.load, bytes: r.bytes, intervened: intervened });
+      else refuse(m, r.code, r.text);
+      return;
+    }
+    case 'reset':
+      if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      reset(); reply(m, { type: 'ok' }); return;
+    case 'input':
+      if (m.mode !== 'keyboard' && m.mode !== 'joystick') { refuse(m, 'BAD_MESSAGE', 'mode is keyboard or joystick'); return; }
+      releaseAll(); INPUT = m.mode; STATE.input = INPUT; reply(m, { type: 'ok', input: INPUT }); return;
+    case 'joystick':
+      if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      if ([1, 2, 4, 8, 16].indexOf(m.bit) < 0 || typeof m.down !== 'boolean') { refuse(m, 'BAD_MESSAGE', 'bit is 1, 2, 4, 8 or 16 and down is a boolean'); return; }
+      (m.down ? m64_joystickPush : m64_joystickRelease)(1, m.bit); reply(m, { type: 'ok' }); return;
+    case 'type': {
+      if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      if (typeof m.text !== 'string' || m.text.length > LIMITS.text) { refuse(m, 'BAD_MESSAGE', 'text is a string of at most ' + LIMITS.text); return; }
+      if (typing) { refuse(m, 'BUSY', 'still typing'); return; }
+      var typed = await typeText(m.text);
+      reply(m, { type: 'ok', typed: typed }); return;
+    }
+    case 'screen':
+      if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      reply(m, { type: 'screen', text: screenText() }); return;
+    case 'peek': {
+      if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      var a = m.addr, n = m.length === undefined ? 1 : m.length;
+      if (!Number.isInteger(a) || a < 0 || a > 0xffff || !Number.isInteger(n) || n < 1 || n > LIMITS.peek || a + n > 0x10000) { refuse(m, 'BAD_MESSAGE', 'addr is 0..65535 and addr + length stays within 64K'); return; }
+      var out = new Uint8Array(n);
+      for (var j = 0; j < n; j++) out[j] = m64_cpuRead(a + j) & 0xff;
+      var res = { v: PROTOCOL, type: 'value', addr: a, value: out[0], bytes: out.buffer };
+      if (m.id !== undefined) res.id = m.id;
+      if (port) { try { port.postMessage(res, [out.buffer]); } catch (e) {} }
+      return;
+    }
+    case 'poke':
+      if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      if (!labOn) { refuse(m, 'LAB_OFF', 'a write to the machine needs lab on; a run that takes one is INTERVENED'); return; }
+      if (!Number.isInteger(m.addr) || m.addr < 0 || m.addr > 0xffff || !Number.isInteger(m.value) || m.value < 0 || m.value > 0xff) { refuse(m, 'BAD_MESSAGE', 'addr is 0..65535 and value is 0..255'); return; }
+      m64_cpuWrite(m.addr, m.value);
+      if (!intervened) { intervened = true; STATE.intervened = true; event('intervened', { addr: m.addr }); }
+      reply(m, { type: 'ok', intervened: true }); return;
+    case 'lab':
+      if (typeof m.on !== 'boolean') { refuse(m, 'BAD_MESSAGE', 'on is a boolean'); return; }
+      labOn = m.on; STATE.lab = labOn; reply(m, { type: 'ok', lab: labOn }); return;
+    case 'state':
+      reply(m, stateReport()); return;
+    default:
+      refuse(m, 'UNKNOWN_MESSAGE', 'no such request: ' + m.type);
+  }
+}
+function attach(p) {
+  port = p;
+  port.onmessage = function (e) {
+    Promise.resolve(onRequest(e.data)).catch(function (err) {
+      refuse(e.data, 'INTERNAL', String(err && err.message || err));
+    });
+  };
+  if (port.start) port.start();
+  if (STATE.phase === 'waiting') say('', true);
+  event('hello', { protocol: PROTOCOL, machine: MACHINE, build: BUILD, phase: STATE.phase, capabilities: CAPABILITIES, limits: LIMITS });
+}
+window.addEventListener('message', function (e) {
+  if (port || !e.ports || !e.ports[0]) return;
+  if (!e.data || e.data.v !== PROTOCOL || e.data.type !== 'port') return;
+  if (e.source !== window.parent) return;
+  attach(e.ports[0]);
+});
+window.addEventListener('error', function (e) {
+  var text = String(e && (e.message || e.error) || 'error');
+  STATE.error = text;
+  event('error', { text: text, phase: STATE.phase });
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var text = String(e && e.reason && (e.reason.message || e.reason) || 'rejection');
+  STATE.error = text;
+  event('error', { text: text, phase: STATE.phase });
+});
+
+/* ------------------------------------------------------------ boot */
+/*@STANDALONE*/
+async function boot() {
+  try {
+    var got = await fetchMachine();
+    await startFromParts(got.parts, got.roms);
+    if (PRG_HEX.length >= 6 && PRG_HEX.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(PRG_HEX)) {
+      loadPRG(hexToBytes(PRG_HEX), 'program from url');
+    }
+  } catch (e) {
+    if (STATE.phase !== 'failed') { STATE.phase = 'failed'; STATE.error = String(e && e.message || e); say('failed: ' + STATE.error); }
+  }
+}
+boot();
+/*@END-STANDALONE*/
+/*@EMBEDDED*/
+STATE.phase = 'waiting';
+say('the machine document: it waits for a host page to hand it the machine (standalone.html reads the chain itself)');
+/*@END-EMBEDDED*/
+
+/* ------------------------------------------------------------ api
+   For a page that embeds the standalone from the same origin, or for a
+   script run against it. Across the sandbox a host uses the bridge. */
+window.READY64 = {
+  version: 'core/0.2',
+  protocol: PROTOCOL,
+  state: STATE,
+  loadPRG: function (bytes, label) { return loadPRG(bytes, label).ok; },
+  reset: reset,
+  type: typeText,
+  screenText: screenText,
+  peek: function (a) { return m64 ? m64_cpuRead(a & 0xffff) : -1; },
+  poke: function (a, v) { if (m64) { m64_cpuWrite(a & 0xffff, v & 0xff); intervened = true; STATE.intervened = true; } },
+  setInput: function (mode) { releaseAll(); INPUT = mode === 'joystick' ? 'joystick' : 'keyboard'; STATE.input = INPUT; },
+  joystick: function (bit, down) { if (m64) (down ? m64_joystickPush : m64_joystickRelease)(1, bit); },
+  onStatus: function (cb) { listeners.push(cb); },
+  startAudio: startAudio,
+  canvas: canvas
+};
+</script>
+</body>
+</html>

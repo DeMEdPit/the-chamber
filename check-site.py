@@ -13,11 +13,19 @@
    failure, external reachability is not this check's business.
 4. No builder carries a private copy of a rule that is the shared
    stylesheet's or the footer's; the JSON inputs of the generated pages parse.
+5. The machine (machine/): the documents the registry's builders generate are
+   reproduced too; the site's copies of the emulator and the ROMs match their
+   manifest offline; the source's pins equal the manifest's; the embedded
+   document's policy lets it connect to data: URLs alone and its script has
+   no network call; the
+   licence gate holds (GPL and LGPL marks and texts present, LICENSES.md names
+   the sources, README, LICENSE and the footer no longer say all of it is MIT).
 
     python3 check-site.py
 
 Standard library only. Exit status 1 on any failure, with every failure named.
 """
+import hashlib
 import html.parser
 import json
 import os
@@ -30,7 +38,7 @@ import urllib.parse
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
-from registry import SITE, PAGES  # noqa: E402
+from registry import SITE, PAGES, BUILDERS  # noqa: E402
 
 FAILS = []
 
@@ -129,6 +137,7 @@ def check_reproduces():
             return
         pairs = [(page_file(p), pathlib.Path(tmp) / p.dir / "index.html" if p.dir else pathlib.Path(tmp) / "index.html") for p in PAGES]
         pairs += [(f, pathlib.Path(tmp) / old.strip("/") / "index.html") for old, f, _ in alias_files()]
+        pairs += [(ROOT / g, pathlib.Path(tmp) / g) for b in BUILDERS for g in b.generates]
         for committed, built in pairs:
             rel = committed.relative_to(ROOT)
             if not committed.exists():
@@ -196,24 +205,85 @@ def check_shared_rules():
 
 
 def check_inputs():
-    for f in ("surface/surface.json", "architecture/findings.json"):
+    for f in ("surface/surface.json", "architecture/findings.json", "machine/parts/MANIFEST.json"):
         try:
             json.loads((ROOT / f).read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
             fail(f"{f}: does not parse ({e})")
 
 
+def check_machine():
+    """The machine's own gate, on the committed tree, without building."""
+    mdir = ROOT / "machine"
+    try:
+        man = json.loads((mdir / "parts" / "MANIFEST.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return                                        # named by check_inputs
+    by_file = {}
+    for part in man.get("parts", []):
+        f = mdir / "parts" / part.get("file", "")
+        for k in ("file", "bytes", "sha256", "licence", "source", "chain"):
+            if not part.get(k):
+                fail(f"machine/parts/MANIFEST.json: {part.get('file') or part.get('name')!r} lacks {k}")
+        if not f.exists():
+            fail(f"machine/parts/{part.get('file')}: named in the manifest but missing")
+            continue
+        b = f.read_bytes()
+        if len(b) != part.get("bytes") or hashlib.sha256(b).hexdigest() != part.get("sha256"):
+            fail(f"machine/parts/{part['file']}: does not match its manifest entry (bytes or sha256)")
+        by_file[part["file"]] = part
+    src = (mdir / "src" / "core.html").read_text(encoding="utf-8")
+    pins = re.findall(r"sha256: '([0-9a-f]{64})'", src)
+    want = [by_file[f]["sha256"] for f in man.get("emulator", []) if f in by_file]
+    if pins != want:
+        fail("machine/src/core.html: the emulator pins differ from machine/parts/MANIFEST.json")
+    for f in ("core.html", "standalone.html", "src/core.html"):
+        if "SPDX-License-Identifier: GPL-2.0-only" not in (mdir / f).read_text(encoding="utf-8"):
+            fail(f"machine/{f}: not marked GPL-2.0-only")
+    emb = (mdir / "core.html").read_text(encoding="utf-8")
+    connect = re.search(r"connect-src ([^;\"]*)", emb)
+    if not connect or connect.group(1).strip() != "data:":
+        fail("machine/core.html: the embedded document's policy must have connect-src data: and nothing else")
+    for t in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource"):
+        if t in emb.split("<script>", 1)[-1]:
+            fail(f"machine/core.html: the embedded document's script contains {t!r}")
+    if "SPDX-License-Identifier: MIT" not in (mdir / "bridge-client.js").read_text(encoding="utf-8"):
+        fail("machine/bridge-client.js: not marked MIT")
+    for f in ("licenses/GPL-2.0.txt", "licenses/LGPL-3.0.txt", "licenses/GPL-3.0.txt", "LICENSES.md", "PROTOCOL.md", "README.md"):
+        if not (mdir / f).exists():
+            fail(f"machine/{f}: missing")
+    lic = (mdir / "LICENSES.md").read_text(encoding="utf-8") if (mdir / "LICENSES.md").exists() else ""
+    for s in ("GPL-2.0-only", "LGPL-3.0-or-later", "github.com/nopsta/minimal64", "github.com/MEGA65/open-roms",
+              "ad178dbe4d48cd6a317737a8e0e7e662f7e33d32"):
+        if s not in lic:
+            fail(f"machine/LICENSES.md: does not name {s}")
+    proto = re.search(r"var PROTOCOL = (\d+);", src)
+    client = re.search(r"export const PROTOCOL = (\d+);", (mdir / "bridge-client.js").read_text(encoding="utf-8"))
+    first = (mdir / "PROTOCOL.md").read_text(encoding="utf-8").split("\n", 1)[0] if (mdir / "PROTOCOL.md").exists() else ""
+    if not (proto and client and proto.group(1) == client.group(1) and f"version {proto.group(1)}" in first):
+        fail("the protocol version differs between machine/src/core.html, machine/bridge-client.js and machine/PROTOCOL.md")
+    if "machine/LICENSES.md" not in (ROOT / "README.md").read_text(encoding="utf-8"):
+        fail("README.md: does not point at machine/LICENSES.md")
+    lic_root = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    if "GPL-2.0" not in lic_root or "machine/" not in lic_root:
+        fail("LICENSE: does not say that machine/ is not under it")
+    if "All of it MIT" in (ROOT / "footer.py").read_text(encoding="utf-8"):
+        fail("footer.py: still says all of it is MIT")
+
+
 def main():
     check_inputs()
     check_shared_rules()
     check_pages()
+    check_machine()
     check_reproduces()
     if FAILS:
         print("check-site: FAILED")
         for m in FAILS:
             print("  - " + m)
         sys.exit(1)
-    print(f"check-site: ok ({len(PAGES)} pages, {sum(len(p.aliases) for p in PAGES)} alias, reproduced byte for byte, every link and anchor resolves)")
+    print(f"check-site: ok ({len(PAGES)} pages, {sum(len(p.aliases) for p in PAGES)} alias, "
+          f"{sum(len(b.generates) for b in BUILDERS)} generated documents, reproduced byte for byte, every link and anchor resolves, the machine's gate holds)")
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@ sure they can is the part we answer for.
 - The Chamber on chain — [`0x75FD5A9c…db924`](https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924)
 - Perception Chamber Canary on chain — [`0x6f54E1aA…E6127`](https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127)
 
-Every page is generated. Build them all with `python3 build-all.py`; `python3 check-site.py` rebuilds the site in a temporary directory, compares it byte for byte with what is committed, and checks every link, anchor and id. Standard library only; the workflow runs the check on every push.
+Every page is generated. Build them all with `python3 build-all.py`; `python3 check-site.py` rebuilds the site in a temporary directory, compares it byte for byte with what is committed, and checks every link, anchor and id. Standard library only; the workflow runs the check on every push. The machine document, its bridge and their gates are in [`machine/`](machine/README.md).
 <!-- /github-only -->
 
 ---
@@ -181,4 +181,9 @@ music Sami Juntunen. MIT. <https://github.com/maciejmalecki/tony-demo>
 <https://github.com/MEGA65/open-roms>
 
 The Chamber series, its learner, its contracts and its pages are by CypherDAO,
-2026, and are released under the MIT licence. See [LICENSE](LICENSE).
+2026, and are released under the MIT licence. See [LICENSE](LICENSE). Two
+things in this repository are not: the machine document under `machine/`,
+which carries nopsta's GPL-2.0 player glue and is GPL-2.0-only, and the
+OpenROMs firmware it loads, LGPL-3.0-or-later. What is under which licence,
+and where the corresponding source is, is in
+[machine/LICENSES.md](machine/LICENSES.md).

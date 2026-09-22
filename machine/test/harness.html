@@ -1,0 +1,53 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MIT
+     The bridge harness: a bare host page for the headless gate. It uses the
+     real bridge client, so what the test drives is what the site's page will
+     drive. window.harness is the test's handle. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bridge harness</title>
+<style>body{margin:0;background:#111;color:#ccc;font:13px ui-monospace,monospace} #box{width:768px;height:544px}</style>
+</head>
+<body>
+<div id="box"></div>
+<script type="module">
+import { createMachine, bootFromSite, partsFromSite, bootMachine, PROTOCOL, STATUS } from '../bridge-client.js';
+const box = document.getElementById('box');
+window.harness = {
+  PROTOCOL, STATUS, events: [], machine: null,
+  create() {
+    this.destroy();
+    this.events = [];
+    this.machine = createMachine({ container: box, onEvent: (e) => this.events.push(e) });
+    return this.machine.hello;
+  },
+  async boot({ firmware = true } = {}) {
+    let hello = null, ready = null, error = null;
+    try { hello = await this.create(); ready = await bootFromSite(this.machine, { firmware }); }
+    catch (e) { error = { code: e.code, text: e.message }; }
+    return { hello, ready, error };
+  },
+  async bootTampered() {
+    const hello = await this.create();
+    const got = await partsFromSite();
+    const parts = got.parts.map((b) => b.slice(0));
+    new Uint8Array(parts[1])[100] ^= 0x01;
+    try { const r = await bootMachine(this.machine, { parts, roms: got.roms }); return { hello, ok: true, r }; }
+    catch (e) { return { hello, ok: false, code: e.code, text: e.message }; }
+  },
+  request(type, body, opts) {
+    return this.machine.request(type, body || {}, opts || {})
+      .then((r) => ({ ok: true, r: r.bytes instanceof ArrayBuffer ? Object.assign({}, r, { bytes: Array.from(new Uint8Array(r.bytes)) }) : r }),
+            (e) => ({ ok: false, code: e.code, text: e.message }));
+  },
+  load(arr, label, kind = 'prg') {
+    const bytes = new Uint8Array(arr).buffer;
+    return this.request('load', { kind, bytes, label }, { transfer: [bytes] });
+  },
+  frameCount() { return document.querySelectorAll('iframe').length; },
+  destroy() { if (this.machine) { this.machine.destroy(); this.machine = null; } },
+};
+</script>
+</body>
+</html>

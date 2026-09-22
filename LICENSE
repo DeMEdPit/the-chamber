@@ -28,3 +28,18 @@ grant above:
   minimal64 (C64 emulator, nopsta)          GPL-2.0
   OpenROMs character ROM (MEGA65)           LGPL-3.0-or-later
   Tony: Born for Adventure (art and music)  MIT
+
+---
+
+Scope. The licence above covers the site's own code, text and pages. Two
+things in this repository are not under it and keep their own licences:
+
+  machine/src/core.html, and machine/core.html and machine/standalone.html
+  built from it, together with the emulator bytes under machine/parts/
+  (minimal64, by nopsta): GPL-2.0-only, the text in
+  machine/licenses/GPL-2.0.txt.
+
+  machine/parts/kernal.rom, basic.rom and chargen.rom (OpenROMs, by the
+  MEGA65 project): LGPL-3.0-or-later, the texts in machine/licenses/.
+
+machine/LICENSES.md says what is what and where the corresponding source is.

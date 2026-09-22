@@ -1,0 +1,115 @@
+{
+ "version": 1,
+ "what": "The site's own copies of the bytes the machine document needs, each proven equal to the chain's by the hash here. They are the fallback when no Ethereum node answers; the machine page reads the chain first.",
+ "chainId": 1,
+ "emulator": [
+  "gzip.bin",
+  "m64-0.bin",
+  "m64-1.bin",
+  "m64-2.bin"
+ ],
+ "firmware": {
+  "kernal": "kernal.rom",
+  "basic": "basic.rom",
+  "chargen": "chargen.rom"
+ },
+ "parts": [
+  {
+   "name": "gunzip helper",
+   "file": "gzip.bin",
+   "bytes": 6531,
+   "sha256": "ac9c3eaaa9bbb413b9e6826e12cfc685e69819811147c09e6bd9ec749443edae",
+   "chain": {
+    "address": "0x1Cc49e603B4b205Be0E74f8833971Bea5beccEC9",
+    "read": "eth_getCode, the payload after the STOP byte"
+   },
+   "licence": "GPL-2.0",
+   "author": "nopsta (minimal64, stored on Ethereum in 2022)",
+   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+  },
+  {
+   "name": "minimal64 part 0",
+   "file": "m64-0.bin",
+   "bytes": 20468,
+   "sha256": "6124c18b000acfc4e986754f58c7ce4d212d220693e0f981ad4492a6afa5fc8d",
+   "chain": {
+    "address": "0xEF13021d5302c3fCe437A3C281A286479ba60008",
+    "read": "eth_getCode, the payload after the STOP byte"
+   },
+   "licence": "GPL-2.0",
+   "author": "nopsta (minimal64, stored on Ethereum in 2022)",
+   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+  },
+  {
+   "name": "minimal64 part 1",
+   "file": "m64-1.bin",
+   "bytes": 20480,
+   "sha256": "94250fe97b8c4cc957e36b7527cd19f60a17d5af6024692cb4de60ba8b75047f",
+   "chain": {
+    "address": "0x9A463234988C0F77ca1252Fc974DfD6b50AAA6Ba",
+    "read": "eth_getCode, the payload after the STOP byte"
+   },
+   "licence": "GPL-2.0",
+   "author": "nopsta (minimal64, stored on Ethereum in 2022)",
+   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+  },
+  {
+   "name": "minimal64 part 2",
+   "file": "m64-2.bin",
+   "bytes": 8057,
+   "sha256": "31f2789c39cbec739bf3cb5c911498ec8097f1623bc2c052f81b36a807ff6ad2",
+   "chain": {
+    "address": "0xf6Fb8cefFff7239d9689acDF1FBF5376C9996dA5",
+    "read": "eth_getCode, the payload after the STOP byte"
+   },
+   "licence": "GPL-2.0",
+   "author": "nopsta (minimal64, stored on Ethereum in 2022)",
+   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+  },
+  {
+   "name": "OpenROMs KERNAL",
+   "file": "kernal.rom",
+   "bytes": 8192,
+   "sha256": "0f760a0a2da85fdcbf7327e52d89a9687ab62a0ab29bc9b2d764db444eaf80bf",
+   "chain": {
+    "address": "0x15c7d51a1a409bf5511935a1a099ae70c2a4337f",
+    "read": "eth_getCode, the payload after the STOP byte; found as ROMSet.kernal() on 0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259, stated as ROMSet.KERNAL_SHA256()",
+    "romset": "0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259",
+    "root": "0xE0a71d57FB514C8f5793e26937559935350b3406"
+   },
+   "licence": "LGPL-3.0-or-later",
+   "author": "the OpenROMs project (MEGA65), pressed on Ethereum as pressing 1, 2026-09-03",
+   "source": "OpenROMs, github.com/MEGA65/open-roms commit ad178dbe4d48cd6a317737a8e0e7e662f7e33d32, assembled with the project's ACME fork (github.com/MEGA65/acme commit dbddab48a1eaaeee41333178a8964aec23e84961) as pressing 1 records: configuration src/,,config_c64.s, make build/kernal_c64.rom build/basic_c64.rom build/chargen_openroms.rom; the full source archive is on chain under the release root 0xE0a71d57FB514C8f5793e26937559935350b3406 and public at github.com/DeMEdPit/openroms-ethereum-pressing-1"
+  },
+  {
+   "name": "OpenROMs BASIC",
+   "file": "basic.rom",
+   "bytes": 8192,
+   "sha256": "5965d0d937bb4a7013a79f541382a8a77cabded869cb8a68145b977b68e5323e",
+   "chain": {
+    "address": "0x5f92f10ba954eecd12981efcf07623006ceaecaa",
+    "read": "eth_getCode, the payload after the STOP byte; found as ROMSet.basic() on 0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259, stated as ROMSet.BASIC_SHA256()",
+    "romset": "0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259",
+    "root": "0xE0a71d57FB514C8f5793e26937559935350b3406"
+   },
+   "licence": "LGPL-3.0-or-later",
+   "author": "the OpenROMs project (MEGA65), pressed on Ethereum as pressing 1, 2026-09-03",
+   "source": "OpenROMs, github.com/MEGA65/open-roms commit ad178dbe4d48cd6a317737a8e0e7e662f7e33d32, assembled with the project's ACME fork (github.com/MEGA65/acme commit dbddab48a1eaaeee41333178a8964aec23e84961) as pressing 1 records: configuration src/,,config_c64.s, make build/kernal_c64.rom build/basic_c64.rom build/chargen_openroms.rom; the full source archive is on chain under the release root 0xE0a71d57FB514C8f5793e26937559935350b3406 and public at github.com/DeMEdPit/openroms-ethereum-pressing-1"
+  },
+  {
+   "name": "OpenROMs character generator",
+   "file": "chargen.rom",
+   "bytes": 4096,
+   "sha256": "5e3451466841b93df7e01e4b635b07b8d8633351bae483b1961d96b3131186e7",
+   "chain": {
+    "address": "0xa99571c3afdd229b056b9965772a27d08e4d1348",
+    "read": "eth_getCode, the payload after the STOP byte; found as ROMSet.chargen() on 0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259, stated as ROMSet.CHARGEN_SHA256()",
+    "romset": "0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259",
+    "root": "0xE0a71d57FB514C8f5793e26937559935350b3406"
+   },
+   "licence": "LGPL-3.0-or-later",
+   "author": "the OpenROMs project (MEGA65), pressed on Ethereum as pressing 1, 2026-09-03",
+   "source": "OpenROMs, github.com/MEGA65/open-roms commit ad178dbe4d48cd6a317737a8e0e7e662f7e33d32, assembled with the project's ACME fork (github.com/MEGA65/acme commit dbddab48a1eaaeee41333178a8964aec23e84961) as pressing 1 records: configuration src/,,config_c64.s, make build/kernal_c64.rom build/basic_c64.rom build/chargen_openroms.rom; the full source archive is on chain under the release root 0xE0a71d57FB514C8f5793e26937559935350b3406 and public at github.com/DeMEdPit/openroms-ethereum-pressing-1"
+  }
+ ]
+}
