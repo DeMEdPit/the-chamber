@@ -4,17 +4,18 @@
 // the way out. Nothing runs until a LOAD is pressed. The machine document is
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
-import { createMachine, bootMachine, partsFromSite, STATUS } from './bridge-client.js';
+import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
 import { Node, machineFromChain, firmwareFromChain, programFromChain } from './chain.js';
 import { createAudio } from './audio.js';
 
-const PAGE = 'machine/1c';
+const PAGE = 'machine/2a';
 const $ = (id) => document.getElementById(id);
 const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'),
+  door: $('door'), doorText: $('door-text'), file: $('file'),
   link: $('link'), linkChain: $('link-chain'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
@@ -140,6 +141,33 @@ function renderRows(filter) {
   els.count.textContent = shown.length === allRows.length ? `${allRows.length} programs on the chain` : `${shown.length} of ${allRows.length}`;
 }
 
+// ------------------------------------------------------------------ the file door
+// A file of the visitor's becomes the same record a chain program is, judged for its shape and for nothing else:
+// the status is YOUR FILE and no chain claim is made. It is read in this browser and sent nowhere. What is not a
+// program the machine loads is refused with a code and a sentence that names what the file is.
+const D64_SIZES = new Set([174848, 175531, 196608, 197376]);   // a disk image: 35 tracks, with error bytes; 40 tracks, with error bytes
+const FILE_LIMIT = 65538;   // a two-byte load address and at most 64K after it: the machine document's own limit (PROTOCOL.md)
+const hex4 = (n) => '$' + n.toString(16).padStart(4, '0');
+async function programFromFile(file) {
+  const refuse = (code, text) => { throw Object.assign(new Error(text), { code }); };
+  const name = file.name || 'a file', size = file.size;
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const first = Array.from(head.subarray(0, 8), (b) => b.toString(16).padStart(2, '0')).join(' ');
+  if (head.length === 16 && String.fromCharCode(...head) === 'C64 CARTRIDGE   ') refuse('KIND_UNSUPPORTED', `${name} is a cartridge image (${num(size)} bytes); the cartridge door comes in a later phase of this page`);
+  if (D64_SIZES.has(size)) refuse('KIND_UNSUPPORTED', `${name} is a disk image (${num(size)} bytes); the disk door comes in a later phase of this page`);
+  if (!/\.prg$/i.test(name)) refuse('KIND_UNSUPPORTED', `${name} is not a .prg file (${num(size)} bytes${first ? ', beginning ' + first : ''}); this page loads .prg files`);
+  if (size < 3) refuse('PRG_TOO_SHORT', `${name} is ${size} byte${size === 1 ? '' : 's'}; a program file carries a two-byte load address and at least one byte after it`);
+  if (size > FILE_LIMIT) refuse('FILE_TOO_LARGE', `${name} is ${num(size)} bytes; a program is at most 65,536 bytes after its load address`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const load = bytes[0] | (bytes[1] << 8);
+  if (load + bytes.length - 2 > 0x10000) refuse('PRG_ADDRESS_OVERFLOW', `${name} loads at ${hex4(load)} and its ${num(bytes.length - 2)} bytes would run past 64K`);
+  const sha256 = await sha256Hex(bytes.buffer);
+  return { kind: 'file', label: name.slice(0, 80), bytes, statuses: { program: STATUS.YOUR_FILE },
+    facts: { work: 'file', workName: 'your file', contract: null, token: null, name, size, type: file.type || '', modified: Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : null, load, sha256, node: null, observation: null, reads: [] } };
+}
+const DOOR_IDLE = 'drop a .prg here, or choose one';
+function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; }
+
 // ------------------------------------------------------------------ the machine
 async function ensureMachine() {
   if (machine && machine.alive) return;
@@ -193,7 +221,7 @@ async function setFirmware(mode) {
   // a READY prompt wants the keyboard; a program of the series wants the stick
   inputMode = mode === 'on' ? 'keyboard' : 'joystick';
   els.input.value = inputMode;
-  const was = playing ? { work: playing.program.facts.work, token: playing.program.facts.token } : null;
+  const was = playing ? (playing.file ? { file: playing.file } : { work: playing.program.facts.work, token: playing.program.facts.token }) : null;
   try {
     if (machine) {
       say(mode === 'on' ? `firmware on: rebuilding the machine with ${FIRMWARE_NAME}` : 'firmware off: rebuilding the machine bare');
@@ -223,7 +251,7 @@ async function setFirmware(mode) {
   } finally {
     busy = false;
     if (pendingFirmware !== null) { const m = pendingFirmware; pendingFirmware = null; setFirmware(m); }
-    else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; load(next.work, next.token); }
+    else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; run(next); }
   }
 }
 /** The page plays the machine's sound once a gesture has unlocked the page's audio; until then the next tap does it. */
@@ -236,45 +264,59 @@ for (const ev of ['pointerup', 'click', 'keydown', 'touchend']) {
   document.addEventListener(ev, () => { if (audio.unlock() && machine && machine.alive && !audio.attached && state.phase === 'running') attachSound(); }, { capture: true, passive: true });
 }
 
-async function load(work, token) {
-  if (busy) { pendingAsk = { work, token }; return; }
+/** One ask, whichever door it came through: {work, token} from the chain, {file} from the visitor's own files. A file
+ *  is judged before the machine is asked for, so a wrong file costs nothing and leaves whatever is playing alone. */
+async function run(ask) {
+  if (busy) { pendingAsk = ask; return; }
   busy = true;
-  lastAsk = { work, token };
+  lastAsk = ask;
   els.copied.textContent = '';
+  const fromFile = !!ask.file;
+  let program = null;
   try {
     if (!catalogue) throw Object.assign(new Error('the catalogue has not loaded'), { code: 'NO_CATALOGUE' });
+    if (fromFile) { door('busy', `reading ${ask.file.name}`); program = await programFromFile(ask.file); }
     setState('reading', 'READING');
     node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
     await ensureMachine();
     renderNow();   // the machine's rows fill as soon as it is up, while the program is read
-    const program = await programFromChain(node, catalogue, work, token, say);
+    if (!fromFile) program = await programFromChain(node, catalogue, ask.work, ask.token, say);
     setState('checking', 'CHECKING');
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
+    if (fromFile) say(`your file ${program.label}: ${num(program.bytes.length)} bytes, loads at ${hex4(program.facts.load)}, sha256 ${SHORT(program.facts.sha256)}; read in this browser, sent nowhere, no chain claim`);
     const buf = program.bytes.slice().buffer;
     const loaded = await machine.request('load', { kind: 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
-    playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened };
+    playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened, file: ask.file || null };
     veil('');
     setState('running', 'RUNNING');
     say(`running ${program.label}`);
     renderNow();
-    markOffered(work, token);
+    markOffered(fromFile ? null : ask.work, fromFile ? null : ask.token);
+    door(fromFile ? 'ok' : 'idle', fromFile ? `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim` : '');
   } catch (e) {
     const code = e.code || 'FAILED';
-    if (code === 'RPC_UNAVAILABLE') {
+    if (fromFile) door('refused', `${code} · ${e.message}`);
+    if (fromFile && !program) {
+      // not a program the machine loads: said at the door and in the log; what was playing plays on
+      say(`your file was refused (${code}): ${e.message}`);
+    } else if (code === 'RPC_UNAVAILABLE') {
       setState('failed', 'NO NODE ANSWERED');
       say(`no endpoint answered (${e.message}); RETRY, or read the contract on Etherscan`);
+      playing = null;
+      renderNow(code, e.message);
     } else {
       setState('refused', `REFUSED · ${code}`);
       say(`refused: ${e.message}`);
+      playing = null;
+      renderNow(code, e.message);
     }
-    playing = null;
-    renderNow(code, e.message);
   } finally {
     busy = false;
     if (pendingFirmware !== null) { const m = pendingFirmware; pendingFirmware = null; setFirmware(m); }
-    else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; load(next.work, next.token); }
+    else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; run(next); }
   }
 }
+function load(work, token) { return run({ work, token }); }
 
 function markOffered(work, token) {
   for (const row of els.rows.querySelectorAll('.row')) row.classList.toggle('now', row.dataset.work === work && row.dataset.token === String(token));
@@ -290,6 +332,16 @@ function revealRow(row) {
 function provenance() {
   if (!playing) return null;
   const p = playing.program, f = p.facts;
+  if (p.kind === 'file') {
+    return {
+      page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: null, token: null, label: p.label,
+      program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, load: f.load },
+      file: { name: f.name, size: f.size, type: f.type, modified: f.modified },
+      claim: 'none: a file of yours, read in this browser and sent nowhere, checked for its shape only',
+      node: null, observation: null, reads: [], nodes: node ? node.facts() : null,
+      machine: machineFacts, firmware: machineFacts.firmware, input: inputMode, mode: 'PURE', intervened: playing.intervened,
+    };
+  }
   const out = {
     page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: f.contract, token: f.token, label: p.label,
     program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, pins: f.pins },
@@ -339,6 +391,9 @@ function programRows(code, text) {
     } else if (p.kind === 'slotted') {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`, '']);
       rows.push(['MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`, '']);
+    } else if (p.kind === 'file') {
+      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · loads at ${hex4(f.load)} · sha256 ${SHORT(f.sha256)}`, '']);
+      rows.push(['CHECK', 'no chain claim · a file of yours, read in this browser and sent nowhere; its shape checked, a load address and a size within 64K', '']);
     } else {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes`, '']);
       rows.push(['PIN', `keccak256 ${SHORT(f.keccak256)} equals the pin`, '']);
@@ -395,7 +450,14 @@ els.reset.addEventListener('click', async () => {
   markOffered(null, null);
 });
 els.firmware.addEventListener('change', () => { setFirmware(els.firmware.value === 'on' ? 'on' : 'off'); });
-els.retry.addEventListener('click', () => { if (lastAsk) load(lastAsk.work, lastAsk.token); });
+els.retry.addEventListener('click', () => { if (lastAsk) run(lastAsk); });
+// the file door: the picker and the drop zone are one control; a file dropped anywhere else must not take the visitor away
+els.file.addEventListener('change', () => { const f = els.file.files && els.file.files[0]; els.file.value = ''; if (f) run({ file: f }); });
+els.door.addEventListener('dragover', (e) => { e.preventDefault(); els.door.classList.add('over'); });
+els.door.addEventListener('dragleave', () => els.door.classList.remove('over'));
+els.door.addEventListener('drop', (e) => { e.preventDefault(); els.door.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) run({ file: f }); });
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
 // ------------------------------------------------------------------ the touch controls
 // The ring is read as an ANGLE from its centre, so every part of it outside the
 // hole is live and a thumb slides between directions without lifting; the hole

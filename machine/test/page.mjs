@@ -118,6 +118,35 @@ try {
   await pg.click('#rows .row[data-work="tony"] button.load');
   const running3 = await until(() => pg.evaluate(() => /keccak256/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running'), 30000, 500);
   check(!!running3, 'a whole program loads: PINNED by keccak256');
+  // the file door: a .prg of your own runs and is said as YOUR FILE with no chain claim; what is not a program is
+  // refused in words at the door, and the running program is left alone
+  const PRG_B = Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, 0xa9, 0x02, 0x8d, 0x00, 0x04, 0x60]);   // 10 SYS2061 : LDA #2 ; STA $0400 ; RTS
+  const requestsBefore = requests.length;
+  await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
+  const fileRan = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent) && /YOUR FILE/.test(document.getElementById('now').textContent)), 30000, 500);
+  check(!!fileRan, 'a .prg of your own runs: NOW PLAYING names the file and says YOUR FILE');
+  const wroteB = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 2)), 10000);
+  check(!!wroteB, 'the file ran on the machine (screen code 2 at $0400)');
+  const provFile = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  check(provFile && provFile.program.status === 'YOUR FILE' && !('pins' in provFile.program) && provFile.node === null && provFile.observation === null && provFile.file && provFile.file.name === 'hello.prg' && provFile.file.size === 20 && provFile.program.load === 0x0801 && /^[0-9a-f]{64}$/.test(provFile.program.sha256) && provFile.machine.status === 'PINNED',
+        `the provenance of a file claims nothing of the chain: YOUR FILE, no pins, no node, no observation; the machine still ${provFile && provFile.machine.status}`);
+  check(requests.length === requestsBefore, `the file made no request of any kind (${requests.length - requestsBefore})`);
+  check(await pg.evaluate(() => !document.querySelector('#rows .row.now') && document.getElementById('door').dataset.state === 'ok' && /^hello\.prg · 20 bytes · running/.test(document.getElementById('door-text').textContent)), 'no row of the chain is marked while a file plays; the door says what it ran');
+  const refusals = [
+    ['two.prg', Buffer.from([0x01, 0x08]), 'PRG_TOO_SHORT', /two-byte load address/],
+    ['big.prg', Buffer.alloc(65539, 1), 'FILE_TOO_LARGE', /65,539 bytes/],
+    ['high.prg', Buffer.concat([Buffer.from([0x00, 0xff]), Buffer.alloc(512, 1)]), 'PRG_ADDRESS_OVERFLOW', /\$ff00/],
+    ['notes.txt', Buffer.from('hello, machine\n'), 'KIND_UNSUPPORTED', /not a \.prg file \(15 bytes, beginning 68 65 6c 6c 6f 2c 20 6d\)/],
+    ['disk.d64', Buffer.alloc(174848), 'KIND_UNSUPPORTED', /a disk image \(174,848 bytes\)/],
+    ['cart.crt', Buffer.concat([Buffer.from('C64 CARTRIDGE   '), Buffer.alloc(48)]), 'KIND_UNSUPPORTED', /a cartridge image/],
+  ];
+  for (const [name, buffer, code, words] of refusals) {
+    await pg.setInputFiles('#file', { name, mimeType: 'application/octet-stream', buffer });
+    const said = await until(() => pg.evaluate((n) => { const d = document.getElementById('door'); return d.dataset.state === 'refused' && d.textContent.includes(n) ? d.textContent : null; }, name), 10000, 100);
+    check(!!said && said.includes(code) && words.test(said), `${name} is refused ${code} in words: ${said ? said.trim().slice(0, 120) : 'nothing said'}`);
+  }
+  check(await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 'a refused file leaves the running program alone');
+  check(requests.length === requestsBefore, `the refusals made no request either (${requests.length - requestsBefore})`);
   // the firmware switch: on shows the firmware at READY, LOAD runs a program under it, RESET brings READY back, off is bare again
   const screenHasReady = () => pg.evaluate(() => window.machinePage.machine.request('screen').then((r) => (/READY\./.test(r.text) && /OPEN ROMS C64/.test(r.text) ? r.text : null)).catch(() => null));
   await pg.selectOption('#firmware', 'on');
@@ -171,6 +200,7 @@ try {
     check(frame.scrollY === 0, `at ${w} wide: the page stays at the top on load (scrollY ${frame.scrollY})`);
     const listShows = await pw.evaluate(() => { const row = document.querySelector('#rows .row[data-work="tony"]'); const l = document.getElementById('rows').getBoundingClientRect(); const r = row.getBoundingClientRect(); return r.top >= l.top - 1 && r.bottom <= l.bottom + 1; });
     check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
+    check(await pw.evaluate(() => document.getElementById('file').type === 'file' && document.getElementById('door').getBoundingClientRect().height > 30), `at ${w} wide: the file door is there`);
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
     const shape0 = await pw.evaluate(() => ({ rows: Math.round(document.getElementById('rows').getBoundingClientRect().height), log: Math.round(document.getElementById('log').getBoundingClientRect().height), now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), badge: document.getElementById('link').getBoundingClientRect().width }));
