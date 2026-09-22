@@ -202,7 +202,21 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 {MONO};letter-spacing:.16em;pointer-events:none}}
 .veil[hidden]{{display:none}}
 .hint{{margin:10px 0 0;font-size:.85rem;color:var(--muted)}}
-.screen{{position:relative;margin-bottom:40px}}   /* the badge hangs 40px below the frame; what follows clears it */
+.screen{{margin-bottom:40px}}   /* the badge hangs 40px below the frame; what follows clears it */
+.player{{position:relative}}   /* the frame, the badge hung from its corner, the FULL SCREEN control at the other */
+/* full screen is presentation only: the screen goes full, the player inside it sized by host.js to a whole multiple of
+   the C64's picture, the badge still hung from its corner, EXIT at the top right; nothing is rebuilt */
+.screen:fullscreen{{display:flex;align-items:center;justify-content:center;margin:0;background:#000}}
+.screen:fullscreen .player{{width:var(--fw,768px)}}
+.full{{position:absolute;top:100%;right:10px;margin-top:-1px;padding:5px 9px 6px;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;background:var(--panel);
+  font:700 .58rem/1.5 {MONO};letter-spacing:.1em;color:var(--muted);cursor:pointer}}
+.full:hover,.full:focus-visible{{color:var(--accent);outline:0}}
+.full[hidden]{{display:none}}
+@media(max-width:1139px){{.full{{left:10px;right:auto}}}}   /* the badge is at the right below 1140; the control takes the other corner */
+.screen:fullscreen .full{{display:none}}
+.exit{{display:none;position:absolute;top:16px;right:16px;z-index:2;font:700 .72rem/1 {MONO};letter-spacing:.14em;color:var(--ink);background:rgba(0,0,0,.6);border:1px solid #444;border-radius:6px;padding:10px 14px;cursor:pointer}}
+.exit:hover,.exit:focus-visible{{border-color:var(--accent);color:var(--accent);outline:0}}
+.screen:fullscreen .exit{{display:block}}
 .link{{position:absolute;top:100%;right:10px;margin-top:-1px;display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto;column-gap:9px;row-gap:0;
   align-items:center;padding:4px 9px 5px;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;background:var(--panel);
   font:600 .58rem/1.5 {MONO};letter-spacing:.1em;text-transform:uppercase;color:var(--muted);max-width:calc(100% - 20px);white-space:nowrap}}
@@ -240,7 +254,7 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
   touch-action:none;user-select:none;-webkit-user-select:none}}
 .touch button.down{{border-color:var(--accent);color:var(--accent);background:#0f1a14}}
 .touch .fire{{width:120px;height:120px;border-radius:50%;font-size:.9rem;margin-right:8px}}
-@media(pointer:coarse){{.touch{{display:grid}}.screen{{margin-bottom:0}}}}   /* on a touch screen the badge sits over the pad's empty corner, as designed */
+@media(pointer:coarse){{.touch{{display:grid}}.screen{{margin-bottom:0}}.full,.keys .fine-only{{display:none}}}}   /* on a touch screen the badge sits over the pad's empty corner, as designed; full screen is not offered there */
 @media(max-width:360px){{.touch .ring{{width:160px;height:160px}}.touch .fire{{width:104px;height:104px}}}}
 .column{{min-width:0;display:flex;flex-direction:column;gap:14px}}
 .logbox{{margin-top:52px}}   /* collapses with the screen's 40: the log's panel clears the badge with the air the old sentence had */
@@ -323,7 +337,7 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
 .about code{{font-size:.8rem}}
 /* one column: the two wrappers dissolve and the panels take the order the phone has always had; the screen, not only
    the frame, is capped, so the badge hangs from the frame's corner and not the column's */
-@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{max-width:768px;order:1}}.touch{{order:2;margin:0}}.chain{{order:3}}.file{{order:4}}.now{{order:5}}.logbox{{order:6;margin:0}}.keys{{order:7}}.leave{{order:8}}}}
+@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{max-width:768px;order:1}}.touch{{order:2;margin:8px 0}}.chain{{order:3}}.file{{order:4}}.now{{order:5}}.logbox{{order:6;margin:0}}.keys{{order:7}}.leave{{order:8}}}}
 @media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{height:260px}}.nl{{grid-template-columns:1fr;gap:0}}.playing{{min-height:510px}}}}
 """
 
@@ -449,15 +463,19 @@ def page_body():
 </div>
 <div class="machine">
   <div class="stage">
-    <div class="screen">
-      <div class="frame" id="frame" aria-label="the machine">
-        <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
+    <div class="screen" id="screen">
+      <div class="player" id="player">
+        <div class="frame" id="frame" aria-label="the machine">
+          <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
+        </div>
+        <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain" title="no node yet">
+          <span class="lk" id="link-chain">ETHEREUM</span><span class="ls" id="link-state">OFF</span>
+          <span class="ln" id="link-node">no node yet</span><span class="lb" id="link-block"></span>
+          <span class="le" id="link-endpoints" aria-label="the endpoints, in the order they are tried"></span>
+        </div>
+        <button type="button" class="full" id="full-corner" title="the machine fills the screen at a whole multiple of its picture">FULL SCREEN</button>
       </div>
-      <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain" title="no node yet">
-        <span class="lk" id="link-chain">ETHEREUM</span><span class="ls" id="link-state">OFF</span>
-        <span class="ln" id="link-node">no node yet</span><span class="lb" id="link-block"></span>
-        <span class="le" id="link-endpoints" aria-label="the endpoints, in the order they are tried"></span>
-      </div>
+      <button type="button" class="exit" id="exit-full">EXIT FULL SCREEN</button>
     </div>
     <div class="touch" id="touch" aria-label="joystick" data-ways="4">
       {ring_svg()}
@@ -506,6 +524,10 @@ def page_body():
         <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span>
           <details class="how" id="how-auto"><summary>HOW AUTO DECIDES</summary><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></details></dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button> <span class="hint">starts the machine over; under the firmware, READY comes back</span></dd>
+      </dl>
+      <p class="grp fine-only">VIEW</p>
+      <dl class="keys fine-only">
+        <dt>FULL SCREEN</dt><dd><button type="button" class="b" id="full">FULL SCREEN</button> <span class="hint" id="full-hint">the machine at a whole multiple of its picture; Escape brings the page back, so it is not RUN/STOP there</span></dd>
       </dl>
     </section>
     <section class="panel leave" aria-labelledby="lab-leave">

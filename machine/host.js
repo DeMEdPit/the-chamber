@@ -18,6 +18,7 @@ const els = {
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'), firmwareWhy: $('firmware-why'),
   door: $('door'), doorText: $('door-text'), file: $('file'),
+  screen: $('screen'), player: $('player'), full: $('full'), fullCorner: $('full-corner'), exitFull: $('exit-full'), fullHint: $('full-hint'),
   link: $('link'), linkChain: $('link-chain'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
@@ -635,6 +636,37 @@ els.sound.addEventListener('click', () => {
   if (audio.on && machine && machine.alive && !audio.attached) attachSound();
 });
 
+// ------------------------------------------------------------------ full screen: presentation only
+// The screen (the frame, the badge, EXIT) goes full; the player inside it is sized to the largest whole multiple of the
+// C64's picture that fits, with the badge's room under it, so every C64 pixel is a whole number of screen pixels. Nothing
+// is rebuilt: the program, the sound and the input carry on. Escape is the browser's way out, so it cannot be RUN/STOP there.
+const PICTURE = { w: 384, h: 272 };   // the machine document's picture
+const BADGE_ROOM = 48;
+let fullScale = 0;
+const fullEnabled = !!(document.fullscreenEnabled && els.screen.requestFullscreen);
+function sizeFull() {
+  if (document.fullscreenElement !== els.screen) { els.player.style.removeProperty('--fw'); fullScale = 0; return; }
+  const W = els.screen.clientWidth, H = els.screen.clientHeight;
+  fullScale = Math.max(1, Math.floor(Math.min(W / PICTURE.w, (H - BADGE_ROOM) / PICTURE.h)));
+  els.player.style.setProperty('--fw', `${Math.min(W, PICTURE.w * fullScale)}px`);
+}
+document.addEventListener('fullscreenchange', () => {
+  sizeFull();
+  if (document.fullscreenElement === els.screen) {
+    say(`full screen: the machine at ${fullScale} times its picture, ${PICTURE.w * fullScale} by ${PICTURE.h * fullScale}`);
+    const f = els.frame.querySelector('iframe'); if (f) f.focus();   // the keys go to the machine, as a click on it would give them
+  } else say('full screen left');
+});
+window.addEventListener('resize', () => { if (document.fullscreenElement === els.screen) sizeFull(); });
+async function enterFull() {
+  if (!fullEnabled) return;
+  try { await els.screen.requestFullscreen({ navigationUI: 'hide' }); } catch (e) { say(`full screen was refused: ${e.message}`); }
+}
+els.full.addEventListener('click', enterFull);
+els.fullCorner.addEventListener('click', enterFull);
+els.exitFull.addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); });
+if (!fullEnabled) { els.full.disabled = true; els.fullCorner.hidden = true; els.fullHint.textContent = 'this browser does not offer full screen for a part of a page'; }
+
 // ------------------------------------------------------------------ start
 async function start() {
   els.firmware.value = firmwareMode; els.input.value = inputMode;   // a browser may restore a form's values on reload; the page's state is the page's
@@ -663,5 +695,5 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get fullscreen() { return { enabled: fullEnabled, active: document.fullscreenElement === els.screen, scale: fullScale }; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
 start();
