@@ -35,6 +35,7 @@ export class Session {
   get host() { return hostOf(this.url); }
   get tag() { return '0x' + this.block.toString(16); }
   async call(method, params) {
+    this.node._emit('reading', { reads: this.node.current.reads + 1 });
     try { return await this.node._post(this.url, method, params); }
     catch (e) { const err = new MachineError('RPC_UNAVAILABLE', `${method} through ${this.host}: ${e.message}`); err.transport = true; throw err; }
   }
@@ -52,15 +53,27 @@ export class Session {
 }
 
 export class Node {
-  constructor(endpoints, chainId = 1, onStatus = () => {}) {
+  constructor(endpoints, chainId = 1, onStatus = () => {}, onState = () => {}) {
     this.endpoints = endpoints.slice();
     this.chainId = chainId;
     this.onStatus = onStatus;
+    this.onState = onState;          // the link's state as a structure, for an instrument on the page
     this.url = null;                 // the endpoint of the last session, for display
     this.quarantined = new Map();    // endpoint -> why it was set aside for this visit
     this.demoted = new Set();        // endpoints that failed in transport: tried last, not judged
+    this.current = { phase: 'off', url: null, block: null, blockHash: null, reads: 0 };
     this._id = 0;
   }
+  /** The link as it stands: the phase, the session's node and block, the reads so far, every endpoint's standing. */
+  state() {
+    const endpoints = this.endpoints.map((u) => ({
+      host: hostOf(u),
+      state: this.quarantined.has(u) ? 'set-aside' : (u === this.current.url && this.current.phase === 'reading') ? 'in-use' : this.demoted.has(u) ? 'demoted' : (u === this.url ? 'held' : 'live'),
+      why: this.quarantined.get(u) || null,
+    }));
+    return Object.assign({}, this.current, { host: this.current.url ? hostOf(this.current.url) : null, endpoints, setAside: this.quarantined.size });
+  }
+  _emit(phase, extra = {}) { Object.assign(this.current, { phase }, extra); try { this.onState(this.state()); } catch (e) { /* an instrument's fault is its own */ } }
   async _post(url, method, params) {
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: ++this._id, method, params }) });
@@ -80,12 +93,14 @@ export class Node {
     this.quarantined.set(url, why);
     if (this.url === url) this.url = null;
     this.onStatus(`node: ${hostOf(url)} set aside for this visit: ${why}`);
+    this._emit(this.current.phase);
   }
   demote(url, why) {
     if (!url) return;
     this.demoted.add(url);
     if (this.url === url) this.url = null;
     this.onStatus(`node: ${hostOf(url)} did not answer (${why}); the next endpoint`);
+    this._emit(this.current.phase);
   }
   /** The record of the visit's nodes, for the provenance. */
   facts() { return { setAside: [...this.quarantined].map(([u, why]) => ({ node: hostOf(u), why })), demoted: [...this.demoted].map(hostOf) }; }
@@ -101,6 +116,7 @@ export class Node {
       throw new MachineError('RPC_UNAVAILABLE', this.quarantined.size ? 'every endpoint has been set aside for this visit' : 'no endpoints');
     }
     for (const url of this.order) {
+      this._emit('seeking', { url, block: null, blockHash: null, reads: 0 });
       try {
         const cid = parseInt(await this._post(url, 'eth_chainId', []), 16);
         if (cid !== this.chainId) { this.quarantine(url, `WRONG_CHAIN: answers for chain ${cid}, not ${this.chainId}`); errors.push(`${hostOf(url)}: chain ${cid}`); continue; }
@@ -110,6 +126,7 @@ export class Node {
         if (!b || typeof b.hash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(b.hash)) throw new Error('no block hash');
         this.url = url;
         this.onStatus(`node: ${hostOf(url)} · block ${block.toLocaleString('en-US')}`);
+        this._emit('reading', { url, block, blockHash: b.hash.slice(2).toLowerCase(), reads: 0 });
         return new Session(this, url, block, b.hash.slice(2).toLowerCase());
       } catch (e) { errors.push(`${hostOf(url)}: ${e.message}`); this.demote(url, e.message); }
     }
@@ -129,16 +146,18 @@ export class Node {
       let s;
       try { s = await this.session(); }
       catch (e) {
+        this._emit(contradiction ? 'refused' : 'lost', { url: null, block: null, blockHash: null });
         if (contradiction) { contradiction.message += '; every endpoint that answered was set aside for this visit'; throw contradiction; }
         throw e;
       }
-      try { return await fn(s); }
+      try { const out = await fn(s); this._emit('held'); return out; }
       catch (e) {
         if (e && e.transport) { this.demote(s.url, e.message); continue; }
         if (e instanceof MachineError && QUARANTINE.has(e.code)) { e.node = s.host; this.quarantine(s.url, `${e.code}: ${e.message}`); contradiction = e; continue; }
         throw e;
       }
     }
+    this._emit(contradiction ? 'refused' : 'lost', { url: null, block: null, blockHash: null });
     if (contradiction) { contradiction.message += '; every endpoint that answered was set aside for this visit'; throw contradiction; }
     throw new MachineError('RPC_UNAVAILABLE', 'no endpoint completed the read');
   }

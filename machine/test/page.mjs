@@ -90,6 +90,8 @@ try {
   const prov = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
   check(prov && prov.program.status === 'PINNED' && prov.stamp.status === 'CONTRACT-CONSISTENT' && prov.stamp.stampedAt === 4999 && prov.machine.status === 'PINNED' && /ethereum/.test(prov.machine.source) && prov.mode === 'PURE' && prov.intervened === false,
         `the provenance as JSON: ${prov ? JSON.stringify({ program: prov.program.status, stamp: prov.stamp.status, machine: prov.machine.source }) : 'none'}`);
+  const linkA = await pg.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, state: document.getElementById('link-state').textContent, node: document.getElementById('link-node').textContent, block: document.getElementById('link-block').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
+  check(linkA.phase === 'held' && linkA.state === 'HELD' && linkA.node === '/rpc' && /^block [\d,]+ · [0-9a-f]{12}…$/.test(linkA.block) && linkA.cells.join() === 'held', `THE CHAIN strip: ${linkA.state} · ${linkA.node} · ${linkA.block} · cells ${linkA.cells.join()}`);
   const readsA = A.log.filter((r) => ['eth_call', 'eth_getCode'].includes(r.method));
   check(readsA.length > 0 && readsA.every((r) => /^0x[0-9a-f]+$/.test(String(r.params[1]))), `every contract read is at a block, none at latest (${readsA.length} reads)`);
   const lastCall = readsA.filter((r) => r.method === 'eth_call').pop();
@@ -193,7 +195,10 @@ try {
   const tRunning = await until(() => pt.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
   const shown = await pt.evaluate(() => matchMedia('(pointer:coarse)').matches && getComputedStyle(document.getElementById('touch')).display === 'grid');
   check(!!tRunning && shown, 'on a coarse pointer the ring and FIRE show, the machine running');
-  const c = await pt.evaluate(() => { const r = document.getElementById('ring').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2, top: r.top }; });
+  // the ring is brought fully into view before it is pressed: the strip above it pushed its lower half past a phone's viewport
+  // the site scrolls smoothly, so the scroll is asked for instantly and the rect read after it has settled
+  const ringRect = async () => { await pt.evaluate(() => document.getElementById('ring').scrollIntoView({ block: 'center', behavior: 'instant' })); await new Promise((r) => setTimeout(r, 150)); return pt.evaluate(() => { const r = document.getElementById('ring').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2, top: r.top }; }); };
+  let c = await ringRect();
   const at = (deg, k = 0.8) => [c.x + k * c.R * Math.cos(deg * Math.PI / 180), c.y + k * c.R * Math.sin(deg * Math.PI / 180)];
   const settle = () => new Promise((r) => setTimeout(r, 120));
   const held = () => pt.evaluate(() => window.machinePage.pad.held);
@@ -212,6 +217,7 @@ try {
   await pt.mouse.up(); await settle();
   check(await held() === 0 && await port() === 127 && await lit() === '/', `lifted: nothing held, nothing lit (${await port()})`);
   await pt.selectOption('#ways', '8');
+  c = await ringRect();   // the select scrolled the page; the ring is brought back and its place on screen read again
   await pt.mouse.move(...at(45)); await pt.mouse.down(); await settle();
   check(await held() === 10 && await port() === 127 - 10 && await lit() === '10/', `45 degrees, both directions: down and right together (${await port()}), the diagonal wedge lit`);
   await pt.evaluate(() => { const f = document.querySelector('#touch .fire'); const r = f.getBoundingClientRect(); f.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 7, pointerType: 'touch', isPrimary: false, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true })); });
@@ -276,6 +282,8 @@ try {
   check(nodesE.setAside.length === 1 && nodesE.setAside[0].node === '/rpc' && /HASH_MISMATCH/.test(nodesE.setAside[0].why) && nodesE.demoted.length === 0,
         `the first endpoint is set aside for the visit, not merely demoted (${JSON.stringify(nodesE)})`);
   check(await pe.evaluate(() => /1 set aside this visit/.test(document.getElementById('now').textContent)), 'NOW PLAYING says one endpoint is set aside');
+  const linkE = await pe.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').textContent, block: document.getElementById('link-block').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
+  check(linkE.phase === 'held' && linkE.node === '/rpc2' && /1 set aside/.test(linkE.block) && linkE.cells.join() === 'set-aside,held', `THE CHAIN strip shows the first cell set aside and the second holding (${linkE.cells.join()}; ${linkE.block})`);
   const readsE = E.log.filter((r) => r.path === '/rpc' && r.method === 'eth_call');
   check(readsE.length === 0, `no contract call went to the set-aside endpoint after its contradiction (${readsE.length})`);
   await pe.close();
@@ -293,6 +301,8 @@ try {
   check(!!runningF && provF && provF.machine.source === 'ethereum, through /rpc' && provF.node === '/rpc2' && provF.observation.node === '/rpc2',
         `failover: the machine came through the first endpoint, the program through the second (${provF && provF.machine.source}; program via ${provF && provF.node})`);
   check(nodesF.setAside.length === 0 && nodesF.demoted.includes('/rpc'), `the failing endpoint is demoted, not set aside (${JSON.stringify(nodesF)})`);
+  const linkF = await pf.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
+  check(linkF.phase === 'held' && linkF.node === '/rpc2' && linkF.cells.join() === 'demoted,held', `THE CHAIN strip shows the first cell demoted and the second holding (${linkF.cells.join()})`);
   const obsF = F.log.filter((r) => r.path === '/rpc2' && ['eth_call', 'eth_getBlockByNumber'].includes(r.method));
   const prgCalls = obsF.filter((r) => r.method === 'eth_call');
   const blockTags = new Set(prgCalls.map((r) => r.params[1]));

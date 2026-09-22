@@ -15,6 +15,7 @@ const els = {
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'),
+  link: $('link'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
 
@@ -58,6 +59,22 @@ function setState(phase, text) {
 function veil(text) {
   els.veil.hidden = !text;
   if (text) els.veilText.textContent = text;
+}
+
+// ------------------------------------------------------------------ the link: an instrument on the node's own state
+const LINK_WORDS = { off: 'OFF', seeking: 'SEEKING', reading: 'READING', held: 'HELD', refused: 'REFUSED', lost: 'LOST' };
+function renderLink(st) {
+  els.link.dataset.phase = st.phase;
+  els.linkState.textContent = LINK_WORDS[st.phase] || st.phase.toUpperCase();
+  els.linkNode.textContent = st.host || (st.phase === 'off' ? 'no node yet' : 'no node');
+  els.linkBlock.textContent = st.block ? `block ${num(st.block)} · ${SHORT(st.blockHash)}${st.phase === 'reading' && st.reads ? ` · ${st.reads} read${st.reads === 1 ? '' : 's'}` : ''}${st.setAside ? ` · ${st.setAside} set aside` : ''}` : (st.setAside ? `${st.setAside} set aside` : '');
+  els.linkEndpoints.textContent = '';
+  for (const e of st.endpoints) {
+    const i = document.createElement('i');
+    i.dataset.state = e.state;
+    i.title = `${e.host}: ${e.state === 'set-aside' ? 'set aside for this visit, ' + e.why : e.state === 'demoted' ? 'did not answer; tried last' : e.state === 'in-use' ? 'serving this read' : e.state === 'held' ? 'served the last read' : 'live'}`;
+    els.linkEndpoints.appendChild(i);
+  }
 }
 
 // ------------------------------------------------------------------ the catalogue and the rows
@@ -170,7 +187,7 @@ async function setFirmware(mode) {
       machine = null;
       playing = null;
       setState('reading', 'REBUILDING');
-      node = node || new Node(catalogue.endpoints, catalogue.chainId, say);
+      node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
       await ensureMachine();
       if (mode === 'on') {
         // the switch shows the firmware: READY, and LOAD runs a program under it
@@ -212,7 +229,7 @@ async function load(work, token) {
   try {
     if (!catalogue) throw Object.assign(new Error('the catalogue has not loaded'), { code: 'NO_CATALOGUE' });
     setState('reading', 'READING');
-    node = node || new Node(catalogue.endpoints, catalogue.chainId, say);
+    node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
     await ensureMachine();
     renderNow();   // the machine's rows fill as soon as it is up, while the program is read
     const program = await programFromChain(node, catalogue, work, token, say);
@@ -456,6 +473,7 @@ async function start() {
   }
   allRows = rowsOf(catalogue);
   renderRows('');
+  renderLink({ phase: 'off', host: null, block: null, blockHash: null, reads: 0, setAside: 0, endpoints: catalogue.endpoints.map((u) => ({ host: u.replace(/^https?:\/\//, ''), state: 'live', why: null })) });
   say(`catalogue of ${catalogue.generated.slice(0, 10)}: ${allRows.length} programs, ${catalogue.endpoints.length} endpoints`);
   // the machine starts on a program: the one the address names, or the Tony demo, the first token of the series
   const q = new URLSearchParams(location.search);
