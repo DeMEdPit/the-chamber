@@ -499,10 +499,9 @@ document.addEventListener('visibilitychange', function () { if (document.hidden)
 document.addEventListener('keydown', function (e) {
   if (!m64 || STATE.phase !== 'running') return;
   if (INPUT === 'joystick') {
+    // the arrows and Z, X, space are the stick; every other key is the keyboard, as both are wired on the machine itself
     var bit = joyKeys[e.code];
-    if (bit && !(e.code in heldJoy)) { heldJoy[e.code] = bit; joyPush(JOYPORT, bit, true); }
-    if (bit) e.preventDefault();
-    return;
+    if (bit) { if (!(e.code in heldJoy)) { heldJoy[e.code] = bit; joyPush(JOYPORT, bit, true); } e.preventDefault(); return; }
   }
   if (e.repeat) { e.preventDefault(); return; }
   var sym = symbolMap[e.key];
@@ -522,10 +521,7 @@ document.addEventListener('keydown', function (e) {
 });
 document.addEventListener('keyup', function (e) {
   if (!m64) return;
-  if (INPUT === 'joystick') {
-    if (e.code in heldJoy) { joyPush(JOYPORT, heldJoy[e.code], false); delete heldJoy[e.code]; e.preventDefault(); }
-    return;
-  }
+  if (e.code in heldJoy) { joyPush(JOYPORT, heldJoy[e.code], false); delete heldJoy[e.code]; e.preventDefault(); return; }
   if (e.code in heldSymShift) {
     var wasShifted = heldSymShift[e.code];
     delete heldSymShift[e.code];

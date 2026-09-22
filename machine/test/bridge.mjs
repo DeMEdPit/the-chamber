@@ -169,6 +169,15 @@ try {
   check(input.ok && input.r.input === 'joystick', 'input mode set');
   const typed = await pg.evaluate(() => window.harness.request('type', { text: 'X' }));
   check(typed.ok && typed.r.typed === true, 'type resolves when done');
+  // 6a. under the stick the other keys still type: a real key press on the frame reaches the keyboard matrix (an arrow
+  // is the stick's, proven on the port in 10b; at READY the firmware itself moves the cursor for a stick in port 2, so
+  // the cursor is no test of it)
+  // a key is held for a few frames, as a finger holds it: the KERNAL scans the matrix once a frame
+  const hold = async (code) => { await pg.keyboard.down(code); await new Promise((r) => setTimeout(r, 90)); await pg.keyboard.up(code); await new Promise((r) => setTimeout(r, 90)); };
+  await pg.evaluate(() => document.querySelector('iframe').focus());
+  await hold('KeyA');
+  const typedByKey = await until(() => pg.evaluate(() => window.harness.request('screen').then((r) => (r.ok && /XA/.test(r.r.text) ? r.r.text : null))), 5000, 100);
+  check(!!typedByKey, 'under joystick input a letter key still types at the prompt (XA on the screen)');
 
   // 6b. the host takes the sound: samples come over the port, at the buffer size asked, and not before audio is on
   const early = await pg.evaluate(() => window.harness.request('samples'));
