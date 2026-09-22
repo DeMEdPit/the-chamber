@@ -27,8 +27,8 @@ const audio = createAudio({ onStatus: (t) => say(t) });
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
 let busy = false, pendingAsk = null, pendingFirmware = null;
-let inputMode = 'joystick', inputWhy = 'the programs of the series read port 2';   // 'joystick' is port 2, 'joystick1' port 1, 'keyboard' the matrix
-const joyPort = () => (inputMode === 'joystick1' ? 1 : 2);
+let inputMode = 'joystick', inputWhy = 'the programs of the series read port 2';   // 'joystick' is port 2, 'joystick1' port 1, 'joysticks' both ports, 'keyboard' the matrix
+const joyPort = () => (inputMode === 'joystick1' ? 1 : inputMode === 'joysticks' ? 0 : 2);
 const inputAsk = () => ({ mode: inputMode === 'keyboard' ? 'keyboard' : 'joystick', port: joyPort() });
 let firmwareMode = 'auto';   // the switch: 'auto' decides per program; 'off' bare, as the programs of the series run on chain; 'on' OpenROMs pressing 1, READY first
 let firmwareOn = false;      // the machine as built: with the ROMs, or bare
@@ -219,7 +219,7 @@ async function openDisk(file) {
         const scan = scanProgram(bytes);
         const notes = [];
         if (loadsMore(scan)) notes.push('loads more from the disk: stops at the drive here');
-        if (scan.kernal.internal && scan.kernal.table) notes.push(`${scan.kernal.internal} call${scan.kernal.internal === 1 ? '' : 's'} into the KERNAL's internals, which OpenROMs need not match`);
+        if (scan.kernal.internal && scan.kernal.table) notes.push(`may call the KERNAL's internals (${scan.kernal.internal} candidate${scan.kernal.internal === 1 ? '' : 's'}), which OpenROMs need not match`);
         e.note = notes.join(' · ');
       } catch (err) { e.note = `unreadable: ${err.message}`; e.unreadable = true; }
     }
@@ -593,7 +593,7 @@ function machineRows() {
   return [
     ['EMULATOR', emulator, mf ? '' : 'muted'],
     ['FIRMWARE', firmware, ''],
-    ['INPUT', (inputMode === 'keyboard' ? 'keyboard · the C64 matrix' : `joystick in port ${joyPort()}`) + (inputWhy ? ` · ${inputWhy}` : ''), ''],
+    ['INPUT', (inputMode === 'keyboard' ? 'keyboard · the C64 matrix' : inputMode === 'joysticks' ? 'joystick in both ports' : `joystick in port ${joyPort()}`) + (inputWhy ? ` · ${inputWhy}` : ''), ''],
     ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
     ['NODE', host || DASH, host ? '' : 'muted'],
   ];
@@ -671,7 +671,7 @@ els.copyLog.addEventListener('click', async () => {
   catch (e) { els.json.hidden = false; els.json.value = text; els.json.select(); els.copied.textContent = 'select and copy'; }
 });
 els.input.addEventListener('change', async () => {
-  inputMode = ['keyboard', 'joystick1'].includes(els.input.value) ? els.input.value : 'joystick';
+  inputMode = ['keyboard', 'joystick1', 'joysticks'].includes(els.input.value) ? els.input.value : 'joystick';
   inputWhy = 'by the switch';
   if (machine && machine.alive) { try { await machine.request('input', inputAsk()); } catch (e) { /* the machine is gone; the next load sets it */ } }
   if (playing) renderNow();

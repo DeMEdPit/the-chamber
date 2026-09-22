@@ -255,7 +255,7 @@ try {
   check(keys.subheads === 'about-machine,about-programs,about-words,about-controls', `the prose is under four subheads (${keys.subheads})`);
   await pg.selectOption('#input-mode', 'joystick1');
   const portOne = await until(() => pg.evaluate(() => (window.machinePage.input === 'joystick1' && /INPUT\s*joystick in port 1 · by the switch/.test(document.getElementById('now').textContent) ? true : null)), 5000, 100);
-  check(!!portOne && (await pg.evaluate(() => document.getElementById('input-mode').options.length === 3)), 'INPUT offers joystick in port 1, and NOW PLAYING says which port the stick feeds');
+  check(!!portOne && (await pg.evaluate(() => document.getElementById('input-mode').options.length === 4 && [...document.getElementById('input-mode').options].map((o) => o.value).join() === 'joystick,joystick1,joysticks,keyboard')), 'INPUT offers port 2, port 1, both ports and the keyboard, and NOW PLAYING says which port the stick feeds');
   await pg.selectOption('#input-mode', 'joystick');
   await until(() => pg.evaluate(() => window.machinePage.input === 'joystick'), 5000, 100);
   const stub = (...code) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, ...code]);
@@ -265,9 +265,9 @@ try {
   const wroteC = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 3)), 15000);
   check(!!wroteC, 'the file ran under the firmware: CHROUT cleared the screen and wrote C at $0400');
   check(/SCAN.*loads at \$0801 to \$0817 · SYS 2061 in its stub · calls the KERNAL 2 times \(CHROUT\) · reads neither port 2 nor the matrix · no write to the SID/.test(await nowText()), 'NOW PLAYING carries the scan');
-  check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard') && /INPUT.*keyboard · the C64 matrix · READY wants typing/.test(await nowText()) && /^AUTO · on · calls the KERNAL 2 times \(CHROUT\)$/.test(await whyText()), `the keyboard is the input, said why; the line under the switch (${await whyText()})`);
+  check(await pg.evaluate(() => window.machinePage.input === 'joysticks' && document.getElementById('input-mode').value === 'joysticks') && /INPUT.*joystick in both ports · nothing reads a port or the matrix that the scan can see; one stick in each port/.test(await nowText()) && /^AUTO · on · calls the KERNAL 2 times \(CHROUT\)$/.test(await whyText()), `a program that runs by itself under the firmware gets a stick in each port, said why; the line under the switch (${await whyText()})`);
   const provAuto = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
-  check(provAuto && provAuto.firmware.mode === 'on' && provAuto.firmware.switch === 'auto' && provAuto.firmware.status === 'PINNED' && /CHROUT/.test(provAuto.firmware.why) && provAuto.scan.kernal.calls === 2 && provAuto.scan.kernal.names.join() === 'CHROUT' && provAuto.needs.firmware === true && provAuto.known === null && provAuto.inputWhy === 'READY wants typing',
+  check(provAuto && provAuto.firmware.mode === 'on' && provAuto.firmware.switch === 'auto' && provAuto.firmware.status === 'PINNED' && /CHROUT/.test(provAuto.firmware.why) && provAuto.scan.kernal.calls === 2 && provAuto.scan.kernal.names.join() === 'CHROUT' && provAuto.needs.firmware === true && provAuto.known === null && provAuto.inputWhy === 'nothing reads a port or the matrix that the scan can see; one stick in each port',
         'the provenance carries the switch, the decision and its reason, the scan and the needs');
   const screenHasLine = (want) => pg.evaluate((w) => window.machinePage.machine.request('screen').then((r) => (r.text.split('\n').some((l) => l.trim() === w) ? r.text : null)).catch(() => null), want);
   await pg.setInputFiles('#file', { name: 'hi.prg', mimeType: 'application/octet-stream', buffer: Buffer.from([0x01, 0x08, 0x0c, 0x08, 0x0a, 0x00, 0x99, 0x20, 0x22, 0x48, 0x49, 0x22, 0x00, 0x00, 0x00]) });   // 10 PRINT "HI"
@@ -279,7 +279,7 @@ try {
   check(!!bareAgain, 'a file that needs nothing: AUTO rebuilds the machine bare and runs it');
   const wroteB2 = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 2)), 15000);
   check(!!wroteB2, 'it ran on the bare machine (screen code 2 at $0400, fresh memory)');
-  check(await pg.evaluate(() => window.machinePage.input === 'joystick') && /INPUT.*joystick in port 2.*nothing reads port 2 or the matrix; the stick, as for the series/.test(await nowText()), 'the stick is the input for a file that reads nothing, said why');
+  check(await pg.evaluate(() => window.machinePage.input === 'joysticks') && /INPUT.*joystick in both ports · nothing reads a port or the matrix that the scan can see; one stick in each port/.test(await nowText()), 'a file that reads nothing the scan can see gets a stick in each port, said why');
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
   const chainBare = await until(async () => { const t = await playingNamed('Tony: Born for Adventure'); return t && /FIRMWARE.*off · AUTO: a program of the chain runs bare, as it does on chain/.test(t) ? t : null; }, 90000, 500);

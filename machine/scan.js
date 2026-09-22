@@ -59,7 +59,7 @@ export function scanProgram(file) {
   const lives = (lo, hi) => load <= hi && end >= lo;   // the program occupies part of that window, so a call into it is its own code
   const kernal = { calls: 0, table: 0, internal: 0, names: [] }, basic = { calls: 0 };
   const names = new Set();
-  let joystick = 0, keyboard = 0, sid = 0, banks = 0, vecKernal = 0, vecRaw = 0;
+  let joystick = 0, keyboard = 0, columns = 0, sid = 0, banks = 0, vecKernal = 0, vecRaw = 0;
   for (let i = 0; i + 2 < b.length; i++) {
     const op = b[i], lo = b[i + 1], hi = b[i + 2];
     if (op === JSR || op === JMP || op === JMPI) {
@@ -70,6 +70,7 @@ export function scanProgram(file) {
     }
     if (hi === 0xDC && lo === 0x00 && READS.has(op)) joystick++;
     if (hi === 0xDC && lo === 0x01 && READS.has(op)) keyboard++;
+    if (hi === 0xDC && lo === 0x00 && (op === 0x8D || op === 0x8E || op === 0x8C)) columns++;   // a store to $DC00 selects a keyboard column: the matrix is being scanned
     if (hi === 0xD4 && lo <= 0x1C && WRITES.has(op)) sid++;
     if (op === 0x8D && hi === 0x03 && lo >= 0x14 && lo <= 0x19) vecKernal++;
     if (op === 0x8D && hi === 0xFF && lo >= 0xFA) vecRaw++;
@@ -78,7 +79,7 @@ export function scanProgram(file) {
   kernal.names = [...names];
   const lines = basicLines(b, load);
   const basicProgram = lines && lines.lines > 0 && !lines.sys && lines.end >= b.length - 2 ? lines.lines : 0;
-  return { load, end, bytes: b.length, entry: stubEntry(file), basicProgram, kernal, basic, joystick, keyboard, sid, banks, vectors: { kernal: vecKernal, raw: vecRaw } };
+  return { load, end, bytes: b.length, entry: stubEntry(file), basicProgram, kernal, basic, joystick, keyboard, columns, sid, banks, vectors: { kernal: vecKernal, raw: vecRaw } };
 }
 
 /** Whether the file needs the firmware, and why, in words. A program needs it when it is BASIC, calls into a ROM, hooks the KERNAL's interrupt vectors, or has no stub a bare machine can start it by. */
@@ -98,7 +99,7 @@ export function needsOf(scan) {
   if (scan.basicProgram) { firmware = true; reasons.push(`a BASIC program of ${scan.basicProgram} line${scan.basicProgram === 1 ? '' : 's'}`); }
   if (scan.kernal.calls) {
     firmware = true;
-    reasons.push(`calls the KERNAL ${times(scan.kernal.calls)}${scan.kernal.names.length ? ' (' + scan.kernal.names.join(', ') + ')' : ''}${scan.kernal.internal ? `, ${scan.kernal.internal} of them into its internals, which OpenROMs need not match` : ''}`);
+    reasons.push(`calls the KERNAL ${times(scan.kernal.calls)}${scan.kernal.names.length ? ' (' + scan.kernal.names.join(', ') + ')' : ''}${scan.kernal.internal ? `, ${scan.kernal.internal} of them candidates into its internals, which OpenROMs need not match` : ''}`);
   }
   if (scan.basic.calls) { firmware = true; reasons.push(`calls the BASIC ROM ${times(scan.basic.calls)}`); }
   if (scan.vectors.kernal) { firmware = true; reasons.push('hooks the KERNAL\'s interrupt vectors'); }
@@ -114,13 +115,19 @@ export function needsOf(scan) {
   return { firmware, why: reasons.join(', ') };
 }
 
-/** Which input the file reads: the stick when it reads port 2, the keyboard when it reads the matrix or asks the KERNAL for keys or sits at READY, the stick otherwise, as the programs of the series do. */
+/** Which input the file reads: port 2 when it reads port 2's register, both ports when it reads both (a two-player game, or
+ *  a game that reads port 1, whose register is also the keyboard's), the keyboard when it scans the matrix (column writes
+ *  to $DC00 with reads of $DC01), asks the KERNAL for keys, is BASIC, or will sit at READY for a SYS; else one stick in
+ *  each port, since a packed program shows the scan nothing and a game is the likelier file. 'joysticks' is both ports. */
 export function inputOf(scan, firmware) {
+  if (scan.joystick && scan.keyboard) return { input: 'joysticks', why: 'the file reads both ports' };
   if (scan.joystick) return { input: 'joystick', why: 'the file reads port 2' };
-  if (scan.keyboard) return { input: 'keyboard', why: 'the file reads the keyboard matrix' };
+  if (scan.keyboard && scan.columns) return { input: 'keyboard', why: 'the file scans the keyboard matrix' };
+  if (scan.keyboard) return { input: 'joysticks', why: "the file reads port 1's register, which is also the keyboard's; one stick in each port" };
   if (scan.kernal.names.some((n) => KEYS.includes(n))) return { input: 'keyboard', why: 'the file asks the KERNAL for keys' };
-  if (firmware) return { input: 'keyboard', why: 'READY wants typing' };
-  return { input: 'joystick', why: 'nothing reads port 2 or the matrix; the stick, as for the series' };
+  if (scan.basicProgram) return { input: 'keyboard', why: 'a BASIC program; the keyboard' };
+  if (firmware && scan.chips === undefined && (scan.load !== 0x0801 || !scan.entry)) return { input: 'keyboard', why: 'READY wants typing' };
+  return { input: 'joysticks', why: 'nothing reads a port or the matrix that the scan can see; one stick in each port' };
 }
 
 /** The scan as one line for NOW PLAYING. */
@@ -134,7 +141,7 @@ export function loadsMore(scan) {
  *  load range and the stub mean nothing for a cartridge and are left null. */
 export function scanCartridge(chips) {
   const merged = { load: null, end: null, bytes: 0, entry: null, basicProgram: 0, kernal: { calls: 0, table: 0, internal: 0, names: [] }, basic: { calls: 0 },
-    joystick: 0, keyboard: 0, sid: 0, banks: 0, vectors: { kernal: 0, raw: 0 }, chips: chips.length };
+    joystick: 0, keyboard: 0, columns: 0, sid: 0, banks: 0, vectors: { kernal: 0, raw: 0 }, chips: chips.length };
   const names = new Set();
   for (const c of chips) {
     const file = new Uint8Array(c.data.length + 2);
@@ -142,7 +149,7 @@ export function scanCartridge(chips) {
     const one = scanProgram(file);
     merged.bytes += one.bytes; merged.kernal.calls += one.kernal.calls; merged.kernal.table += one.kernal.table; merged.kernal.internal += one.kernal.internal;
     for (const n of one.kernal.names) names.add(n);
-    merged.basic.calls += one.basic.calls; merged.joystick += one.joystick; merged.keyboard += one.keyboard; merged.sid += one.sid; merged.banks += one.banks;
+    merged.basic.calls += one.basic.calls; merged.joystick += one.joystick; merged.keyboard += one.keyboard; merged.columns += one.columns; merged.sid += one.sid; merged.banks += one.banks;
     merged.vectors.kernal += one.vectors.kernal; merged.vectors.raw += one.vectors.raw;
   }
   merged.kernal.names = [...names];
@@ -152,7 +159,7 @@ export function scanCartridge(chips) {
  *  machine's own handshake starts it (byte patterns, so the switch stays the visitor's). */
 export function needsOfCartridge(scan) {
   const reasons = [];
-  if (scan.kernal.table) reasons.push(`calls the KERNAL ${times(scan.kernal.calls)} (${scan.kernal.names.join(', ')})${scan.kernal.internal ? `, ${scan.kernal.internal} of them into its internals, which OpenROMs need not match` : ''}`);
+  if (scan.kernal.table) reasons.push(`calls the KERNAL ${times(scan.kernal.calls)} (${scan.kernal.names.join(', ')})${scan.kernal.internal ? `, ${scan.kernal.internal} of them candidates into its internals, which OpenROMs need not match` : ''}`);
   if (scan.vectors.kernal) reasons.push("hooks the KERNAL's interrupt vectors");
   if (reasons.length) return { firmware: true, why: reasons.join(', ') };
   return { firmware: false, why: `no call into the KERNAL's table${scan.kernal.internal ? ` (${scan.kernal.internal} candidate call${scan.kernal.internal === 1 ? '' : 's'} into ROM internals read as data)` : ''}; the machine's own handshake starts a cartridge` };

@@ -162,7 +162,11 @@ var STATUS_PINNED = 'PINNED';
    build is told by message. */
 var MODE = 'firmware';
 var INPUT = 'keyboard';
-var JOYPORT = 2;   // the port the keys and the joystick messages feed: 2, as the programs of the series read, or 1; the emulator's array is 0-based
+var JOYPORT = 2;   // the port the keys and the joystick messages feed: 2, as the programs of the series read; 1; or 0 for both, one stick in each. The emulator's array is 0-based
+function joyPush(port, bit, down) {
+  var f = down ? m64_joystickPush : m64_joystickRelease;
+  if (port === 0) { f(0, bit); f(1, bit); } else f(port - 1, bit);
+}
 var PRG_HEX = '';
 var params = new URLSearchParams(location.search);
 if (params.get('mode') === 'bare') MODE = 'bare';
@@ -496,7 +500,7 @@ document.addEventListener('keydown', function (e) {
   if (!m64 || STATE.phase !== 'running') return;
   if (INPUT === 'joystick') {
     var bit = joyKeys[e.code];
-    if (bit && !(e.code in heldJoy)) { heldJoy[e.code] = bit; m64_joystickPush(JOYPORT - 1, bit); }
+    if (bit && !(e.code in heldJoy)) { heldJoy[e.code] = bit; joyPush(JOYPORT, bit, true); }
     if (bit) e.preventDefault();
     return;
   }
@@ -519,7 +523,7 @@ document.addEventListener('keydown', function (e) {
 document.addEventListener('keyup', function (e) {
   if (!m64) return;
   if (INPUT === 'joystick') {
-    if (e.code in heldJoy) { m64_joystickRelease(JOYPORT - 1, heldJoy[e.code]); delete heldJoy[e.code]; e.preventDefault(); }
+    if (e.code in heldJoy) { joyPush(JOYPORT, heldJoy[e.code], false); delete heldJoy[e.code]; e.preventDefault(); }
     return;
   }
   if (e.code in heldSymShift) {
@@ -556,7 +560,7 @@ document.addEventListener('pointerup', function (e) {
   var still = Math.abs(e.clientX - tap.x) < 12 && Math.abs(e.clientY - tap.y) < 12;
   var quick = Date.now() - tap.t < 250;
   tap = null;
-  if (still && quick) { m64_joystickPush(JOYPORT - 1, 16); setTimeout(function () { m64_joystickRelease(JOYPORT - 1, 16); }, 90); }
+  if (still && quick) { joyPush(JOYPORT, 16, true); setTimeout(function () { joyPush(JOYPORT, 16, false); }, 90); }
 });
 
 /* ------------------------------------------------------------ typing
@@ -874,13 +878,13 @@ async function onRequest(m) {
       reset(); reply(m, { type: 'ok' }); return;
     case 'input':
       if (m.mode !== 'keyboard' && m.mode !== 'joystick') { refuse(m, 'BAD_MESSAGE', 'mode is keyboard or joystick'); return; }
-      if (m.port !== undefined && m.port !== 1 && m.port !== 2) { refuse(m, 'BAD_MESSAGE', 'port is 1 or 2'); return; }
+      if (m.port !== undefined && m.port !== 0 && m.port !== 1 && m.port !== 2) { refuse(m, 'BAD_MESSAGE', 'port is 1 or 2, or 0 for both'); return; }
       releaseAll(); INPUT = m.mode; if (m.port !== undefined) JOYPORT = m.port; STATE.input = INPUT; reply(m, { type: 'ok', input: INPUT, port: JOYPORT }); return;
     case 'joystick':
       if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
       if ([1, 2, 4, 8, 16].indexOf(m.bit) < 0) { refuse(m, 'BAD_MESSAGE', 'bit is 1, 2, 4, 8 or 16'); return; }
-      if (m.port !== undefined && m.port !== 1 && m.port !== 2) { refuse(m, 'BAD_MESSAGE', 'port is 1 or 2'); return; }
-      (m.down ? m64_joystickPush : m64_joystickRelease)((m.port === undefined ? JOYPORT : m.port) - 1, m.bit); reply(m, { type: 'ok' }); return;
+      if (m.port !== undefined && m.port !== 0 && m.port !== 1 && m.port !== 2) { refuse(m, 'BAD_MESSAGE', 'port is 1 or 2, or 0 for both'); return; }
+      joyPush(m.port === undefined ? JOYPORT : m.port, m.bit, m.down); reply(m, { type: 'ok' }); return;
     case 'type': {
       if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
       if (m.text.length > LIMITS.text) { refuse(m, 'BAD_MESSAGE', 'text is at most ' + LIMITS.text + ' characters'); return; }
@@ -1018,8 +1022,8 @@ window.READY64 = {
   screenText: screenText,
   peek: function (a) { return m64 ? m64_cpuRead(a & 0xffff) : -1; },
   poke: function (a, v) { if (m64) { m64_cpuWrite(a & 0xffff, v & 0xff); intervened = true; STATE.intervened = true; } },
-  setInput: function (mode, port) { releaseAll(); INPUT = mode === 'joystick' ? 'joystick' : 'keyboard'; if (port === 1 || port === 2) JOYPORT = port; STATE.input = INPUT; },
-  joystick: function (bit, down, port) { if (m64) (down ? m64_joystickPush : m64_joystickRelease)(((port === 1 || port === 2) ? port : JOYPORT) - 1, bit); },
+  setInput: function (mode, port) { releaseAll(); INPUT = mode === 'joystick' ? 'joystick' : 'keyboard'; if (port === 0 || port === 1 || port === 2) JOYPORT = port; STATE.input = INPUT; },
+  joystick: function (bit, down, port) { if (m64) joyPush((port === 0 || port === 1 || port === 2) ? port : JOYPORT, bit, down); },
   onStatus: function (cb) { listeners.push(cb); },
   startAudio: startAudio,
   canvas: canvas

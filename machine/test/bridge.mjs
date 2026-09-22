@@ -267,10 +267,14 @@ try {
   await pg.evaluate(() => window.harness.request('joystick', { bit: 16, down: true }));
   check(inputOne.ok && inputOne.r.port === 1 && !!(await portsAre(0xef, 0xff)), `input names port 1 and fire with no port named goes there (${inputOne.ok ? 'port ' + inputOne.r.port : inputOne.code})`);
   await pg.evaluate(() => window.harness.request('joystick', { bit: 16, down: false }));
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 2, down: true, port: 0 }));
+  check(!!(await portsAre(0xfd, 0xfd)), 'down on port 0 pulls the line low on both ports at once');
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 2, down: false, port: 0 }));
+  check(!!(await portsAre(0xff, 0xff)), 'and releases both');
   const badPort = await pg.evaluate(() => window.harness.request('input', { mode: 'joystick', port: 3 }));
-  const badPort2 = await pg.evaluate(() => window.harness.request('joystick', { bit: 1, down: true, port: 0 }));
+  const badPort2 = await pg.evaluate(() => window.harness.request('joystick', { bit: 1, down: true, port: 3 }));
   const stPort = await pg.evaluate(() => window.harness.request('state'));
-  check(!badPort.ok && badPort.code === 'BAD_MESSAGE' && !badPort2.ok && badPort2.code === 'BAD_MESSAGE' && stPort.ok && stPort.r.port === 1, `a port other than 1 or 2 is refused, and state says the port (${stPort.ok ? stPort.r.port : stPort.code})`);
+  check(!badPort.ok && badPort.code === 'BAD_MESSAGE' && !badPort2.ok && badPort2.code === 'BAD_MESSAGE' && stPort.ok && stPort.r.port === 1, `a port other than 0, 1 or 2 is refused, and state says the port (${stPort.ok ? stPort.r.port : stPort.code})`);
   // 10c. a cartridge on the bare machine: the machine's own handshake boots it (C, R, T at $0400), it stays in the port
   // (a PRG after it refused, reset keeps it, state says so), and what the reader would trap on is refused before it is asked
   const eight = Array.from(makeCRT({ type: 0, chips: [{ bank: 0, load: 0x8000, size: 0x2000, data: PROBE }] }));

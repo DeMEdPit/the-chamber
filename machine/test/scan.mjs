@@ -8,13 +8,13 @@ const prg = (...code) => new Uint8Array([...STUB, ...code]);
 
 // the rig's own program: a stub, a store to the screen, no ROM: bare, the stick
 let s = scanProgram(prg(0xa9, 0x01, 0x8d, 0x00, 0x04, 0x60)), n = needsOf(s), i = inputOf(s, n.firmware);
-check(s.load === 0x0801 && s.entry === 2061 && s.kernal.calls === 0 && s.basicProgram === 0 && !n.firmware && n.why === 'no call into a ROM' && i.input === 'joystick', `a stub and a store: bare, the stick (${n.why}; ${i.why})`);
+check(s.load === 0x0801 && s.entry === 2061 && s.kernal.calls === 0 && s.basicProgram === 0 && !n.firmware && n.why === 'no call into a ROM' && i.input === 'joysticks', `a stub and a store: bare, the stick (${n.why}; ${i.why})`);
 // CHROUT twice: the firmware, the keyboard, the routine named
 s = scanProgram(prg(0xa9, 0x93, 0x20, 0xd2, 0xff, 0xa9, 0x43, 0x20, 0xd2, 0xff, 0x60)); n = needsOf(s); i = inputOf(s, n.firmware);
-check(s.kernal.calls === 2 && s.kernal.table === 2 && s.kernal.names.join() === 'CHROUT' && n.firmware && n.why === 'calls the KERNAL 2 times (CHROUT)' && i.input === 'keyboard', `two calls to CHROUT: the firmware, the keyboard (${n.why})`);
+check(s.kernal.calls === 2 && s.kernal.table === 2 && s.kernal.names.join() === 'CHROUT' && n.firmware && n.why === 'calls the KERNAL 2 times (CHROUT)' && i.input === 'joysticks', `two calls to CHROUT: the firmware, the keyboard (${n.why})`);
 // a call into the KERNAL's internals is counted and named as such
 s = scanProgram(prg(0x20, 0x44, 0xe5, 0x60)); n = needsOf(s);
-check(s.kernal.calls === 1 && s.kernal.internal === 1 && s.kernal.names.length === 0 && /1 of them into its internals, which OpenROMs need not match/.test(n.why), `a call to $E544: an internal, said (${n.why})`);
+check(s.kernal.calls === 1 && s.kernal.internal === 1 && s.kernal.names.length === 0 && /1 of them candidates into its internals, which OpenROMs need not match/.test(n.why), `a call to $E544: an internal, said (${n.why})`);
 // a BASIC program: 10 PRINT "HI"
 s = scanProgram(new Uint8Array([0x01, 0x08, 0x0c, 0x08, 0x0a, 0x00, 0x99, 0x20, 0x22, 0x48, 0x49, 0x22, 0x00, 0x00, 0x00])); n = needsOf(s); i = inputOf(s, n.firmware);
 check(s.basicProgram === 1 && s.entry === null && n.firmware && n.why === 'a BASIC program of 1 line' && i.input === 'keyboard', `a BASIC program: the firmware, the keyboard (${n.why})`);
@@ -29,7 +29,16 @@ s = scanProgram(prg(0xad, 0x00, 0xdc, 0x20, 0xd2, 0xff, 0x60)); n = needsOf(s); 
 check(s.joystick === 1 && i.input === 'joystick' && i.why === 'the file reads port 2', 'a read of $DC00: the stick');
 // the keyboard: a read of the matrix
 s = scanProgram(prg(0xad, 0x01, 0xdc, 0x60)); n = needsOf(s); i = inputOf(s, n.firmware);
-check(s.keyboard === 1 && !n.firmware && i.input === 'keyboard', 'a read of $DC01: the keyboard, bare');
+check(s.keyboard === 1 && s.columns === 0 && !n.firmware && i.input === 'joysticks' && /port 1's register/.test(i.why), `a read of $DC01 alone: port 1's register, so both ports (${i.why})`);
+// the keyboard: a column written to $DC00 and the matrix read at $DC01
+s = scanProgram(prg(0xa9, 0xfe, 0x8d, 0x00, 0xdc, 0xad, 0x01, 0xdc, 0x60)); n = needsOf(s); i = inputOf(s, n.firmware);
+check(s.keyboard === 1 && s.columns === 1 && s.joystick === 0 && i.input === 'keyboard' && i.why === 'the file scans the keyboard matrix', 'a column write and a read of $DC01: the keyboard');
+// both ports read: one stick in each
+s = scanProgram(prg(0xad, 0x00, 0xdc, 0xad, 0x01, 0xdc, 0x60)); n = needsOf(s); i = inputOf(s, n.firmware);
+check(s.joystick === 1 && s.keyboard === 1 && i.input === 'joysticks' && i.why === 'the file reads both ports', 'reads of both registers: both ports');
+// a program that will sit at READY wants typing; one that runs by itself under the firmware gets the sticks
+s = scanProgram(new Uint8Array([0x00, 0xc0, 0xa9, 0x01, 0x8d, 0x00, 0x04, 0x60])); n = needsOf(s); i = inputOf(s, n.firmware);
+check(n.firmware && i.input === 'keyboard' && i.why === 'READY wants typing', 'no stub under the firmware: READY wants typing');
 // GETIN asks the KERNAL for keys
 s = scanProgram(prg(0x20, 0xe4, 0xff, 0x60)); n = needsOf(s); i = inputOf(s, n.firmware);
 check(s.kernal.names.join() === 'GETIN' && i.input === 'keyboard' && i.why === 'the file asks the KERNAL for keys', 'GETIN: the keyboard');
