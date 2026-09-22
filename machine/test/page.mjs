@@ -172,7 +172,7 @@ try {
     check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
-    const shape0 = await pw.evaluate(() => ({ rows: Math.round(document.getElementById('rows').getBoundingClientRect().height), log: Math.round(document.getElementById('log').getBoundingClientRect().height), now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent) }));
+    const shape0 = await pw.evaluate(() => ({ rows: Math.round(document.getElementById('rows').getBoundingClientRect().height), log: Math.round(document.getElementById('log').getBoundingClientRect().height), now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), badge: document.getElementById('link').getBoundingClientRect().width }));
     await until(() => pw.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
     const shapeRun = await pw.evaluate(() => ({ now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), log: Math.round(document.getElementById('log').getBoundingClientRect().height) }));
     await pw.click('#reset');
@@ -183,6 +183,8 @@ try {
     check(Math.abs(shape0.now - shapeRun.now) <= 48 && Math.abs(shapeIdle.now - shapeRun.now) <= 48, `at ${w} wide: NOW PLAYING holds its height, first paint ${shape0.now}, running ${shapeRun.now}, idle ${shapeIdle.now}`);
     const badge = await pw.evaluate(() => { const l = document.getElementById('link').getBoundingClientRect(), f = document.getElementById('frame').getBoundingClientRect(); return { right: f.right - l.right, left: l.left - f.left, block: document.getElementById('link-block').innerText }; });
     check(w < 1140 ? (badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge sits ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block})`);
+    const badgeNow = await pw.evaluate(() => document.getElementById('link').getBoundingClientRect().width);
+    if (w < 1140) check(Math.abs(badgeNow - shape0.badge) <= 1, `at ${w} wide: the badge keeps one width from first paint to a held read (${Math.round(shape0.badge)} then ${Math.round(badgeNow)})`);
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }
