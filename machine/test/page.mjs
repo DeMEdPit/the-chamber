@@ -147,6 +147,40 @@ try {
   }
   check(await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 'a refused file leaves the running program alone');
   check(requests.length === requestsBefore, `the refusals made no request either (${requests.length - requestsBefore})`);
+  // AUTO: the switch reads a file for what it needs. A file that calls the KERNAL gets the firmware, the machine rebuilt with
+  // the pressing from the chain; a BASIC program is RUN under it; a file that needs nothing runs bare again; a program of
+  // the chain runs bare, as on chain
+  const nowText = () => pg.evaluate(() => document.getElementById('now').textContent);
+  const whyText = () => pg.evaluate(() => document.getElementById('firmware-why').textContent);
+  /** NOW PLAYING's text once the page says RUNNING and the panel names the program; null until then. */
+  const playingNamed = (name) => pg.evaluate((n) => (document.getElementById('state').dataset.phase === 'running' && new RegExp(n).test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null), name);
+  check(await pg.evaluate(() => document.getElementById('firmware').value === 'auto') && /^AUTO · bare · no call into a ROM$/.test(await whyText()), `the switch reads auto and its line says why the machine is bare for the file playing (${await whyText()})`);
+  const stub = (...code) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, ...code]);
+  await pg.setInputFiles('#file', { name: 'kernal.prg', mimeType: 'application/octet-stream', buffer: stub(0xa9, 0x93, 0x20, 0xd2, 0xff, 0xa9, 0x43, 0x20, 0xd2, 0xff, 0x60) });   // LDA #147 ; JSR CHROUT ; LDA #'C' ; JSR CHROUT ; RTS
+  const autoOn = await until(async () => { const t = await playingNamed('kernal\\.prg'); return t && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum.*AUTO: calls the KERNAL 2 times \(CHROUT\)/.test(t) ? t : null; }, 90000, 500);
+  check(!!autoOn, 'AUTO: a file that calls the KERNAL gets the firmware, the machine rebuilt with the pressing from the chain, the reason in NOW PLAYING');
+  const wroteC = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 3)), 15000);
+  check(!!wroteC, 'the file ran under the firmware: CHROUT cleared the screen and wrote C at $0400');
+  check(/SCAN.*loads at \$0801 to \$0817 · SYS 2061 in its stub · calls the KERNAL 2 times \(CHROUT\) · reads neither port 2 nor the matrix · no write to the SID/.test(await nowText()), 'NOW PLAYING carries the scan');
+  check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard') && /INPUT.*keyboard · the C64 matrix · READY wants typing/.test(await nowText()) && /^AUTO · on · calls the KERNAL 2 times \(CHROUT\)$/.test(await whyText()), `the keyboard is the input, said why; the line under the switch (${await whyText()})`);
+  const provAuto = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  check(provAuto && provAuto.firmware.mode === 'on' && provAuto.firmware.switch === 'auto' && provAuto.firmware.status === 'PINNED' && /CHROUT/.test(provAuto.firmware.why) && provAuto.scan.kernal.calls === 2 && provAuto.scan.kernal.names.join() === 'CHROUT' && provAuto.needs.firmware === true && provAuto.known === null && provAuto.inputWhy === 'READY wants typing',
+        'the provenance carries the switch, the decision and its reason, the scan and the needs');
+  const screenHasLine = (want) => pg.evaluate((w) => window.machinePage.machine.request('screen').then((r) => (r.text.split('\n').some((l) => l.trim() === w) ? r.text : null)).catch(() => null), want);
+  await pg.setInputFiles('#file', { name: 'hi.prg', mimeType: 'application/octet-stream', buffer: Buffer.from([0x01, 0x08, 0x0c, 0x08, 0x0a, 0x00, 0x99, 0x20, 0x22, 0x48, 0x49, 0x22, 0x00, 0x00, 0x00]) });   // 10 PRINT "HI"
+  const basicRan = await until(async () => { const t = await playingNamed('hi\\.prg'); return t && /AUTO: a BASIC program of 1 line/.test(t) ? t : null; }, 90000, 500);
+  check(!!basicRan, 'a BASIC program: AUTO keeps the firmware, the reason names the program');
+  check(!!(await until(() => screenHasLine('HI'), 20000, 500)), 'the firmware RUN it: HI on the screen');
+  await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
+  const bareAgain = await until(async () => { const t = await playingNamed('hello\\.prg'); return t && /FIRMWARE.*off · the program runs bare, as it does on chain · AUTO: no call into a ROM/.test(t) ? t : null; }, 90000, 500);
+  check(!!bareAgain, 'a file that needs nothing: AUTO rebuilds the machine bare and runs it');
+  const wroteB2 = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 2)), 15000);
+  check(!!wroteB2, 'it ran on the bare machine (screen code 2 at $0400, fresh memory)');
+  check(await pg.evaluate(() => window.machinePage.input === 'joystick') && /INPUT.*joystick in port 2.*nothing reads port 2 or the matrix; the stick, as for the series/.test(await nowText()), 'the stick is the input for a file that reads nothing, said why');
+  await pg.fill('#search', 'tony');
+  await pg.click('#rows .row[data-work="tony"] button.load');
+  const chainBare = await until(async () => { const t = await playingNamed('Tony: Born for Adventure'); return t && /FIRMWARE.*off · the program runs bare, as it does on chain · AUTO: a program of the chain runs bare, as it does on chain/.test(t) ? t : null; }, 90000, 500);
+  check(!!chainBare, 'a program of the chain after a file: bare, as on chain, the reason said');
   // the firmware switch: on shows the firmware at READY, LOAD runs a program under it, RESET brings READY back, off is bare again
   const screenHasReady = () => pg.evaluate(() => window.machinePage.machine.request('screen').then((r) => (/READY\./.test(r.text) && /OPEN ROMS C64/.test(r.text) ? r.text : null)).catch(() => null));
   await pg.selectOption('#firmware', 'on');
@@ -201,6 +235,7 @@ try {
     const listShows = await pw.evaluate(() => { const row = document.querySelector('#rows .row[data-work="tony"]'); const l = document.getElementById('rows').getBoundingClientRect(); const r = row.getBoundingClientRect(); return r.top >= l.top - 1 && r.bottom <= l.bottom + 1; });
     check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
     check(await pw.evaluate(() => document.getElementById('file').type === 'file' && document.getElementById('door').getBoundingClientRect().height > 30), `at ${w} wide: the file door is there`);
+    check(await pw.evaluate(() => document.getElementById('firmware').value === 'auto' && document.getElementById('firmware').options.length === 3), `at ${w} wide: the firmware switch reads auto, three positions`);
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
     const shape0 = await pw.evaluate(() => ({ rows: Math.round(document.getElementById('rows').getBoundingClientRect().height), log: Math.round(document.getElementById('log').getBoundingClientRect().height), now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), badge: document.getElementById('link').getBoundingClientRect().width }));

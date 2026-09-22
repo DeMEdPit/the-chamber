@@ -17,6 +17,7 @@ its decisions are in the private study; what is public is here, all of it.
 | `host.js` | the page's script: the search over the catalogue, the file door (a `.prg` of the visitor's, read in the browser and sent nowhere, judged for its shape only and said as YOUR FILE; what is not a program refused with a code and a sentence), the states, the provenance, the controls | MIT |
 | `chain.js` | the page's reads from Ethereum and what each may claim: one node of the session, named; a program as one record with its statuses; a mismatch refused. Every read of one thing is one observation through one node at one block, the block's hash recorded; a node that contradicts a pin, the chain or a contract's own invariant is set aside for the visit, one that fails in transport is demoted and the read restarts elsewhere | MIT |
 | `keccak.js` | keccak-256 for the page (a stamp's seed, the older tokens' pins, selectors) | MIT |
+| `scan.js` | the scan of a program file: its range and stub, whether it is BASIC, its calls into the ROMs by name, its interrupt vectors, whether it banks the ROMs out, what it reads and whether it writes the SID; byte patterns only, said so; what the firmware switch decides by under AUTO | MIT |
 | `audio.js` | the page plays the machine's sound: samples pulled over the port and scheduled on the page's audio clock, paced as nopsta's player paces them | MIT |
 | `bridge-client.js` | the host's side of the bridge: the seven pins in code, request ids, timeouts, a frame destroyed and rebuilt rather than recovered, the site's copies held to the pins before they are handed over | MIT |
 | `parts/` | the site's copies of the emulator's four parts and the three ROMs, with `MANIFEST.json` (bytes, sha256, chain address, licence, source) | GPL-2.0-only / LGPL-3.0-or-later |
@@ -27,7 +28,7 @@ its decisions are in the private study; what is public is here, all of it.
 | `licenses/` | the licence texts | |
 | `PROTOCOL.md` | the bridge protocol, version 1: messages, refusal codes, the trust vocabulary | |
 | `LICENSES.md` | what is under which licence, and where the corresponding source is | |
-| `test/` | the headless gate (`bridge.mjs`), its server with a stand-in mainnet built from the copies (`serve.mjs`), the harness page; the verifier's gate (`test_verify.py`) and its stand-in node (`mocknode.py`) | MIT |
+| `test/` | the headless gate (`bridge.mjs`), its server with a stand-in mainnet built from the copies (`serve.mjs`), the harness page; the scan's gate (`scan.mjs`, Node alone); the verifier's gate (`test_verify.py`) and its stand-in node (`mocknode.py`) | MIT |
 
 ## Build and check
 

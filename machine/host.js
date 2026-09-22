@@ -5,16 +5,18 @@
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
 import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
-import { Node, machineFromChain, firmwareFromChain, programFromChain } from './chain.js';
+import { Node, machineFromChain, firmwareFromChain, programFromChain, zeroWindow } from './chain.js';
+import { keccakHex } from './keccak.js';
+import { scanProgram, needsOf, inputOf, scanWords, hex4 } from './scan.js';
 import { createAudio } from './audio.js';
 
-const PAGE = 'machine/2a';
+const PAGE = 'machine/2b';
 const $ = (id) => document.getElementById(id);
 const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
-  sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'),
+  sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'), firmwareWhy: $('firmware-why'),
   door: $('door'), doorText: $('door-text'), file: $('file'),
   link: $('link'), linkChain: $('link-chain'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
@@ -22,8 +24,10 @@ const audio = createAudio({ onStatus: (t) => say(t) });
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
 let busy = false, pendingAsk = null, pendingFirmware = null;
-let inputMode = 'joystick';
-let firmwareMode = 'off';   // 'off': the machine bare, as the programs of the series run on chain; 'on': OpenROMs pressing 1, READY first
+let inputMode = 'joystick', inputWhy = 'the programs of the series read port 2';
+let firmwareMode = 'auto';   // the switch: 'auto' decides per program; 'off' bare, as the programs of the series run on chain; 'on' OpenROMs pressing 1, READY first
+let firmwareOn = false;      // the machine as built: with the ROMs, or bare
+let firmwareWhy = 'a program of the chain runs bare, as it does on chain';   // what decided the build, for the words
 const FIRMWARE_NAME = 'OpenROMs pressing 1';
 const state = { phase: 'off' };
 const LOG_LINES = 14;
@@ -147,7 +151,6 @@ function renderRows(filter) {
 // program the machine loads is refused with a code and a sentence that names what the file is.
 const D64_SIZES = new Set([174848, 175531, 196608, 197376]);   // a disk image: 35 tracks, with error bytes; 40 tracks, with error bytes
 const FILE_LIMIT = 65538;   // a two-byte load address and at most 64K after it: the machine document's own limit (PROTOCOL.md)
-const hex4 = (n) => '$' + n.toString(16).padStart(4, '0');
 async function programFromFile(file) {
   const refuse = (code, text) => { throw Object.assign(new Error(text), { code }); };
   const name = file.name || 'a file', size = file.size;
@@ -162,16 +165,56 @@ async function programFromFile(file) {
   const load = bytes[0] | (bytes[1] << 8);
   if (load + bytes.length - 2 > 0x10000) refuse('PRG_ADDRESS_OVERFLOW', `${name} loads at ${hex4(load)} and its ${num(bytes.length - 2)} bytes would run past 64K`);
   const sha256 = await sha256Hex(bytes.buffer);
+  const scan = scanProgram(bytes), needs = needsOf(scan), known = await recognise(bytes);
   return { kind: 'file', label: name.slice(0, 80), bytes, statuses: { program: STATUS.YOUR_FILE },
-    facts: { work: 'file', workName: 'your file', contract: null, token: null, name, size, type: file.type || '', modified: Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : null, load, sha256, node: null, observation: null, reads: [] } };
+    facts: { work: 'file', workName: 'your file', contract: null, token: null, name, size, type: file.type || '', modified: Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : null, load, sha256, scan, needs, known, node: null, observation: null, reads: [] } };
+}
+/** A file that is one of the series' own programs is recognised by the catalogue's pins: the Chamber's outside its 42-byte
+ *  stamp, the Perception Chamber's outside its mind, the two older tokens whole. No node is asked, and what sits inside the
+ *  stamp or the slot is not checked against anything. */
+async function recognise(bytes) {
+  for (const w of catalogue.works) {
+    const p = w.program;
+    if (bytes.length !== p.bytes) continue;
+    if (p.kind === 'stamped' && await sha256Hex(zeroWindow(bytes, p.stamp.offset, p.stamp.bytes)) === p.stamp.sha256WindowZeroed) {
+      return { work: w.key, name: w.name, words: `${w.name}'s program: outside its ${p.stamp.bytes}-byte stamp it equals the pinned base; the stamp inside is not checked against the chain` };
+    }
+    if (p.kind === 'slotted' && await sha256Hex(zeroWindow(bytes, p.slot.offset, p.slot.bytes)) === p.slot.sha256WindowZeroed) {
+      const mind = await sha256Hex(bytes.slice(p.slot.offset, p.slot.offset + p.slot.bytes));
+      return { work: w.key, name: w.name, words: `${w.name}'s program with a mind: outside the ${p.slot.bytes}-byte slot it equals the frozen program; the mind inside hashes to ${SHORT(mind)} and is not checked against any record` };
+    }
+    if (p.kind === 'whole' && keccakHex(bytes) === p.keccak256) return { work: w.key, name: w.name, words: `${w.name}: the whole program equals the pinned one` };
+  }
+  return null;
+}
+/** What the machine should be for a program, and which input: from the switch, or under AUTO from the program itself. A
+ *  program of the chain runs bare, as it does on chain; a file is read for what it needs; a file recognised as one of the
+ *  series' programs runs as they do. */
+function decide(program) {
+  const file = program && program.kind === 'file' ? program : null;
+  const series = { input: 'joystick', inputWhy: 'the programs of the series read port 2' };
+  if (!file) {
+    if (firmwareMode === 'auto') return { on: false, ...series, why: 'a program of the chain runs bare, as it does on chain' };
+    return { on: firmwareMode === 'on', ...series, why: `${firmwareMode} by the switch` };
+  }
+  const f = file.facts;
+  if (firmwareMode === 'auto' && f.known) return { on: false, ...series, why: `${f.known.name}: a program of the series runs bare, as on chain` };
+  const on = firmwareMode === 'auto' ? f.needs.firmware : firmwareMode === 'on';
+  const inp = inputOf(f.scan, on);
+  return { on, input: inp.input, inputWhy: inp.why, why: firmwareMode === 'auto' ? f.needs.why : `${firmwareMode} by the switch` };
 }
 const DOOR_IDLE = 'drop a .prg here, or choose one';
 function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; }
 
 // ------------------------------------------------------------------ the machine
-async function ensureMachine() {
-  if (machine && machine.alive) return;
-  veil('STARTING THE MACHINE');
+async function ensureMachine(d) {
+  if (machine && machine.alive && firmwareOn === d.on) { firmwareWhy = d.why; return; }
+  if (machine) {
+    say(d.on ? `rebuilding the machine with ${FIRMWARE_NAME}: ${d.why}` : `rebuilding the machine bare: ${d.why}`);
+    audio.detach(); machine.destroy(); machine = null; playing = null;
+  }
+  firmwareOn = d.on; firmwareWhy = d.why;
+  veil(d.on ? `STARTING THE MACHINE WITH ${FIRMWARE_NAME.toUpperCase()}` : 'STARTING THE MACHINE');
   machine = createMachine({
     container: els.frame,
     onEvent: (e) => {
@@ -191,7 +234,7 @@ async function ensureMachine() {
     say('the site\'s copies matched their pins: PINNED');
   }
   let firmware = { mode: 'off' };
-  if (firmwareMode === 'on') {
+  if (firmwareOn) {
     let fw;
     try {
       fw = await firmwareFromChain(node, say);
@@ -205,43 +248,53 @@ async function ensureMachine() {
     bytes = { parts: bytes.parts, roms: fw.roms, status: bytes.status, source: bytes.source };   // the emulator's own source stays its own
     firmware = { mode: 'on', name: FIRMWARE_NAME, status: fw.status, source: fw.source, observation: fw.observation || null };
   }
-  const ready = await bootMachine(machine, bytes, { firmware: firmwareMode === 'on', status: firmware.status });
+  const ready = await bootMachine(machine, bytes, { firmware: firmwareOn, status: firmware.status });
   machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, observation: bytes.observation || null, firmware };
   await machine.request('input', { mode: inputMode });
   await attachSound();
   veil('');
 }
-/** The firmware switch: the machine is rebuilt with or without the ROMs, and what was playing is read and run again. */
+/** The firmware switch: on rebuilds the machine with the ROMs and shows READY, LOAD running a program under it; off
+ *  rebuilds it bare and runs again what was playing; auto decides per program, so the machine changes only when the
+ *  program playing needs it to. */
 async function setFirmware(mode) {
   if (mode === firmwareMode) return;
   if (busy) { pendingFirmware = mode; return; }
   busy = true;
   firmwareMode = mode;
   els.firmware.value = mode;
-  // a READY prompt wants the keyboard; a program of the series wants the stick
-  inputMode = mode === 'on' ? 'keyboard' : 'joystick';
-  els.input.value = inputMode;
   const was = playing ? (playing.file ? { file: playing.file } : { work: playing.program.facts.work, token: playing.program.facts.token }) : null;
   try {
-    if (machine) {
-      say(mode === 'on' ? `firmware on: rebuilding the machine with ${FIRMWARE_NAME}` : 'firmware off: rebuilding the machine bare');
-      audio.detach();
-      machine.destroy();
-      machine = null;
-      playing = null;
-      setState('reading', 'REBUILDING');
-      node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
-      await ensureMachine();
-      if (mode === 'on') {
-        // the switch shows the firmware: READY, and LOAD runs a program under it
-        setState('idle', 'READY'); say(`${FIRMWARE_NAME} is at READY; LOAD runs a program under it`); renderNow(); markOffered(null, null);
-      } else if (was) {
-        pendingAsk = was;   // bare again, as on chain: the program that was playing runs again
-      } else {
-        setState('idle', 'THE MACHINE IS ON'); veil('BARE · press LOAD to run a program'); renderNow(); markOffered(null, null);
-      }
+    const d = decide(playing ? playing.program : null);
+    if (!machine || !machine.alive) {
+      firmwareOn = d.on; firmwareWhy = d.why;
+      say(mode === 'on' ? `firmware on: the machine will boot ${FIRMWARE_NAME} when it starts` : mode === 'off' ? 'firmware off: the machine will start bare' : 'firmware auto: decided by the program when it loads');
+      renderNow();
+      return;
+    }
+    if (firmwareOn === d.on && mode !== 'on') {
+      firmwareWhy = d.why;
+      say(`firmware ${mode}: the machine stays as it is (${d.why})`);
+      renderNow();
+      return;
+    }
+    if (firmwareOn === d.on && mode === 'on' && playing) {
+      // already under the firmware and playing: the switch only names what is so
+      firmwareWhy = d.why; say(`firmware on: ${FIRMWARE_NAME} is already in the machine; the program plays on`); renderNow();
+      return;
+    }
+    setState('reading', 'REBUILDING');
+    node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
+    await ensureMachine(d);
+    if (mode === 'on') {
+      // the switch shows the firmware: READY, and LOAD runs a program under it
+      inputMode = 'keyboard'; inputWhy = 'READY wants typing'; els.input.value = inputMode;
+      await machine.request('input', { mode: inputMode });
+      setState('idle', 'READY'); say(`${FIRMWARE_NAME} is at READY; LOAD runs a program under it`); renderNow(); markOffered(null, null);
+    } else if (was) {
+      pendingAsk = was;   // as the program needs, or bare: what was playing runs again
     } else {
-      say(mode === 'on' ? `firmware on: the machine will boot ${FIRMWARE_NAME} when it starts` : 'firmware off: the machine will start bare');
+      setState('idle', 'THE MACHINE IS ON'); veil('BARE · press LOAD to run a program'); renderNow(); markOffered(null, null);
     }
   } catch (e) {
     setState('failed', 'THE MACHINE DID NOT START');
@@ -276,14 +329,24 @@ async function run(ask) {
   try {
     if (!catalogue) throw Object.assign(new Error('the catalogue has not loaded'), { code: 'NO_CATALOGUE' });
     if (fromFile) { door('busy', `reading ${ask.file.name}`); program = await programFromFile(ask.file); }
+    const d = decide(program);   // a program of the chain is decided before it is read: bare under AUTO
     setState('reading', 'READING');
     node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
-    await ensureMachine();
+    await ensureMachine(d);
     renderNow();   // the machine's rows fill as soon as it is up, while the program is read
     if (!fromFile) program = await programFromChain(node, catalogue, ask.work, ask.token, say);
     setState('checking', 'CHECKING');
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
-    if (fromFile) say(`your file ${program.label}: ${num(program.bytes.length)} bytes, loads at ${hex4(program.facts.load)}, sha256 ${SHORT(program.facts.sha256)}; read in this browser, sent nowhere, no chain claim`);
+    if (fromFile) {
+      const f = program.facts;
+      say(`your file ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim`);
+      say(`the scan: ${scanWords(f.scan)}`);
+      if (f.known) say(`recognised: ${f.known.words}`);
+      say(`firmware ${firmwareOn ? 'on' : 'off'} (${firmwareMode === 'auto' ? 'AUTO: ' + d.why : d.why}); input ${d.input} (${d.inputWhy})`);
+      if (firmwareOn && f.load !== 0x0801) say(`the firmware starts only a program at $0801: type SYS ${f.load} at READY to start this one`);
+    }
+    inputMode = d.input; inputWhy = d.inputWhy; els.input.value = inputMode;
+    await machine.request('input', { mode: inputMode });
     const buf = program.bytes.slice().buffer;
     const loaded = await machine.request('load', { kind: 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
     playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened, file: ask.file || null };
@@ -338,15 +401,16 @@ function provenance() {
       program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, load: f.load },
       file: { name: f.name, size: f.size, type: f.type, modified: f.modified },
       claim: 'none: a file of yours, read in this browser and sent nowhere, checked for its shape only',
+      scan: f.scan, needs: f.needs, known: f.known ? { work: f.known.work, name: f.known.name, words: f.known.words } : null,
       node: null, observation: null, reads: [], nodes: node ? node.facts() : null,
-      machine: machineFacts, firmware: machineFacts.firmware, input: inputMode, mode: 'PURE', intervened: playing.intervened,
+      machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, mode: 'PURE', intervened: playing.intervened,
     };
   }
   const out = {
     page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: f.contract, token: f.token, label: p.label,
     program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, pins: f.pins },
     node: f.node, observation: f.observation, reads: f.reads, nodes: node ? node.facts() : null,
-    machine: machineFacts, firmware: machineFacts.firmware, input: inputMode, mode: 'PURE', intervened: playing.intervened,
+    machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, mode: 'PURE', intervened: playing.intervened,
   };
   if (p.kind === 'stamped') out.stamp = { status: p.statuses.stamp, block: f.block, stampedAt: f.stampedAt, previousBlockHash: f.prevHash, digits: f.digits, seed: f.seed, row: f.row };
   if (p.kind === 'slotted') out.mind = { status: p.statuses.mind, head: f.head, headStatus: p.statuses.head, canonicalHash: f.canonicalHash, brainBlob: f.brainBlob };
@@ -365,16 +429,18 @@ const DASH = '—';
 function machineRows() {
   const mf = machineFacts, fw = mf && mf.firmware;
   let firmware;
-  if (fw && fw.mode === 'on') firmware = `on · ${FIRMWARE_NAME} · ${fw.status} · from ${fw.source} · a program of the series runs the same, it banks the ROMs out as it starts`;
+  const sw = firmwareMode === 'auto' ? `AUTO: ${firmwareWhy}` : `${firmwareMode} by the switch`;
+  if (fw && fw.mode === 'on') firmware = `on · ${FIRMWARE_NAME} · ${fw.status} · from ${fw.source} · ${sw}`;
   else if (!mf && firmwareMode === 'on') firmware = `on · ${FIRMWARE_NAME} boots first when the machine starts`;
-  else firmware = 'off · the program runs bare, as it does on chain';
+  else if (!mf) firmware = `${firmwareMode === 'auto' ? 'AUTO · decided by the program when it loads' : 'off · the program runs bare, as it does on chain'}`;
+  else firmware = `off · the program runs bare, as it does on chain · ${sw}`;
   const obs = playing && playing.program.facts.observation;
   const host = obs ? `${obs.node} · read at block ${num(obs.block)} · hash ${SHORT(obs.blockHash)}` : (node && node.url ? node.url.replace(/^https?:\/\//, '') : null);
   const aside = node && node.quarantined.size ? ` · ${node.quarantined.size} set aside this visit` : '';
   return [
     ['MACHINE', mf ? `${mf.status} · ${mf.name} · from ${mf.source}` : `${DASH} · READY 64 starts with the first LOAD`, mf ? '' : 'muted'],
     ['FIRMWARE', firmware, ''],
-    ['INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix', ''],
+    ['INPUT', (inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix') + (inputWhy ? ` · ${inputWhy}` : ''), ''],
     ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
     ['NODE', (host || DASH) + aside, host ? '' : 'muted'],
   ];
@@ -392,8 +458,11 @@ function programRows(code, text) {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`, '']);
       rows.push(['MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`, '']);
     } else if (p.kind === 'file') {
-      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · loads at ${hex4(f.load)} · sha256 ${SHORT(f.sha256)}`, '']);
-      rows.push(['CHECK', 'no chain claim · a file of yours, read in this browser and sent nowhere; its shape checked, a load address and a size within 64K', '']);
+      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · sha256 ${SHORT(f.sha256)}`, '']);
+      rows.push(['SCAN', scanWords(f.scan), '']);
+      if (f.known) rows.push(['KNOWN', f.known.words, '']);
+      const start = firmwareOn && f.load !== 0x0801 ? ` · the firmware starts only a program at $0801: type SYS ${f.load} at READY` : !firmwareOn && !f.scan.entry ? ' · a bare machine starts nothing without a SYS in a BASIC stub: switch FIRMWARE on' : '';
+      rows.push(['CHECK', 'no chain claim · a file of yours, read in this browser and sent nowhere; its shape checked, a load address and a size within 64K' + start, '']);
     } else {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes`, '']);
       rows.push(['PIN', `keccak256 ${SHORT(f.keccak256)} equals the pin`, '']);
@@ -408,7 +477,7 @@ function programRows(code, text) {
       ['CHECK', noNode ? 'RETRY, or read the contract on Etherscan' : 'the bytes did not match what the catalogue pinned, so they did not run', 'muted'],
     ];
   }
-  const atReady = state.phase === 'idle' && machineFacts && machineFacts.firmware.mode === 'on';
+  const atReady = state.phase === 'idle' && firmwareOn;
   return [
     ['PROGRAM', atReady ? `READY · ${FIRMWARE_NAME} is at its prompt · type at it, or LOAD a program` : `${DASH} · choose a program; nothing runs until you press LOAD`, 'muted'],
     ['BYTES', DASH, 'muted'],
@@ -416,6 +485,7 @@ function programRows(code, text) {
   ];
 }
 function renderNow(code, text) {
+  els.firmwareWhy.textContent = firmwareMode !== 'auto' ? `${firmwareMode.toUpperCase()} by the switch` : !machineFacts ? 'AUTO · decides when a program loads' : `AUTO · ${firmwareOn ? 'on' : 'bare'} · ${firmwareWhy}`;
   els.now.textContent = '';
   for (const [k, v, cls] of programRows(code, text).concat(machineRows())) els.now.appendChild(line(k, v, cls));
   els.json.value = playing ? JSON.stringify(provenance(), null, 1) : '';
@@ -436,6 +506,7 @@ els.copyLog.addEventListener('click', async () => {
 });
 els.input.addEventListener('change', async () => {
   inputMode = els.input.value === 'keyboard' ? 'keyboard' : 'joystick';
+  inputWhy = 'by the switch';
   if (machine && machine.alive) { try { await machine.request('input', { mode: inputMode }); } catch (e) { /* the machine is gone; the next load sets it */ } }
   if (playing) renderNow();
 });
@@ -443,13 +514,13 @@ els.reset.addEventListener('click', async () => {
   if (!machine || !machine.alive) return;
   try { await machine.request('reset'); } catch (e) { return; }
   playing = null;
-  setState('idle', firmwareMode === 'on' ? 'READY' : 'RESET');
-  say(firmwareMode === 'on' ? `the machine was reset; ${FIRMWARE_NAME} is at READY` : 'the machine was reset; it is on and bare');
-  if (firmwareMode !== 'on') veil('BARE · press LOAD to run a program');
+  setState('idle', firmwareOn ? 'READY' : 'RESET');
+  say(firmwareOn ? `the machine was reset; ${FIRMWARE_NAME} is at READY` : 'the machine was reset; it is on and bare');
+  if (!firmwareOn) veil('BARE · press LOAD to run a program');
   renderNow();
   markOffered(null, null);
 });
-els.firmware.addEventListener('change', () => { setFirmware(els.firmware.value === 'on' ? 'on' : 'off'); });
+els.firmware.addEventListener('change', () => { setFirmware(['on', 'off', 'auto'].includes(els.firmware.value) ? els.firmware.value : 'auto'); });
 els.retry.addEventListener('click', () => { if (lastAsk) run(lastAsk); });
 // the file door: the picker and the drop zone are one control; a file dropped anywhere else must not take the visitor away
 els.file.addEventListener('change', () => { const f = els.file.files && els.file.files[0]; els.file.value = ''; if (f) run({ file: f }); });
@@ -536,6 +607,7 @@ els.sound.addEventListener('click', () => {
 
 // ------------------------------------------------------------------ start
 async function start() {
+  els.firmware.value = firmwareMode; els.input.value = inputMode;   // a browser may restore a form's values on reload; the page's state is the page's
   setState('off', 'THE MACHINE IS OFF');
   renderNow();
   try {
@@ -561,5 +633,5 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return firmwareMode; }, get input() { return inputMode; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
 start();

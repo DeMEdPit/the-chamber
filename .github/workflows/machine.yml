@@ -43,6 +43,9 @@ jobs:
           python3 machine/verify.py --offline
           python3 machine/test/test_verify.py
 
+      - name: The scan's gate
+        run: node machine/test/scan.mjs
+
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save playwright@1.56.1

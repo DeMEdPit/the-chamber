@@ -23,7 +23,16 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
     return true;
   }
 
-  async function attach(m) {
+  let attaching = null;
+  /** Attach to a machine once: a mouse click raises two gestures at once, and a second call while the first is still
+   *  awaiting the machine shares its promise rather than starting a second timer chain. */
+  function attach(m) {
+    if (machine === m && m.alive) return Promise.resolve(true);
+    if (attaching) return attaching;
+    attaching = attachTo(m).finally(() => { attaching = null; });
+    return attaching;
+  }
+  async function attachTo(m) {
     if (!ctx) return false;
     if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) { /* needs a gesture */ } }
     if (ctx.state !== 'running') return false;
