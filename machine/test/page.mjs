@@ -69,11 +69,13 @@ try {
   const policy = await pg.evaluate(() => (document.querySelector('meta[http-equiv="Content-Security-Policy"]') || {}).content || '');
   check(/script-src 'self';/.test(policy) && /connect-src 'self' /.test(policy) && /frame-src 'self'/.test(policy), 'the page carries the strict policy');
   check(!(await pg.evaluate(() => Array.from(document.scripts).some((s) => !s.src))), 'no inline script on the page');
+  const opening = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /Tony: Born for Adventure/.test(document.getElementById('now').textContent)), 90000, 500);
+  check(!!opening, 'the page opens on the Tony demo, running');
   await pg.fill('#search', '5');
   const narrowed = await pg.evaluate(() => document.querySelectorAll('#rows .row').length);
   check(narrowed > 0 && narrowed < 67, `the search narrows the rows (${narrowed})`);
   await pg.click('#rows .row[data-work="chamber"][data-token="5"] button.load');
-  const running = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  const running = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /The Chamber · 5/.test(document.getElementById('now').textContent)), 90000, 500);
   const stateText = await pg.evaluate(() => document.getElementById('state').textContent);
   check(!!running, `LOAD on Chamber token 5 reaches RUNNING (${stateText})`);
   const now = await pg.evaluate(() => document.getElementById('now').textContent);
@@ -108,12 +110,12 @@ try {
   check(ce.length === 0, `no console errors (${ce.length})${ce.length ? ': ' + ce.join(' | ').slice(0, 400) : ''}`);
   await pg.close();
 
-  // the address offers, never runs
+  // an address opens on the program it names
   const pa = await b.newPage({ viewport: { width: 1180, height: 900 } });
   await pa.goto(`${A.base}/machine/?work=chamber&token=7`, { waitUntil: 'load' });
-  await until(() => pa.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
-  const offered = await pa.evaluate(() => ({ text: document.getElementById('offered').textContent, hidden: document.getElementById('offered').hidden, marked: !!document.querySelector('#rows .row.offered[data-token="7"]'), phase: document.getElementById('state').dataset.phase, frames: document.querySelectorAll('iframe').length }));
-  check(!offered.hidden && offered.marked && offered.phase === 'off' && offered.frames === 0, `an address offers token 7 and runs nothing (${offered.text})`);
+  const named = await until(() => pa.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /The Chamber · 7/.test(document.getElementById('now').textContent)), 90000, 500);
+  const marked = await pa.evaluate(() => !!document.querySelector('#rows .row.now[data-token="7"]'));
+  check(!!named && marked, 'an address opens on the program it names, token 7, running and marked');
   await pa.close();
 
   // widths
@@ -136,6 +138,7 @@ try {
   const pb = await b.newPage({ viewport: { width: 1180, height: 900 } });
   await pb.goto(`${B.base}/machine/`, { waitUntil: 'load' });
   await until(() => pb.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
+  await until(() => pb.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
   await pb.fill('#search', '5');
   await pb.click('#rows .row[data-work="chamber"][data-token="5"] button.load');
   const refused = await until(() => pb.evaluate(() => document.getElementById('state').dataset.phase === 'refused' && document.getElementById('state').textContent), 90000, 500);
@@ -152,9 +155,9 @@ try {
   await until(() => pc.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
   await pc.fill('#search', '5');
   await pc.click('#rows .row[data-work="chamber"][data-token="5"] button.load');
-  const runningC = await until(() => pc.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  const runningC = await until(() => pc.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /The Chamber · 5/.test(document.getElementById('now').textContent)), 90000, 500);
   const provC = JSON.parse(await pc.evaluate(() => document.getElementById('provenance-json').value) || 'null');
-  const logC = await pc.evaluate(() => document.getElementById('log').textContent);
+  const logC = await pc.evaluate(() => window.machinePage.report());
   check(!!runningC && provC && /copies/.test(provC.machine.source) && provC.machine.status === 'PINNED' && /site's copies instead/.test(logC), `the machine from the site's copies when the chain's part is wrong (${provC ? provC.machine.source : 'no provenance'})`);
   await pc.close();
   C.close();

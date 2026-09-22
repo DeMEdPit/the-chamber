@@ -13,12 +13,13 @@ const $ = (id) => document.getElementById(id);
 const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
-  input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), offered: $('offered'), copyLog: $('copy-log'),
+  input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
+let busy = false, pendingAsk = null;
 let inputMode = 'joystick';
 const state = { phase: 'off' };
 const LOG_LINES = 14;
@@ -144,6 +145,8 @@ for (const ev of ['pointerup', 'click', 'keydown', 'touchend']) {
 }
 
 async function load(work, token) {
+  if (busy) { pendingAsk = { work, token }; return; }
+  busy = true;
   lastAsk = { work, token };
   els.copied.textContent = '';
   try {
@@ -172,6 +175,9 @@ async function load(work, token) {
     }
     playing = null;
     renderNow(code, e.message);
+  } finally {
+    busy = false;
+    if (pendingAsk) { const next = pendingAsk; pendingAsk = null; load(next.work, next.token); }
   }
 }
 
@@ -299,16 +305,14 @@ async function start() {
   allRows = rowsOf(catalogue);
   renderRows('');
   say(`catalogue of ${catalogue.generated.slice(0, 10)}: ${allRows.length} programs, ${catalogue.endpoints.length} endpoints`);
+  // the machine starts on a program: the one the address names, or the Tony demo, the first token of the series
   const q = new URLSearchParams(location.search);
-  const work = q.get('work'), token = parseInt(q.get('token') || '1', 10);
-  if (work && allRows.some((r) => r.work === work && r.token === token)) {
-    els.search.value = work === 'chamber' ? String(token) : work;
-    renderRows(els.search.value);
-    const row = els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`);
-    if (row) { row.classList.add('offered'); row.scrollIntoView({ block: 'nearest' }); }
-    els.offered.textContent = `offered by the address: ${allRows.find((r) => r.work === work && r.token === token).title}. Press LOAD to run it.`;
-    els.offered.hidden = false;
-  }
+  let work = q.get('work'), token = parseInt(q.get('token') || '1', 10);
+  if (!(work && allRows.some((r) => r.work === work && r.token === token))) { work = 'tony'; token = 1; }
+  if (!allRows.some((r) => r.work === work && r.token === token)) { work = allRows[0].work; token = allRows[0].token; }
+  const row = els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`);
+  if (row) row.scrollIntoView({ block: 'nearest' });
+  load(work, token);
 }
 window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, provenance, report, STATUS };
 start();

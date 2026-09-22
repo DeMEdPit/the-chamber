@@ -185,10 +185,8 @@ h1{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}
 .row .title{font-size:.92rem;color:var(--ink)}
 .row .sub{font-size:.74rem;color:var(--muted);line-height:1.35}
 .row.now .title{color:var(--accent)}
-.row.offered{outline:1px dashed var(--accent);outline-offset:2px;border-radius:4px}
 button.load,button.b{flex:none;font:700 .66rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent2);background:transparent;border:1px solid #2c3f36;border-radius:6px;padding:8px 12px;cursor:pointer}
 button.load:hover,button.b:hover,button.load:focus-visible,button.b:focus-visible{border-color:var(--accent);color:var(--accent);outline:0}
-.offered{margin:0 0 10px;font-size:.85rem;color:var(--accent2)}
 .state{font:700 .8rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--ink);margin:0 0 10px}
 .state[data-phase="running"]{color:var(--accent)}
 .state[data-phase="refused"],.state[data-phase="failed"]{color:#ff9d9d}
@@ -236,8 +234,8 @@ select.mode{font:500 .84rem/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;colo
 <p class="kicker"><a href="/">THE CHAMBER</a> · THE MACHINE</p>
 <h1>The Machine</h1>
 <p class="lede"><b>READY 64</b>, in this page: minimal64, the Commodore 64 emulator nopsta stored on Ethereum in 2022,
-read off the chain and checked against its pins before it runs. Choose a program of the series below; it is read from
-its contract and checked the same way. Nothing runs until you press LOAD.</p>
+read off the chain and checked against its pins before it runs. It starts on Tony: Born for Adventure, the first
+token of the series, read from its contract and checked the same way; choose any other program below.</p>
 <div class="machine">
   <div class="stage">
     <div class="frame" id="frame" aria-label="READY 64, the machine">
@@ -257,7 +255,6 @@ its contract and checked the same way. Nothing runs until you press LOAD.</p>
   <aside class="column">
     <section class="panel" aria-labelledby="lab-chain">
       <div class="lab"><span id="lab-chain">FROM THE CHAIN</span><span class="n" id="count"></span></div>
-      <p class="offered" id="offered" hidden></p>
       <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
       <div class="rows" id="rows" aria-live="polite"></div>
     </section>
