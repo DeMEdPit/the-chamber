@@ -84,7 +84,7 @@ may improve; the code is stable and is what tests and hosts read.
 | `hello` | the port is held |
 | `status {text}` | a line of progress, as the standalone shows at its foot |
 | `intervened {addr}` | once, on the first write that lands through `poke` |
-| `error {text, phase}` | an uncaught error in the document, a WASM fault included; the host destroys the frame and rebuilds it, never recovers it |
+| `error {text, phase}` | an error of the machine's own: an uncaught error in the document's script or the emulator's, an exception in the frame loop, a WASM fault. Errors from scripts other parties inject into the frame (browser extensions do) are not the machine's and are ignored. The host destroys the frame and rebuilds it, never recovers it |
 
 ## Fail closed
 

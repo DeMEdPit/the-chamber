@@ -12,21 +12,35 @@ const $ = (id) => document.getElementById(id);
 const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
-  input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), offered: $('offered'),
+  input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), offered: $('offered'), copyLog: $('copy-log'),
 };
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
 let inputMode = 'joystick';
 const state = { phase: 'off' };
 const LOG_LINES = 14;
+const fullLog = [];
 const SHORT = (h) => (h ? h.slice(0, 12) + '…' : '');
 const num = (n) => Number(n).toLocaleString('en-US');
 
 function say(text) {
+  fullLog.push(`${new Date().toISOString().slice(11, 23)} ${text}`);
   const li = document.createElement('li');
   li.textContent = text;
   els.log.appendChild(li);
   while (els.log.children.length > LOG_LINES) els.log.removeChild(els.log.firstChild);
+}
+/** Everything a report needs, as one block: the page, the browser, the state, the provenance, the whole log. */
+function report() {
+  return [
+    `THE MACHINE · ${PAGE} · ${new Date().toISOString()}`,
+    `browser: ${navigator.userAgent}`,
+    `state: ${state.phase} · ${els.state.textContent}`,
+    `machine: ${machine ? (machine.alive ? 'alive' : 'destroyed (' + (machine.reason ? machine.reason.code + ': ' + machine.reason.text : 'no reason') + ')') : 'none'}`,
+    `provenance: ${els.json.value ? els.json.value.replace(/\s+/g, ' ') : 'none'}`,
+    'log:',
+    ...fullLog.map((l) => '  ' + l),
+  ].join('\n');
 }
 function setState(phase, text) {
   state.phase = phase;
@@ -214,6 +228,11 @@ els.copy.addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(text); els.copied.textContent = 'copied as JSON'; }
   catch (e) { els.json.hidden = false; els.json.select(); els.copied.textContent = 'select and copy'; }
 });
+els.copyLog.addEventListener('click', async () => {
+  const text = report();
+  try { await navigator.clipboard.writeText(text); els.copied.textContent = `copied the log (${fullLog.length} lines)`; }
+  catch (e) { els.json.hidden = false; els.json.value = text; els.json.select(); els.copied.textContent = 'select and copy'; }
+});
 els.input.addEventListener('change', async () => {
   inputMode = els.input.value === 'keyboard' ? 'keyboard' : 'joystick';
   if (machine && machine.alive) { try { await machine.request('input', { mode: inputMode }); } catch (e) { /* the machine is gone; the next load sets it */ } }
@@ -264,5 +283,5 @@ async function start() {
     els.offered.hidden = false;
   }
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, provenance, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, provenance, report, STATUS };
 start();

@@ -268,15 +268,21 @@ function bind() {
 var canvas = document.getElementById('screen');
 var pixelWidth = 0, pixelHeight = 272, ctx = null, imageData = null, lastTs = false;
 function frame(ts) {
-  if (lastTs !== false) {
-    var dt = ts - lastTs;
-    if (dt > 200) dt = 16.666;
-    if (m64_update(dt)) {
-      var ptr = m64_getPixelBuffer();
-      var len = pixelWidth * pixelHeight * 4;
-      imageData.data.set(m64.HEAPU8.subarray(ptr, ptr + len));
-      ctx.putImageData(imageData, 0, 0);
+  try {
+    if (lastTs !== false) {
+      var dt = ts - lastTs;
+      if (dt > 200) dt = 16.666;
+      if (m64_update(dt)) {
+        var ptr = m64_getPixelBuffer();
+        var len = pixelWidth * pixelHeight * 4;
+        imageData.data.set(m64.HEAPU8.subarray(ptr, ptr + len));
+        ctx.putImageData(imageData, 0, 0);
+      }
     }
+  } catch (e) {
+    /* an exception inside the emulator's frame is the machine's own fault: fatal, said once, the loop stopped */
+    fatal('the emulator failed in its frame loop: ' + String(e && e.message || e));
+    return;
   }
   lastTs = ts;
   requestAnimationFrame(frame);
@@ -759,15 +765,39 @@ window.addEventListener('message', function (e) {
   if (e.source !== window.parent) return;
   attach(e.ports[0]);
 });
+/* A fatal error of the machine's own: the document's script, the emulator's
+   script (inline, or the gunzip helper's data URL) or the frame loop. Browser
+   extensions inject scripts into every frame, this one included, and their
+   failures there (a wallet that cannot reach its extension from a sandboxed
+   frame, say) are not the machine's and must not stop it: an error whose
+   source is not this document is noted on the console and otherwise
+   ignored. */
+function fatal(text) {
+  STATE.phase = 'failed'; STATE.error = text;
+  say('failed: ' + text);
+  event('error', { text: text, phase: STATE.phase });
+}
+function ownSource(src) {
+  src = String(src || '');
+  return src === location.href || src.indexOf('data:') === 0;
+}
 window.addEventListener('error', function (e) {
   var text = String(e && (e.message || e.error) || 'error');
-  STATE.error = text;
-  event('error', { text: text, phase: STATE.phase });
+  if (!ownSource(e && e.filename)) {
+    try { console.warn('READY 64: an error from a script that is not this document\'s, ignored: ' + text + ' (' + (e && e.filename || 'no source') + ')'); } catch (x) {}
+    return;
+  }
+  fatal(text);
 });
 window.addEventListener('unhandledrejection', function (e) {
-  var text = String(e && e.reason && (e.reason.message || e.reason) || 'rejection');
-  STATE.error = text;
-  event('error', { text: text, phase: STATE.phase });
+  var r = e && e.reason;
+  var text = String(r && (r.message || r) || 'rejection');
+  var stack = String(r && r.stack || '');
+  if (!(stack.indexOf(location.href) >= 0 || stack.indexOf('data:') >= 0)) {
+    try { console.warn('READY 64: a rejection from a script that is not this document\'s, ignored: ' + text); } catch (x) {}
+    return;
+  }
+  fatal(text);
 });
 
 /* ------------------------------------------------------------ boot */

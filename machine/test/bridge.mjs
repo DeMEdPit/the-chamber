@@ -211,6 +211,19 @@ try {
   check(byId[3] && byId[3].code === 'BAD_MESSAGE', `lab with on: 'yes' → ${byId[3] && byId[3].code}`);
   check(byId[4] && byId[4].type === 'state' && byId[4].phase === 'waiting', `a well-formed state → ${byId[4] && byId[4].type} (${byId[4] && byId[4].phase})`);
 
+  // 9b. an error from a script that is not the document's (a browser extension's, say) does not stop the machine; the machine's own does
+  const fresh = await pg.evaluate(() => window.harness.boot({ firmware: false }));
+  check(!fresh.error, 'a machine for the error cases');
+  const mf = pg.frames().find((f) => /\/machine\/core\.html$/.test(f.url()));
+  await mf.evaluate(() => { setTimeout(() => { throw new Error('Failed to connect to MetaMask'); }, 0); });
+  await pg.waitForTimeout(600);
+  const stillAlive = await pg.evaluate(() => ({ alive: window.harness.alive(), errors: window.harness.events.filter((e) => e.type === 'error').length }));
+  check(stillAlive.alive && stillAlive.errors === 0, `a foreign script's error is ignored: alive ${stillAlive.alive}, error events ${stillAlive.errors}`);
+  await mf.evaluate(() => { window.m64_update = () => { throw new Error('a fault inside the emulator'); }; });
+  const died = await until(() => pg.evaluate(() => (!window.harness.alive() && window.harness.reason()) || null), 5000);
+  const errEv = await pg.evaluate(() => window.harness.events.filter((e) => e.type === 'error').map((e) => e.text));
+  check(died && died.code === 'MACHINE_ERROR' && errEv.some((t) => /frame loop/.test(t)), `the machine's own fault is fatal and destroys the frame (${died ? died.code : 'alive'}: ${errEv[0] || ''})`);
+
   // 10. the bare machine boots and runs the same program
   const bare = await pg.evaluate(() => window.harness.boot({ firmware: false }));
   check(!bare.error && bare.ready.type === 'ready' && bare.ready.firmware === false && bare.ready.firmwareSha256 === null && bare.ready.status.firmware === null,
@@ -222,7 +235,11 @@ try {
   await pg.screenshot({ path: join(EVIDENCE, 'embedded-bare.png') });
   await pg.evaluate(() => window.harness.destroy());
 
-  check(pageErrors.length === 0, `no page errors (${pageErrors.length})${pageErrors.length ? ': ' + pageErrors.join(' | ') : ''}`);
+  // the two probes in 9b throw on purpose inside the frame; those lines are the proof, and the only page errors allowed
+  const probeErrors = pageErrors.filter((t) => /Failed to connect to MetaMask|a fault inside the emulator/.test(t));
+  const otherPageErrors = pageErrors.filter((t) => !probeErrors.includes(t));
+  check(probeErrors.length >= 1, `the probes threw inside the frame (${probeErrors.length} line(s))`);
+  check(otherPageErrors.length === 0, `no other page errors (${otherPageErrors.length})${otherPageErrors.length ? ': ' + otherPageErrors.join(' | ') : ''}`);
   // The probe in step 2 makes the browser log the policy's refusal; that line is the proof, and it is the only error allowed.
   const probeLines = consoleErrors.filter((t) => /MANIFEST\.json/.test(t) && /Content Security Policy/.test(t));
   const otherErrors = consoleErrors.filter((t) => !probeLines.includes(t));
