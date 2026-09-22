@@ -130,6 +130,42 @@ export function loadsMore(scan) {
   const n = scan.kernal.names;
   return n.includes('LOAD') || (n.includes('SETLFS') && (n.includes('OPEN') || n.includes('CHKIN')));
 }
+/** A cartridge's ROM read as the scan reads a program: each CHIP's bytes at its load address, the findings merged. The
+ *  load range and the stub mean nothing for a cartridge and are left null. */
+export function scanCartridge(chips) {
+  const merged = { load: null, end: null, bytes: 0, entry: null, basicProgram: 0, kernal: { calls: 0, table: 0, internal: 0, names: [] }, basic: { calls: 0 },
+    joystick: 0, keyboard: 0, sid: 0, banks: 0, vectors: { kernal: 0, raw: 0 }, chips: chips.length };
+  const names = new Set();
+  for (const c of chips) {
+    const file = new Uint8Array(c.data.length + 2);
+    file[0] = c.load & 0xff; file[1] = c.load >> 8; file.set(c.data, 2);
+    const one = scanProgram(file);
+    merged.bytes += one.bytes; merged.kernal.calls += one.kernal.calls; merged.kernal.table += one.kernal.table; merged.kernal.internal += one.kernal.internal;
+    for (const n of one.kernal.names) names.add(n);
+    merged.basic.calls += one.basic.calls; merged.joystick += one.joystick; merged.keyboard += one.keyboard; merged.sid += one.sid; merged.banks += one.banks;
+    merged.vectors.kernal += one.vectors.kernal; merged.vectors.raw += one.vectors.raw;
+  }
+  merged.kernal.names = [...names];
+  return merged;
+}
+/** What a cartridge needs: the firmware when it calls the KERNAL's table or hooks its vectors; else bare, where the
+ *  machine's own handshake starts it (byte patterns, so the switch stays the visitor's). */
+export function needsOfCartridge(scan) {
+  const reasons = [];
+  if (scan.kernal.table) reasons.push(`calls the KERNAL ${times(scan.kernal.calls)} (${scan.kernal.names.join(', ')})${scan.kernal.internal ? `, ${scan.kernal.internal} of them into its internals, which OpenROMs need not match` : ''}`);
+  if (scan.vectors.kernal) reasons.push("hooks the KERNAL's interrupt vectors");
+  if (reasons.length) return { firmware: true, why: reasons.join(', ') };
+  return { firmware: false, why: `no call into the KERNAL's table${scan.kernal.internal ? ` (${scan.kernal.internal} candidate call${scan.kernal.internal === 1 ? '' : 's'} into ROM internals read as data)` : ''}; the machine's own handshake starts a cartridge` };
+}
+export function cartridgeWords(scan) {
+  const parts = [`${scan.chips} CHIP packet${scan.chips === 1 ? '' : 's'} · ${scan.bytes.toLocaleString('en-US')} bytes of ROM`];
+  parts.push(scan.kernal.calls ? `calls the KERNAL ${times(scan.kernal.calls)}${scan.kernal.names.length ? ' (' + scan.kernal.names.join(', ') + ')' : ''}` : 'no call into the KERNAL');
+  if (scan.kernal.internal) parts.push(`${scan.kernal.internal} into its internals`);
+  if (scan.vectors.kernal) parts.push("hooks the KERNAL's interrupt vectors");
+  parts.push(scan.joystick && scan.keyboard ? 'reads port 2 and the matrix' : scan.joystick ? 'reads port 2' : scan.keyboard ? 'reads the keyboard matrix' : 'reads neither port 2 nor the matrix');
+  parts.push(scan.sid ? 'writes the SID' : 'no write to the SID');
+  return parts.join(' · ');
+}
 export function scanWords(scan) {
   const parts = [`loads at ${hex4(scan.load)} to ${hex4(scan.end)}`];
   if (scan.entry) parts.push(`SYS ${scan.entry} in its stub`);

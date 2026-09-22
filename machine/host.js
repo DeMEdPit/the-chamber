@@ -7,8 +7,9 @@
 import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
 import { Node, machineFromChain, firmwareFromChain, programFromChain, zeroWindow } from './chain.js';
 import { keccakHex } from './keccak.js';
-import { scanProgram, needsOf, inputOf, scanWords, loadsMore, hex4 } from './scan.js';
+import { scanProgram, needsOf, inputOf, scanWords, loadsMore, hex4, scanCartridge, needsOfCartridge, cartridgeWords } from './scan.js';
 import { parseD64, readFile as readDiskFile, D64_SIZES } from './d64.js';
+import { readCRT, isCRT } from './crt.js';
 import { createAudio } from './audio.js';
 
 const PAGE = 'machine/2b';
@@ -180,10 +181,24 @@ async function programFromFile(file) {
   const name = file.name || 'a file', size = file.size;
   const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const first = Array.from(head.subarray(0, 8), (b) => b.toString(16).padStart(2, '0')).join(' ');
-  if (head.length === 16 && String.fromCharCode(...head) === 'C64 CARTRIDGE   ') refuse('KIND_UNSUPPORTED', `${name} is a cartridge image (${num(size)} bytes); the cartridge door comes in a later phase of this page`);
-  if (!/\.prg$/i.test(name)) refuse('KIND_UNSUPPORTED', `${name} is not a .prg file (${num(size)} bytes${first ? ', beginning ' + first : ''}); this page loads .prg files, .d64 images and pasted hex`);
+  if (isCRT(head)) return programFromCartridge(file, new Uint8Array(await file.arrayBuffer()));
+  if (!/\.prg$/i.test(name)) refuse('KIND_UNSUPPORTED', `${name} is not a .prg file (${num(size)} bytes${first ? ', beginning ' + first : ''}); this page loads .prg files, .d64 disk images, .crt cartridges and pasted hex`);
   if (size > FILE_LIMIT) refuse('FILE_TOO_LARGE', `${name} is ${num(size)} bytes; a program is at most 65,536 bytes after its load address`);
   return programFromBytes(new Uint8Array(await file.arrayBuffer()), { name, label: name, source: 'file', file: fileFacts(file) });
+}
+// A cartridge: read as the machine reads it and refused at the door with the machine's own code if the machine would refuse
+// or, worse, trap; its banks scanned as a program is, for AUTO and the words. The machine can attach a cartridge but not
+// remove it, so a cartridge gets a fresh machine and everything after it starts another.
+async function programFromCartridge(file, bytes) {
+  const name = file.name || 'a cartridge';
+  let c;
+  try { c = readCRT(bytes); } catch (e) { refuse(e.code || 'CRT_BAD_FILE', `${name}: ${e.message}`); }
+  const sha256 = await sha256Hex(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  const scan = scanCartridge(c.chips), needs = needsOfCartridge(scan);
+  return { kind: 'file', cart: true, label: name.slice(0, 80), bytes, statuses: { program: STATUS.YOUR_FILE },
+    facts: { work: 'file', workName: 'your file', contract: null, token: null, name, size: bytes.length, source: 'cartridge', file: fileFacts(file), pasted: null,
+      load: null, sha256, scan, needs, known: null, cartridge: { title: c.title, type: c.type, typeName: c.typeName, exrom: c.exrom, game: c.game, chips: c.chips.map(({ bank, load, size }) => ({ bank, load, size })), size: c.size },
+      node: null, observation: null, reads: [] } };
 }
 // A disk: opened, its directory listed, nothing run until a program is picked. The machine has no drive (nopsta's build
 // has nothing behind its serial bus), so a program of a disk runs alone, and one that loads more from the disk stops there.
@@ -298,9 +313,10 @@ function decide(program) {
   if (firmwareMode === 'auto' && f.known) return { on: false, ...series, why: `${f.known.name}: a program of the series runs bare, as on chain` };
   const on = firmwareMode === 'auto' ? f.needs.firmware : firmwareMode === 'on';
   const inp = inputOf(f.scan, on);
-  return { on, input: inp.input, inputWhy: inp.why, why: firmwareMode === 'auto' ? f.needs.why : `${firmwareMode} by the switch` };
+  return { on, cart: !!file.cart, input: inp.input, inputWhy: inp.why, why: firmwareMode === 'auto' ? f.needs.why : `${firmwareMode} by the switch` };
 }
-const DOOR_IDLE = 'drop a .prg or a .d64 here, or choose one';
+let cartridgeIn = false;   // a cartridge was put into the machine now running: it stays in its port for the machine's life
+const DOOR_IDLE = 'drop a .prg, a .d64 or a .crt here, or choose one';
 function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; }
 /** The door at rest: the open disk's summary, or the invitation. */
 function doorRest() { if (disk) door('ok', disk.summary); else door('idle', ''); }
@@ -312,11 +328,14 @@ function told(ask, state, text) {
 
 // ------------------------------------------------------------------ the machine
 async function ensureMachine(d) {
-  if (machine && machine.alive && firmwareOn === d.on) { firmwareWhy = d.why; return; }
+  const fresh = cartridgeIn || !!d.cart;   // a cartridge gets a machine of its own, and the machine that held one is not reused
+  if (machine && machine.alive && firmwareOn === d.on && !fresh) { firmwareWhy = d.why; return; }
   if (machine) {
-    say(d.on ? `rebuilding the machine with ${FIRMWARE_NAME}: ${d.why}` : `rebuilding the machine bare: ${d.why}`);
+    say(fresh ? (cartridgeIn ? 'starting a new machine: a cartridge stays in the port for the life of a machine' : 'starting a new machine for the cartridge: it will stay in its port for the life of that machine')
+      : d.on ? `rebuilding the machine with ${FIRMWARE_NAME}: ${d.why}` : `rebuilding the machine bare: ${d.why}`);
     audio.detach(); machine.destroy(); machine = null; playing = null;
   }
+  cartridgeIn = false;
   firmwareOn = d.on; firmwareWhy = d.why;
   veil(d.on ? `STARTING THE MACHINE WITH ${FIRMWARE_NAME.toUpperCase()}` : 'STARTING THE MACHINE');
   machine = createMachine({
@@ -446,8 +465,9 @@ async function run(ask) {
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
     if (fromFile) {
       const f = program.facts;
-      say(`your ${f.source === 'paste' ? 'paste' : f.source === 'disk' ? 'disk\'s program' : 'file'} ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim${loadsMore(f.scan) ? '; it loads more from a disk, and the machine has no drive: it will stop where it asks' : f.source === 'disk' ? '; the machine has no drive, so what it loads from the disk stops there' : ''}`);
-      say(`the scan: ${scanWords(f.scan)}`);
+      say(`your ${f.source === 'paste' ? 'paste' : f.source === 'disk' ? 'disk\'s program' : f.source === 'cartridge' ? 'cartridge' : 'file'} ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim${loadsMore(f.scan) ? '; it loads more from a disk, and the machine has no drive: it will stop where it asks' : f.source === 'disk' ? '; the machine has no drive, so what it loads from the disk stops there' : ''}`);
+      if (program.cart) say(`the cartridge: ${f.cartridge.typeName}${f.cartridge.title ? ` "${f.cartridge.title}"` : ''}, EXROM ${f.cartridge.exrom}, GAME ${f.cartridge.game}; it stays in the port for the life of this machine`);
+      say(`the scan: ${program.cart ? cartridgeWords(f.scan) : scanWords(f.scan)}`);
       if (f.known) say(`recognised: ${f.known.words}`);
       say(`firmware ${firmwareOn ? 'on' : 'off'} (${firmwareMode === 'auto' ? 'AUTO: ' + d.why : d.why}); input ${d.input} (${d.inputWhy})`);
       if (firmwareOn && f.load !== 0x0801) say(`the firmware starts only a program at $0801: type SYS ${f.load} at READY to start this one`);
@@ -455,7 +475,8 @@ async function run(ask) {
     inputMode = d.input; inputWhy = d.inputWhy; els.input.value = inputMode;
     await machine.request('input', inputAsk());
     const buf = program.bytes.slice().buffer;
-    const loaded = await machine.request('load', { kind: 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
+    const loaded = await machine.request('load', { kind: program.cart ? 'crt' : 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
+    if (program.cart) cartridgeIn = true;
     playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened, file: ask.file || null };
     veil('');
     setState('running', 'RUNNING');
@@ -510,7 +531,7 @@ function provenance() {
     return {
       page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: null, token: null, label: p.label,
       program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, load: f.load },
-      source: f.source, file: f.file, pasted: f.pasted,
+      source: f.source, file: f.file, pasted: f.pasted, cartridge: f.cartridge || null,
       claim: 'none: a file of yours, read in this browser and sent nowhere, checked for its shape only',
       scan: f.scan, needs: f.needs, known: f.known ? { work: f.known.work, name: f.known.name, words: f.known.words } : null,
       node: null, observation: null, reads: [], nodes: node ? node.facts() : null,
@@ -591,6 +612,12 @@ function programRows(code, text) {
     } else if (p.kind === 'slotted') {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`, '']);
       rows.push(['MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`, '']);
+    } else if (p.kind === 'file' && p.cart) {
+      const c = f.cartridge;
+      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · sha256 ${SHORT(f.sha256)}`, '']);
+      rows.push(['CARTRIDGE', `${c.typeName} · ${c.chips.length} CHIP packet${c.chips.length === 1 ? '' : 's'} · ${num(c.size)} bytes of ROM · EXROM ${c.exrom} · GAME ${c.game}${c.title ? ` · "${c.title}"` : ''}`, '']);
+      rows.push(['SCAN', cartridgeWords(f.scan), '']);
+      rows.push(['CHECK', 'no chain claim · read in this browser and sent nowhere · its shape checked: a header and CHIP packets this machine reads · it stays in the port: LOAD anything else and a new machine starts', '']);
     } else if (p.kind === 'file') {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · sha256 ${SHORT(f.sha256)}`, '']);
       rows.push(['SCAN', scanWords(f.scan), '']);
@@ -652,6 +679,7 @@ els.input.addEventListener('change', async () => {
 els.reset.addEventListener('click', async () => {
   if (!machine || !machine.alive) return;
   try { await machine.request('reset'); } catch (e) { return; }
+  if (playing && playing.program.cart) { say('the machine was reset; the cartridge in its port starts again'); renderNow(); return; }
   playing = null;
   setState('idle', firmwareOn ? 'READY' : 'RESET');
   say(firmwareOn ? `the machine was reset; ${FIRMWARE_NAME} is at READY` : 'the machine was reset; it is on and bare');
@@ -773,5 +801,5 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
 start();

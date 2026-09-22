@@ -23,6 +23,7 @@
 // Needs Playwright and Chromium (machine/test/pw.mjs finds them).
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { makeCRT, PROBE, probe16K } from './make-crt.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { browser } from './pw.mjs';
@@ -68,7 +69,7 @@ try {
   const h = boot.hello || {}, r = boot.ready || {};
   check(h.protocol === 1 && h.machine === 'minimal64-2022' && h.build === 'embedded', `hello: protocol ${h.protocol}, machine ${h.machine}, build ${h.build}`);
   const c = h.capabilities || {};
-  check(Array.isArray(c.loads) && c.loads.includes('prg') && c.input.includes('keyboard') && c.input.includes('joystick2') && c.input.includes('joystick1') &&
+  check(Array.isArray(c.loads) && c.loads.includes('prg') && c.loads.includes('crt') && c.input.includes('keyboard') && c.input.includes('joystick2') && c.input.includes('joystick1') &&
         c.firmware === true && c.screenText === true && c.peek === true && c.poke === true && c.snapshots === false,
         `capabilities as stated: ${JSON.stringify(c)}`);
   check(h.phase === 'waiting', `the embedded document waits for the host (phase ${h.phase})`);
@@ -125,7 +126,7 @@ try {
   const tooLarge = await pg.evaluate(() => window.harness.load(new Array(70000).fill(0), 'large'));
   check(!tooLarge.ok && tooLarge.code === 'FILE_TOO_LARGE', `70,000 bytes: ${tooLarge.code}`);
   const crt = await pg.evaluate((p) => window.harness.load(p, 'crt', 'crt'), PRG);
-  check(!crt.ok && crt.code === 'KIND_UNSUPPORTED', `kind crt in this phase: ${crt.code}`);
+  check(!crt.ok && crt.code === 'CRT_BAD_FILE', `a PRG offered as a cartridge: ${crt.code}`);
   const unknown = await pg.evaluate(() => window.harness.request('nonsense'));
   check(!unknown.ok && unknown.code === 'UNKNOWN_MESSAGE', `an unknown request: ${unknown.code}`);
   const extra = await pg.evaluate(() => window.harness.request('screen', { extra: 1 }));
@@ -270,6 +271,21 @@ try {
   const badPort2 = await pg.evaluate(() => window.harness.request('joystick', { bit: 1, down: true, port: 0 }));
   const stPort = await pg.evaluate(() => window.harness.request('state'));
   check(!badPort.ok && badPort.code === 'BAD_MESSAGE' && !badPort2.ok && badPort2.code === 'BAD_MESSAGE' && stPort.ok && stPort.r.port === 1, `a port other than 1 or 2 is refused, and state says the port (${stPort.ok ? stPort.r.port : stPort.code})`);
+  // 10c. a cartridge on the bare machine: the machine's own handshake boots it (C, R, T at $0400), it stays in the port
+  // (a PRG after it refused, reset keeps it, state says so), and what the reader would trap on is refused before it is asked
+  const eight = Array.from(makeCRT({ type: 0, chips: [{ bank: 0, load: 0x8000, size: 0x2000, data: PROBE }] }));
+  const eightK = await pg.evaluate((p) => window.harness.load(p, 'eight', 'crt'), eight);
+  check(!eightK.ok && eightK.code === 'CRT_8K_NORMAL', `an 8K Normal cartridge is refused before the emulator is asked: ${eightK.code}`);
+  const cart = await pg.evaluate((p) => window.harness.load(p, 'probe', 'crt'), Array.from(probe16K()));
+  check(cart.ok && cart.r.cartridge && cart.r.cartridge.name === 'Normal' && cart.r.cartridge.chips === 1 && cart.r.cartridge.size === 16384 && cart.r.load === null, `a 16K Normal cartridge loads: ${cart.ok ? JSON.stringify(cart.r.cartridge) : cart.code}`);
+  const booted = await until(async () => { const v = await pg.evaluate(() => Promise.all([0x0400, 0x0401, 0x0402].map((a) => window.harness.request('peek', { addr: a })))); return v.every((x) => x.ok) && v.map((x) => x.r.value).join() === '3,18,20' ? v : null; }, 8000, 100);
+  check(!!booted, 'the cartridge booted on the bare machine through its own handshake (C, R, T at $0400)');
+  const afterCart = await pg.evaluate((p) => window.harness.load(p, 'after the cartridge'), PRG);
+  const stCart = await pg.evaluate(() => window.harness.request('state'));
+  check(!afterCart.ok && afterCart.code === 'CARTRIDGE_IN_PORT' && stCart.ok && stCart.r.cartridge === true && stCart.r.program && stCart.r.program.cartridge && stCart.r.program.cartridge.name === 'Normal', `a program after a cartridge is refused ${afterCart.code}; state says the cartridge is in`);
+  const resetCart = await pg.evaluate(() => window.harness.request('reset'));
+  const stReset = await pg.evaluate(() => window.harness.request('state'));
+  check(resetCart.ok && stReset.ok && stReset.r.program && stReset.r.program.label === 'probe', 'reset keeps the cartridge in the port and NOW PLAYING it');
   await pg.screenshot({ path: join(EVIDENCE, 'embedded-bare.png') });
   await pg.evaluate(() => window.harness.destroy());
 

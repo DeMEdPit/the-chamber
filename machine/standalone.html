@@ -141,7 +141,7 @@ var CONFIG = {
 var PROTOCOL = 1;
 var MACHINE = 'minimal64-2022';
 var CAPABILITIES = {
-  loads: ['prg'],
+  loads: ['prg', 'crt'],
   input: ['keyboard', 'joystick2', 'joystick1'],
   firmware: true,
   screenText: true,
@@ -150,7 +150,7 @@ var CAPABILITIES = {
   audio: true,
   snapshots: false
 };
-var LIMITS = { prg: 65538, text: 4096, machine: 1048576, peek: 65536 };
+var LIMITS = { prg: 65538, crt: 525376, text: 4096, machine: 1048576, peek: 65536 };   // crt: a 64-byte header and 64 CHIP packets of 8K, the machine's ROML banks
 /* The one word of the trust vocabulary this document ever uses of itself:
    the emulator it runs matched the pins above, known before it was asked.
    It holds no pin for the firmware and says nothing about it but its
@@ -324,7 +324,7 @@ function runEmulatorParts(parts) {
 /* ------------------------------------------------------------ binding
    (from nopsta's m64-wrappers.js by way of player/tail.template.html) */
 var m64 = null;
-var m64_init, m64_audioInit, m64_injectAndRunPrg, m64_joystickPush, m64_joystickRelease,
+var m64_init, m64_audioInit, m64_injectAndRunPrg, m64_loadCartridge, m64_joystickPush, m64_joystickRelease,
     m64_keyPush, m64_keyRelease, m64_getPixelBuffer, m64_getPixelBufferWidth,
     m64_getAudioBuffer, m64_update, m64_setKernalROM, m64_setBASICROM, m64_setCharacterROM,
     m64_cpuRead, m64_cpuWrite;
@@ -339,6 +339,7 @@ function bind() {
     m64_init             = m64.cwrap('m64_init', null, ['number', 'number']);
     m64_audioInit        = m64.cwrap('m64_audioInit', null, ['number', 'number']);
     m64_injectAndRunPrg  = m64.cwrap('m64_injectAndRunPrg', null, ['array', 'number', 'number']);
+    m64_loadCartridge    = m64.cwrap('m64_loadCartridge', null, ['array', 'number']);
     m64_joystickPush     = m64.cwrap('m64_joystickPush', null, ['number', 'number']);
     m64_joystickRelease  = m64.cwrap('m64_joystickRelease', null, ['number', 'number']);
     m64_keyPush          = m64.cwrap('m64_keyPush', null, ['number']);
@@ -610,6 +611,7 @@ function checkPRG(bytes) {
 }
 function loadPRG(bytes, label) {
   if (!m64 || STATE.phase !== 'running') return { ok: false, code: 'NOT_READY', text: 'the machine is not running' };
+  if (cartridgeIn) return { ok: false, code: 'CARTRIDGE_IN_PORT', text: 'not loaded: a cartridge is in the port for the life of this machine; start a new machine to load a program' };
   var bad = checkPRG(bytes);
   if (bad) { say(bad.text); return { ok: false, code: bad.code, text: bad.text }; }
   var loadAddr = bytes[0] | (bytes[1] << 8);
@@ -623,7 +625,72 @@ function reset() {
   if (!m64) return;
   releaseAll();
   m64_init(1, 2);
-  STATE.program = null;
+  if (!cartridgeIn) STATE.program = null;   // a cartridge in the port boots again on reset, as on the machine itself
+}
+
+/* ------------------------------------------------------------ cartridges
+   A .crt is read as this machine reads it (cartridge.c in nopsta's build):
+   a 64-byte header, then CHIP packets. Four hardware types are read,
+   Normal (0), Ocean Type 1 (5), C64GS (15) and Magic Desk (19). The banked
+   three are read as 8K packets at a fixed stride, so their packets must be
+   8K and the file must end on one; a Normal cartridge is one packet of 4K
+   or 16K, and an 8K one is refused, because the machine's reader allocates
+   its banks the wrong way round for that size and traps: a fact of the
+   build on chain, not a bug to fix. A cartridge, once in, stays in the port
+   for the life of this document: the build exports the call that attaches
+   one and not the one that removes it, and its reset boots the cartridge
+   again. Everything here is checked before the emulator is asked. */
+var CRT_TYPES = { 0: 'Normal', 5: 'Ocean Type 1', 15: 'C64GS', 19: 'Magic Desk' };
+var CRT_NAMES = { 1: 'Action Replay', 2: 'KCS Power Cartridge', 3: 'Final Cartridge III', 4: "Simons' BASIC", 6: 'Expert Cartridge', 7: 'Fun Play', 8: 'Super Games', 9: 'Atomic Power', 10: 'Epyx Fastload', 11: 'Westermann Learning', 12: 'Rex Utility', 13: 'Final Cartridge I', 14: 'Magic Formel', 16: 'Warp Speed', 17: 'Dinamic', 18: 'Zaxxon', 20: 'Super Snapshot 5', 21: 'Comal-80', 22: 'Structured BASIC', 23: 'Ross', 24: 'Dela EP64', 25: 'Dela EP7x8', 26: 'Dela EP256', 27: 'Rex EP256', 28: 'Mikro Assembler', 29: 'Final Cartridge Plus', 30: 'Action Replay 4', 31: 'Stardos', 32: 'EasyFlash', 33: 'EasyFlash Xbank', 34: 'Capture', 35: 'Action Replay 3', 36: 'Retro Replay', 37: 'MMC64', 38: 'MMC Replay', 39: 'IDE64', 40: 'Super Snapshot 4', 41: 'IEEE-488', 42: 'Game Killer', 43: 'Prophet64', 44: 'EXOS', 45: 'Freeze Frame', 46: 'Freeze Machine', 47: 'Snapshot64', 48: 'Super Explode 5', 49: 'Magic Voice', 50: 'Action Replay 2', 51: 'MACH 5', 52: 'Diashow-Maker', 53: 'Pagefox', 54: 'Kingsoft', 55: 'Silverrock 128K', 56: 'Formel 64', 57: 'RGCD', 58: 'RR-Net MK3', 59: 'EasyCalc', 60: 'GMod2' };
+var cartridgeIn = false;
+function be32(b, i) { return ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0; }
+function be16(b, i) { return (b[i] << 8) | b[i + 1]; }
+function crtTitle(b) { var t = ''; for (var i = 0x20; i < 0x40 && b[i]; i++) t += String.fromCharCode(b[i]); return t.replace(/\s+$/, ''); }
+/* the parsed cartridge, or {code, text} */
+function checkCRT(b) {
+  var bad = function (code, text) { return { code: code, text: 'not loaded: ' + text }; };
+  var k;
+  if (b.length > LIMITS.crt) return bad('FILE_TOO_LARGE', b.length + ' bytes; a cartridge is at most ' + LIMITS.crt);
+  if (b.length < 0x50) return bad('CRT_BAD_FILE', 'too short to be a cartridge image');
+  for (k = 0; k < 16; k++) if (b[k] !== 'C64 CARTRIDGE   '.charCodeAt(k)) return bad('CRT_BAD_FILE', 'no C64 CARTRIDGE signature');
+  if (be32(b, 0x10) !== 0x40) return bad('CRT_BAD_FILE', 'a header of ' + be32(b, 0x10) + ' bytes; this machine reads one of 64');
+  var type = be16(b, 0x16), name = CRT_TYPES[type];
+  if (!name) return bad('CRT_TYPE_UNSUPPORTED', 'hardware type ' + type + (CRT_NAMES[type] ? ' (' + CRT_NAMES[type] + ')' : '') + '; this machine has Normal, Ocean Type 1, C64GS and Magic Desk');
+  var chips = [], off = 0x40;
+  while (off < b.length) {
+    if (off + 0x10 > b.length) return bad('CRT_BAD_FILE', 'a CHIP packet header runs past the end of the file');
+    for (k = 0; k < 4; k++) if (b[off + k] !== 'CHIP'.charCodeAt(k)) return bad('CRT_BAD_FILE', 'no CHIP signature at byte ' + off);
+    var plen = be32(b, off + 4), size = be16(b, off + 0xe), bank = be16(b, off + 0xa), load = be16(b, off + 0xc);
+    if (plen < 0x10 + size || off + plen > b.length) return bad('CRT_BAD_FILE', 'a CHIP packet runs past the end of the file');
+    chips.push({ bank: bank, load: load, size: size, plen: plen });
+    off += plen;
+  }
+  if (!chips.length) return bad('CRT_BAD_FILE', 'no CHIP packet');
+  if (type === 0) {
+    if (chips.length !== 1) return bad('CRT_BANKS', 'a Normal cartridge of ' + chips.length + ' CHIP packets; this machine reads one, of 4K or 16K');
+    if (chips[0].size === 0x2000) return bad('CRT_8K_NORMAL', "an 8K Normal cartridge; this machine's reader allocates its banks the wrong way round for that size and traps (repack it as a 16K image or a single-bank Magic Desk)");
+    if (chips[0].size !== 0x1000 && chips[0].size !== 0x4000) return bad('CRT_BANKS', 'a Normal cartridge with a ' + chips[0].size + '-byte CHIP; this machine reads 4K or 16K');
+  } else {
+    var limit = type === 5 ? (chips.length === 64 ? 63 : 31) : 63;   // Ocean's upper banks go to ROMH, 16 of them, unless all 64 are ROML
+    for (k = 0; k < chips.length; k++) {
+      if (chips[k].size !== 0x2000 || chips[k].plen !== 0x2010) return bad('CRT_BANKS', name + ' packet ' + k + ' is ' + chips[k].size + ' bytes; this machine reads 8K packets for ' + name);
+      if (chips[k].bank > limit) return bad('CRT_BANKS', name + ' bank ' + chips[k].bank + '; this machine holds banks up to ' + limit);
+    }
+    if (b.length !== 0x40 + chips.length * 0x2010) return bad('CRT_BAD_FILE', 'the file does not end on a packet; this machine reads ' + name + ' packets at a fixed stride');
+  }
+  var total = 0; for (k = 0; k < chips.length; k++) total += chips[k].size;
+  return { type: type, name: name, exrom: b[0x18], game: b[0x19], chips: chips.length, size: total, title: crtTitle(b) };
+}
+function loadCRT(bytes, label) {
+  if (!m64 || STATE.phase !== 'running') return { ok: false, code: 'NOT_READY', text: 'the machine is not running' };
+  var c = checkCRT(bytes);
+  if (c.code) { say(c.text); return { ok: false, code: c.code, text: c.text }; }
+  releaseAll();
+  m64_loadCartridge(bytes, bytes.length);
+  cartridgeIn = true;
+  STATE.program = { label: label || 'cartridge', bytes: bytes.length, load: null, cartridge: c };
+  say('running cartridge ' + STATE.program.label + ' (' + c.name + ', ' + c.chips + ' packet' + (c.chips === 1 ? '' : 's') + ', ' + c.size + ' bytes)', true);
+  return { ok: true, label: STATE.program.label, load: null, bytes: bytes.length, cartridge: c };
 }
 function screenText() {
   if (!m64) return '';
@@ -760,7 +827,7 @@ function reply(req, body) {
 }
 function refuse(req, code, text) { reply(req, { type: 'refused', code: code, text: text || code }); }
 function stateReport() {
-  return { type: 'state', phase: STATE.phase, build: BUILD, mode: MODE, input: INPUT, port: JOYPORT, firmware: !!ROMS,
+  return { type: 'state', phase: STATE.phase, build: BUILD, mode: MODE, input: INPUT, port: JOYPORT, cartridge: cartridgeIn, firmware: !!ROMS,
            program: STATE.program, intervened: intervened, lab: labOn, error: STATE.error };
 }
 async function onRequest(m) {
@@ -796,9 +863,9 @@ async function onRequest(m) {
       if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
       if (CAPABILITIES.loads.indexOf(m.kind) < 0) { refuse(m, 'KIND_UNSUPPORTED', 'this machine loads: ' + CAPABILITIES.loads.join(', ')); return; }
       if (m.label !== undefined && m.label.length > 80) { refuse(m, 'BAD_MESSAGE', 'label is at most 80 characters'); return; }
-      if (m.bytes.byteLength > LIMITS.prg) { refuse(m, 'FILE_TOO_LARGE', 'not loaded: ' + m.bytes.byteLength + ' bytes; a PRG is at most ' + LIMITS.prg); return; }
-      var r = loadPRG(new Uint8Array(m.bytes), m.label === undefined ? 'program' : m.label);
-      if (r.ok) reply(m, { type: 'loaded', label: r.label, load: r.load, bytes: r.bytes, intervened: intervened });
+      if (m.bytes.byteLength > LIMITS[m.kind]) { refuse(m, 'FILE_TOO_LARGE', 'not loaded: ' + m.bytes.byteLength + ' bytes; a ' + m.kind.toUpperCase() + ' is at most ' + LIMITS[m.kind]); return; }
+      var r = m.kind === 'crt' ? loadCRT(new Uint8Array(m.bytes), m.label === undefined ? 'cartridge' : m.label) : loadPRG(new Uint8Array(m.bytes), m.label === undefined ? 'program' : m.label);
+      if (r.ok) reply(m, { type: 'loaded', label: r.label, load: r.load, bytes: r.bytes, intervened: intervened, cartridge: r.cartridge || null });
       else refuse(m, r.code, r.text);
       return;
     }

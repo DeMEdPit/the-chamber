@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { browser } from './pw.mjs';
 import { start } from './serve.mjs';
 import { makeD64 } from './make-d64.mjs';
+import { makeCRT, PROBE, probe16K } from './make-crt.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EVIDENCE = join(HERE, 'evidence');
@@ -152,7 +153,7 @@ try {
     ['high.prg', Buffer.concat([Buffer.from([0x00, 0xff]), Buffer.alloc(512, 1)]), 'PRG_ADDRESS_OVERFLOW', /\$ff00/],
     ['notes.txt', Buffer.from('hello, machine\n'), 'KIND_UNSUPPORTED', /not a \.prg file \(15 bytes, beginning 68 65 6c 6c 6f 2c 20 6d\)/],
     ['disk.d64', Buffer.alloc(174848), 'D64_EMPTY', /no program in its directory \(0 entries, none PRG\)/],
-    ['cart.crt', Buffer.concat([Buffer.from('C64 CARTRIDGE   '), Buffer.alloc(48)]), 'KIND_UNSUPPORTED', /a cartridge image/],
+    ['cart.crt', Buffer.concat([Buffer.from('C64 CARTRIDGE   '), Buffer.alloc(48)]), 'CRT_BAD_FILE', /too short to be a cartridge image/],
   ];
   for (const [name, buffer, code, words] of refusals) {
     await pg.setInputFiles('#file', { name, mimeType: 'application/octet-stream', buffer });
@@ -210,6 +211,31 @@ try {
   await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
   await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 30000, 500);
   check(await pg.evaluate(() => document.getElementById('disk').hidden), 'a .prg dropped after a disk closes the directory');
+  // the cartridge door: a .crt is read as the machine reads it, given a machine of its own, run and said as YOUR FILE with
+  // its type; RESET boots it again; anything after it starts a new machine; what the machine would trap on is refused at
+  // the door in words, the running program left alone
+  await pg.evaluate(() => { window.machinePage.machine.gateMark = 'before the cartridge'; });
+  await pg.setInputFiles('#file', { name: 'probe.crt', mimeType: 'application/octet-stream', buffer: Buffer.from(probe16K()) });
+  const cartRan = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /probe\.crt/.test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null)), 90000, 500);
+  check(!!cartRan && /YOUR FILE/.test(cartRan) && /CARTRIDGE\s*Normal · 1 CHIP packet · 16,384 bytes of ROM · EXROM 0 · GAME 0 · "PROBE 16K"/.test(cartRan) && /it stays in the port/.test(cartRan) && /FIRMWARE\s*off · AUTO: no call into the KERNAL's table/.test(cartRan), 'a cartridge runs, said as YOUR FILE with its type, bare under AUTO, its stay in the port said');
+  const crtWrote = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 3)), 15000);
+  check(!!crtWrote && (await pg.evaluate(() => window.machinePage.cartridgeIn === true && window.machinePage.machine.gateMark === undefined)), 'the cartridge booted on a machine of its own (C at $0400)');
+  const provCart = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  check(provCart && provCart.source === 'cartridge' && provCart.cartridge.typeName === 'Normal' && provCart.cartridge.chips.length === 1 && provCart.cartridge.chips[0].size === 16384 && provCart.program.status === 'YOUR FILE' && provCart.program.load === null && provCart.node === null, 'the provenance names the cartridge and no chain');
+  await pg.click('#reset');
+  const cartAgain = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /probe\.crt/.test(document.getElementById('now').textContent) && /the cartridge in its port starts again/.test(window.machinePage.report()) ? true : null)), 10000, 200);
+  check(!!cartAgain, 'RESET with a cartridge in the port: it starts again and stays NOW PLAYING');
+  await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
+  const afterCart = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent) && /a cartridge stays in the port for the life of a machine/.test(window.machinePage.report()) ? true : null)), 90000, 500);
+  check(!!afterCart && !!(await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 2)), 15000)) && (await pg.evaluate(() => window.machinePage.cartridgeIn === false)), 'a .prg after the cartridge gets a new machine and runs (screen code 2 at $0400)');
+  for (const [name, buffer, code, words] of [
+    ['eight.crt', Buffer.from(makeCRT({ type: 0, chips: [{ bank: 0, load: 0x8000, size: 0x2000, data: PROBE }] })), 'CRT_8K_NORMAL', /8K Normal cartridge/],
+    ['easy.crt', Buffer.from(makeCRT({ type: 32, chips: [{ bank: 0, load: 0x8000, size: 0x2000 }] })), 'CRT_TYPE_UNSUPPORTED', /EasyFlash/],
+  ]) {
+    await pg.setInputFiles('#file', { name, mimeType: 'application/octet-stream', buffer });
+    const said = await until(() => pg.evaluate((n) => { const d = document.getElementById('door'); return d.dataset.state === 'refused' && d.textContent.includes(n) ? d.textContent : null; }, code), 10000, 100);
+    check(!!said && words.test(said) && said.includes(name) && (await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent))), `${name} is refused ${code} at the door, the running program left alone: ${said ? said.trim().slice(0, 110) : 'nothing said'}`);
+  }
   // AUTO: the switch reads a file for what it needs. A file that calls the KERNAL gets the firmware, the machine rebuilt with
   // the pressing from the chain; a BASIC program is RUN under it; a file that needs nothing runs bare again; a program of
   // the chain runs bare, as on chain

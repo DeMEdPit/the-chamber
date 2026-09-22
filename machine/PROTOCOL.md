@@ -47,23 +47,23 @@ The machine sends `hello` as soon as it holds the port:
 ```json
 {"v": 1, "type": "hello", "protocol": 1, "machine": "minimal64-2022",
  "build": "embedded", "phase": "waiting",
- "capabilities": {"loads": ["prg"], "input": ["keyboard", "joystick2", "joystick1"],
+ "capabilities": {"loads": ["prg", "crt"], "input": ["keyboard", "joystick2", "joystick1"],
                   "firmware": true, "screenText": true, "peek": true,
                   "poke": true, "audio": true, "snapshots": false},
- "limits": {"prg": 65538, "text": 4096, "machine": 1048576, "peek": 65536}}
+ "limits": {"prg": 65538, "crt": 525376, "text": 4096, "machine": 1048576, "peek": 65536}}
 ```
 
 `phase` is `waiting` (the embedded build, before its bytes) or `running`
 (a standalone build that a host attached to after it booted itself; do not
-send `machine` to it). `loads` grows in a later phase (`crt`, `d64prg`); a
-host offers only what it lists.
+send `machine` to it). `loads` is `prg` and `crt`; a program picked off a
+disk is a `prg`. A host offers only what it lists.
 
 ## Requests and replies
 
 | request | fields | reply |
 |---|---|---|
 | `machine` | `parts`: four `ArrayBuffer`s, the emulator's parts in the manifest's order; `roms`: `{kernal, basic, chargen}` `ArrayBuffer`s (8192, 8192, 4096 bytes), `null` or absent for the bare machine | `ready {emulator, emulatorStatus, firmware, firmwareSha256, ms}` — `emulatorStatus` is `PINNED`: the document verified every part against the pins it carries, and it does not run otherwise (`HASH_UNAVAILABLE` when it cannot hash, `HASH_MISMATCH` when a part differs); `firmwareSha256` is `{kernal, basic, chargen}`, the sha256 of each ROM as received, or `null`. The document holds no pin for the firmware and claims nothing about it: the host compares these hashes with what it pinned before asking, and the host's provenance says PINNED or not |
-| `load` | `kind`: one of `capabilities.loads`; `bytes`: `ArrayBuffer`; `label`: string of at most 80 characters, optional | `loaded {label, load, bytes, intervened}` — `load` is the two-byte load address |
+| `load` | `kind`: one of `capabilities.loads`; `bytes`: `ArrayBuffer`; `label`: string of at most 80 characters, optional | `loaded {label, load, bytes, intervened, cartridge}` — `load` is the two-byte load address of a `prg` and `null` for a `crt`; `cartridge` is `null` for a `prg` and `{type, name, exrom, game, chips, size, title}` for a `crt`. A `crt` is a .crt image the machine reads: a 64-byte header, hardware type Normal (0, one CHIP of 4K or 16K; 8K refused, since the machine's reader traps on it), Ocean Type 1 (5), C64GS (15) or Magic Desk (19) (8K CHIP packets, banks within the machine's arrays). A cartridge stays in the port for the life of the document: the build attaches one and cannot remove it, its reset boots the cartridge again, and a `prg` after it is refused `CARTRIDGE_IN_PORT`; a host that wants the machine back starts a new document |
 | `reset` | | `ok` |
 | `input` | `mode`: `keyboard` or `joystick` (what the arrow keys feed); `port`: 1 or 2, optional, the port the keys feed as a joystick (2 until set: the port the programs of the series read; 1 for the games that read it, Boulder Dash among them) | `ok {input, port}` |
 | `joystick` | `bit`: integer, 1 up, 2 down, 4 left, 8 right, 16 fire; `down`: boolean; `port`: 1 or 2, optional, else the port set by `input` | `ok` |
@@ -128,6 +128,11 @@ run. The way back is a fresh frame.
 | `FILE_TOO_LARGE` | bytes beyond the stated limit |
 | `PRG_TOO_SHORT` | fewer than three bytes |
 | `PRG_ADDRESS_OVERFLOW` | load address plus payload past 64K |
+| `CRT_BAD_FILE` | not a cartridge image the machine can read: no signature, a header that is not 64 bytes, a CHIP packet missing, short or not ending the file where the reader strides |
+| `CRT_TYPE_UNSUPPORTED` | a hardware type the machine does not have (named when known, EasyFlash among them) |
+| `CRT_8K_NORMAL` | an 8K Normal cartridge: the machine's reader would trap; repack as 16K or single-bank Magic Desk |
+| `CRT_BANKS` | a Normal cartridge that is not one CHIP of 4K or 16K, or a banked cartridge with a packet that is not 8K or a bank beyond the machine's arrays |
+| `CARTRIDGE_IN_PORT` | a `prg` while a cartridge is in the port |
 | `LAB_OFF` | a write without `lab` on |
 | `BUSY` | `type` while a previous `type` is still being typed |
 | `AUDIO_OFF` | `samples` before `audio {on: true}` |
@@ -163,7 +168,8 @@ itself.
 
 ## Limits
 
-`prg` 65,538 bytes (a load address and 64K); `text` 4,096 characters;
+`prg` 65,538 bytes (a load address and 64K); `crt` 525,376 bytes (a header
+and 64 CHIP packets of 8K, the machine's ROML banks); `text` 4,096 characters;
 `machine` 1,048,576 bytes across the parts; `peek` 65,536 bytes. A host
 should also keep a watchdog: a request that goes unanswered is a hung
 frame, to be destroyed and rebuilt.
