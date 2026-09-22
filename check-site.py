@@ -209,7 +209,8 @@ def check_cards():
         if not d.og_image or not d.og_image.startswith(SITE + "/"):
             fail(f"{name}: og:image is {d.og_image!r}, wanted an absolute address on the site")
             continue
-        img = ROOT / d.og_image[len(SITE) + 1:]
+        addr, _, query = d.og_image.partition("?")
+        img = ROOT / addr[len(SITE) + 1:]
         if not img.exists():
             fail(f"{name}: the share image {d.og_image} does not exist in the tree")
             continue
@@ -217,6 +218,9 @@ def check_cards():
         if b[:8] != b"\x89PNG\r\n\x1a\n" or len(b) < 24:
             fail(f"{name}: the share image {img.relative_to(ROOT)} is not a PNG")
             continue
+        stamp = "v=" + hashlib.sha256(b).hexdigest()[:8]
+        if query != stamp:
+            fail(f"{name}: the share image's address carries {query or 'no stamp'}, the file's stamp is {stamp} (rebuild the pages after changing a card)")
         w, h = struct.unpack(">II", b[16:24])
         if (w, h) not in ((1200, 630), (2400, 1260)):
             fail(f"{name}: the share image {img.relative_to(ROOT)} is {w}x{h}, wanted 1200x630 or 2400x1260")

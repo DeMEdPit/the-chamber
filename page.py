@@ -9,6 +9,7 @@ compares it with the committed copy.
 
     python3 page.py        # build the alias pages the registry declares
 """
+import hashlib
 import html as _html
 import re
 import os
@@ -18,6 +19,20 @@ from registry import SITE, SITE_NAME, CARD, PAGES, page as _page
 from footer import footer, CSS as FOOT_CSS
 
 ROOT = pathlib.Path(__file__).resolve().parent
+
+
+def card_version(image):
+    """A short stamp of the share image's bytes on its address, so a changed
+    card is a new address to the services that cache pictures by address.
+    The image is looked for where this build writes (a generated card lands
+    there first) and then in the tree (the committed cards)."""
+    rel = image.lstrip("/")
+    for base in (out_root(), ROOT):
+        f = base / rel
+        if f.exists():
+            return "?v=" + hashlib.sha256(f.read_bytes()).hexdigest()[:8]
+    return ""
+
 SITE_CSS = (ROOT / "site.css").read_text(encoding="utf-8")
 
 
@@ -50,7 +65,7 @@ def render(key, body, *, title, description, css="", image=CARD, image_alt=SITE_
 <meta property="og:url" content="{SITE}{p.path}">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(description)}">
-<meta property="og:image" content="{SITE}{image}">
+<meta property="og:image" content="{SITE}{image}{card_version(image)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{esc(image_alt)}">
@@ -58,7 +73,7 @@ def render(key, body, *, title, description, css="", image=CARD, image_alt=SITE_
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{esc(title)}">
 <meta name="twitter:description" content="{esc(description)}">
-<meta name="twitter:image" content="{SITE}{image}">
+<meta name="twitter:image" content="{SITE}{image}{card_version(image)}">
 
 <meta name="theme-color" content="#39ff88">
 <style>
