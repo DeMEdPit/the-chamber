@@ -29,7 +29,7 @@ python3 machine/build.py           # the two documents
 python3 build-all.py               # the whole site, this included
 python3 check-site.py              # the site check: reproduces everything, holds the licence gate, runs the verifier offline
 python3 machine/verify.py --offline            # the catalogue against itself and the site's copies
-python3 machine/verify.py --rpc https://ethereum-rpc.publicnode.com   # the catalogue against mainnet (a sample of tokens; --all for every one)
+python3 machine/verify.py --all                # the catalogue against mainnet, through the first public node that answers (a sample of tokens without --all; --rpc URL for a node of your own)
 python3 machine/test/test_verify.py            # the verifier's refusals against synthetic bytes
 node machine/test/bridge.mjs       # the bridge gate in headless Chromium (needs Playwright)
 ```

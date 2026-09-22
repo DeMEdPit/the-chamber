@@ -4,7 +4,8 @@ Every program THE MACHINE can load from Ethereum, how to fetch each one, and
 what it must match. It is data, versioned, produced by a private exporter
 from the deployment records and the frozen bytes; trust never depends on the
 exporter, because `machine/verify.py` checks every line of the file against
-the chain for anyone who runs it (`--rpc URL`), and against the site's own
+the chain for anyone who runs it (no flag: the first of `endpoints` that
+answers; `--rpc URL`: a node of your own), and against the site's own
 copies without a network (`--offline`, which the site check runs on every
 push). Schema `chamber-machine-catalogue`, version 1; a reader refuses any
 other.

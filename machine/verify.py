@@ -3,10 +3,10 @@
 """The public verifier: every fact in the machine's catalogue, checked against Ethereum by anyone.
 
     python3 machine/verify.py --offline                    # the catalogue against itself and the site's copies; no network
-    python3 machine/verify.py --rpc https://ethereum-rpc.publicnode.com            # against a node: a sample of tokens
-    python3 machine/verify.py --rpc URL --tokens 1,55,64   # these Chamber tokens
-    python3 machine/verify.py --rpc URL --all              # all sixty-four rows and programs (64 reads of 47 KB)
-    python3 machine/verify.py --rpc URL --json out.json    # the findings as JSON as well
+    python3 machine/verify.py                              # against the first of the catalogue's endpoints that answers: a sample of tokens
+    python3 machine/verify.py --all                        # all sixty-four rows and programs (64 reads of 47 KB)
+    python3 machine/verify.py --rpc URL --tokens 1,55,64   # this node, these Chamber tokens
+    python3 machine/verify.py --json out.json              # the findings as JSON as well
 
 The catalogue (machine/catalogue.json) is produced by a private exporter; trust
 never depends on it. This file, standard library only, is what makes every line
@@ -32,6 +32,7 @@ import json
 import os
 import pathlib
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -39,6 +40,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 CATALOGUE = HERE / "catalogue.json"
 SCHEMA = "chamber-machine-catalogue"
 VERSION = 1
+# Public nodes sit behind bot filters that refuse a client with no name; this one has a name.
+USER_AGENT = "chamber64-verify/1 (+https://chamber64.com/machine/)"
 
 # ------------------------------------------------------------------ keccak-256, standard library only
 # keccak-f[1600] with rate 136 and the original 0x01 pad (not SHA3's 0x06, so hashlib cannot supply it).
@@ -143,13 +146,22 @@ class Rpc:
 
     def call(self, method, params):
         self._id += 1
-        req = urllib.request.Request(self.url, data=json.dumps({"jsonrpc": "2.0", "id": self._id, "method": method, "params": params}).encode(),
-                                     headers={"content-type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                j = json.loads(r.read().decode())
-        except (urllib.error.URLError, OSError, ValueError) as e:
-            raise RpcError(f"RPC_UNAVAILABLE: {self.url}: {e}")
+        body = json.dumps({"jsonrpc": "2.0", "id": self._id, "method": method, "params": params}).encode()
+        headers = {"content-type": "application/json", "accept": "application/json", "user-agent": USER_AGENT}
+        j = None
+        for attempt in (1, 2):
+            req = urllib.request.Request(self.url, data=body, headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                    j = json.loads(r.read().decode())
+                break
+            except urllib.error.HTTPError as e:
+                if attempt == 1 and e.code in (429, 500, 502, 503, 504):
+                    time.sleep(2)
+                    continue
+                raise RpcError(f"RPC_UNAVAILABLE: {self.url}: HTTP {e.code} {e.reason}")
+            except (urllib.error.URLError, OSError, ValueError) as e:
+                raise RpcError(f"RPC_UNAVAILABLE: {self.url}: {e}")
         if "error" in j:
             raise RpcError(f"{method}: {j['error'].get('message', j['error'])}")
         if j.get("result") is None:
@@ -171,6 +183,20 @@ class Rpc:
 
     def eth_call(self, to, data, block="latest"):
         return self.call("eth_call", [{"to": to, "data": data}, block if isinstance(block, str) else hex(block)])
+
+
+def pick_endpoint(cat, out=print):
+    """The first of the catalogue's endpoints that answers eth_chainId with the catalogue's chain."""
+    for url in cat.get("endpoints", []):
+        rpc = Rpc(url, timeout=30)
+        try:
+            if rpc.chain_id() == cat["chainId"]:
+                out(f"verify: node {url}")
+                return rpc
+            out(f"verify: {url} answers for another chain; next")
+        except RpcError as e:
+            out(f"verify: {e}; next")
+    return None
 
 
 # ------------------------------------------------------------------ the Chamber's stamp, as the contract does it
@@ -435,23 +461,29 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="check the machine's catalogue against itself, the site's copies, and an Ethereum node")
     ap.add_argument("--catalogue", default=str(CATALOGUE))
     ap.add_argument("--offline", action="store_true", help="no network: the catalogue against itself and the site's copies")
-    ap.add_argument("--rpc", help="a JSON-RPC endpoint for Ethereum mainnet")
+    ap.add_argument("--rpc", help="a JSON-RPC endpoint for Ethereum mainnet (default: the catalogue's endpoints, the first that answers)")
     ap.add_argument("--tokens", help="Chamber token ids to check, comma separated (default 1,55,64)")
     ap.add_argument("--all", action="store_true", help="every Chamber token")
     ap.add_argument("--json", help="write the findings here as JSON")
     a = ap.parse_args(argv)
     cat = load_catalogue(a.catalogue)
-    if not a.offline and not a.rpc:
-        ap.error("give --offline or --rpc URL")
     print(f"verify: catalogue generated {cat['generated']}, chain {cat['chainId']}, {len(cat['works'])} works")
     f = offline(cat, pathlib.Path(a.catalogue).resolve().parent)
     rows = f.rows
     failed = f.failed
-    if a.rpc:
-        g = verify(cat, Rpc(a.rpc), tokens=[int(t) for t in a.tokens.split(",")] if a.tokens else None, all_tokens=a.all)
-        rows, failed = rows + g.rows, failed + g.failed
+    node = a.rpc
+    if not a.offline:
+        rpc = Rpc(a.rpc) if a.rpc else pick_endpoint(cat)
+        if rpc is None:
+            print("verify: FAIL RPC_UNAVAILABLE none of the catalogue's endpoints answered")
+            rows.append({"status": "FAIL", "code": "RPC_UNAVAILABLE", "what": "the node", "detail": "none of the catalogue's endpoints answered"})
+            failed += 1
+        else:
+            node = rpc.url
+            g = verify(cat, rpc, tokens=[int(t) for t in a.tokens.split(",")] if a.tokens else None, all_tokens=a.all)
+            rows, failed = rows + g.rows, failed + g.failed
     if a.json:
-        pathlib.Path(a.json).write_text(json.dumps({"catalogue": cat["generated"], "rpc": a.rpc, "findings": rows, "failed": failed}, indent=1) + "\n", encoding="utf-8")
+        pathlib.Path(a.json).write_text(json.dumps({"catalogue": cat["generated"], "rpc": node, "findings": rows, "failed": failed}, indent=1) + "\n", encoding="utf-8")
     counts = {}
     for r in rows:
         counts[r["status"]] = counts.get(r["status"], 0) + 1
