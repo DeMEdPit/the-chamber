@@ -90,8 +90,9 @@ try {
   const prov = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
   check(prov && prov.program.status === 'PINNED' && prov.stamp.status === 'CONTRACT-CONSISTENT' && prov.stamp.stampedAt === 4999 && prov.machine.status === 'PINNED' && /ethereum/.test(prov.machine.source) && prov.mode === 'PURE' && prov.intervened === false,
         `the provenance as JSON: ${prov ? JSON.stringify({ program: prov.program.status, stamp: prov.stamp.status, machine: prov.machine.source }) : 'none'}`);
-  const linkA = await pg.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, state: document.getElementById('link-state').textContent, node: document.getElementById('link-node').textContent, block: document.getElementById('link-block').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
-  check(linkA.phase === 'held' && linkA.state === 'HELD' && linkA.node === '/rpc' && /^#\d+$/.test(linkA.block) && linkA.cells.join() === 'held', `THE CHAIN badge: ${linkA.state} · ${linkA.node} · ${linkA.block} · cells ${linkA.cells.join()}`);
+  // at 1180 wide the badge sits at the left in its long form; innerText reads the form that is shown
+  const linkA = await pg.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, state: document.getElementById('link-state').innerText, node: document.getElementById('link-node').innerText, block: document.getElementById('link-block').innerText, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state), left: document.getElementById('link').getBoundingClientRect().left - document.getElementById('frame').getBoundingClientRect().left }));
+  check(linkA.phase === 'held' && linkA.state === 'HELD' && linkA.node === '/rpc' && /^block [\d,]+ · [0-9a-f]{12}…$/.test(linkA.block) && linkA.cells.join() === 'held' && linkA.left < 40, `THE CHAIN badge on the desktop, at the left in its long form: ${linkA.state} · ${linkA.node} · ${linkA.block} · cells ${linkA.cells.join()} · ${Math.round(linkA.left)}px from the frame's left`);
   check(await pg.evaluate(() => /^\/rpc · block [\d,]+ · [0-9a-f]{64}$/.test(document.getElementById('link').title)), 'the badge\'s title carries the whole node name, the block and its full hash');
   const readsA = A.log.filter((r) => ['eth_call', 'eth_getCode'].includes(r.method));
   check(readsA.length > 0 && readsA.every((r) => /^0x[0-9a-f]+$/.test(String(r.params[1]))), `every contract read is at a block, none at latest (${readsA.length} reads)`);
@@ -180,6 +181,8 @@ try {
     check(shape0.rows >= 250 && shape0.log >= 150 && shape0.log === shapeRun.log, `at ${w} wide: the list (${shape0.rows}) and the log (${shape0.log}) are their full size before anything arrives`);
     check(shape0.labels.join() === 'PROGRAM,BYTES,CHECK,MACHINE,FIRMWARE,INPUT,MODE,NODE' && shapeIdle.labels.join() === shape0.labels.join() && shapeRun.labels.slice(-5).join() === 'MACHINE,FIRMWARE,INPUT,MODE,NODE', `at ${w} wide: NOW PLAYING keeps its rows (${shapeIdle.labels.length} idle, ${shapeRun.labels.length} running)`);
     check(Math.abs(shape0.now - shapeRun.now) <= 48 && Math.abs(shapeIdle.now - shapeRun.now) <= 48, `at ${w} wide: NOW PLAYING holds its height, first paint ${shape0.now}, running ${shapeRun.now}, idle ${shapeIdle.now}`);
+    const badge = await pw.evaluate(() => { const l = document.getElementById('link').getBoundingClientRect(), f = document.getElementById('frame').getBoundingClientRect(); return { right: f.right - l.right, left: l.left - f.left, block: document.getElementById('link-block').innerText }; });
+    check(w < 1140 ? (badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge sits ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block})`);
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }
@@ -283,7 +286,7 @@ try {
   check(nodesE.setAside.length === 1 && nodesE.setAside[0].node === '/rpc' && /HASH_MISMATCH/.test(nodesE.setAside[0].why) && nodesE.demoted.length === 0,
         `the first endpoint is set aside for the visit, not merely demoted (${JSON.stringify(nodesE)})`);
   check(await pe.evaluate(() => /1 set aside this visit/.test(document.getElementById('now').textContent)), 'NOW PLAYING says one endpoint is set aside');
-  const linkE = await pe.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').textContent, block: document.getElementById('link-block').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
+  const linkE = await pe.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').innerText, block: document.getElementById('link-block').innerText, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
   check(linkE.phase === 'held' && linkE.node === '/rpc2' && /1 set aside/.test(linkE.block) && linkE.cells.join() === 'set-aside,held', `THE CHAIN strip shows the first cell set aside and the second holding (${linkE.cells.join()}; ${linkE.block})`);
   const readsE = E.log.filter((r) => r.path === '/rpc' && r.method === 'eth_call');
   check(readsE.length === 0, `no contract call went to the set-aside endpoint after its contradiction (${readsE.length})`);
@@ -302,7 +305,7 @@ try {
   check(!!runningF && provF && provF.machine.source === 'ethereum, through /rpc' && provF.node === '/rpc2' && provF.observation.node === '/rpc2',
         `failover: the machine came through the first endpoint, the program through the second (${provF && provF.machine.source}; program via ${provF && provF.node})`);
   check(nodesF.setAside.length === 0 && nodesF.demoted.includes('/rpc'), `the failing endpoint is demoted, not set aside (${JSON.stringify(nodesF)})`);
-  const linkF = await pf.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').textContent, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
+  const linkF = await pf.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').innerText, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
   check(linkF.phase === 'held' && linkF.node === '/rpc2' && linkF.cells.join() === 'demoted,held', `THE CHAIN strip shows the first cell demoted and the second holding (${linkF.cells.join()})`);
   const obsF = F.log.filter((r) => r.path === '/rpc2' && ['eth_call', 'eth_getBlockByNumber'].includes(r.method));
   const prgCalls = obsF.filter((r) => r.method === 'eth_call');

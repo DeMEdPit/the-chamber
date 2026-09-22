@@ -68,12 +68,15 @@ const shortHost = (h) => { const host = String(h).replace(/^https?:\/\//, '').sp
 function renderLink(st) {
   els.link.dataset.phase = st.phase;
   els.linkState.textContent = LINK_WORDS[st.phase] || st.phase.toUpperCase();
-  els.linkNode.textContent = st.host ? shortHost(st.host) : (st.phase === 'off' ? 'no node yet' : 'no node');
-  const bits = [];
-  if (st.block) bits.push(`#${st.block}`);
-  if (st.phase === 'reading' && st.reads) bits.push(`${st.reads} read${st.reads === 1 ? '' : 's'}`);
-  if (st.setAside) bits.push(`${st.setAside} set aside`);
-  els.linkBlock.textContent = bits.join(' · ');
+  // two forms of the words: short for the badge on a phone, long where the desktop leaves room; CSS shows one
+  const pair = (el, short, long) => { el.textContent = ''; for (const [cls, text] of [['s', short], ['l', long]]) { const b = document.createElement('span'); b.className = cls; b.textContent = text; el.appendChild(b); } };
+  const none = st.phase === 'off' ? 'no node yet' : 'no node';
+  pair(els.linkNode, st.host ? shortHost(st.host) : none, st.host || none);
+  const short = [], long = [];
+  if (st.block) { short.push(`#${st.block}`); long.push(`block ${num(st.block)} · ${SHORT(st.blockHash)}`); }
+  if (st.phase === 'reading' && st.reads) { const r = `${st.reads} read${st.reads === 1 ? '' : 's'}`; short.push(r); long.push(r); }
+  if (st.setAside) { const a = `${st.setAside} set aside`; short.push(a); long.push(a); }
+  pair(els.linkBlock, short.join(' · '), long.join(' · '));
   els.link.title = st.host ? `${st.host}${st.block ? ` · block ${num(st.block)} · ${st.blockHash}` : ''}` : 'no node yet';
   els.linkEndpoints.textContent = '';
   for (const e of st.endpoints) {
