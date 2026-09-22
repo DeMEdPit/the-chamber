@@ -5,7 +5,7 @@
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
 import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
-import { Node, machineFromChain, firmwareFromChain, programFromChain, zeroWindow } from './chain.js';
+import { Node, machineFromChain, firmwareFromChain, programFromChain, revisionsOf, zeroWindow } from './chain.js';
 import { keccakHex } from './keccak.js';
 import { scanProgram, needsOf, inputOf, scanWords, loadsMore, hex4, scanCartridge, needsOfCartridge, cartridgeWords } from './scan.js';
 import { parseD64, readFile as readDiskFile, D64_SIZES } from './d64.js';
@@ -118,8 +118,8 @@ function rowsOf(cat) {
       }
     } else if (w.program.kind === 'slotted') {
       for (let id = 1; id <= w.tokens.count; id++) {
-        out.push({ work: w.key, token: id, title: `${id} · the head mind`, sub: 'the frozen program with the mind the chain holds now', group: w.name,
-          words: `${w.name} ${w.key} perception ${id} mind brain head canary`.toLowerCase(), note: 'the head revision is read when you load it' });
+        out.push({ work: w.key, token: id, title: `${id} · the head mind`, sub: 'the frozen program with the mind the chain holds now; REVISIONS lists every mind it has held', group: w.name,
+          words: `${w.name} ${w.key} perception ${id} mind brain head canary revision revisions genesis`.toLowerCase(), note: 'the head revision is read when you load it', revisions: true });
       }
     } else {
       out.push({ work: w.key, token: 1, title: w.name, sub: 'one whole program, pinned by its hash', group: w.name,
@@ -145,13 +145,54 @@ function renderRows(filter) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.work = r.work; row.dataset.token = String(r.token);
-    row.innerHTML = `<div class="t"><span class="title"></span><span class="sub"></span></div><button class="load" type="button">LOAD</button>`;
+    row.innerHTML = `<div class="t"><span class="title"></span><span class="sub"></span></div>${r.revisions ? '<button class="more" type="button">REVISIONS</button>' : ''}<button class="load" type="button">LOAD</button>`;
     row.querySelector('.title').textContent = r.title;
     row.querySelector('.sub').textContent = r.sub;
-    row.querySelector('button').addEventListener('click', () => load(r.work, r.token));
+    row.querySelector('button:last-child').addEventListener('click', () => load(r.work, r.token));
+    if (r.revisions) row.querySelector('.more').addEventListener('click', () => listRevisions(r.work, r.token, row));
     els.rows.appendChild(row);
+    if (r.revisions && revisionRows.has(`${r.work}/${r.token}`)) for (const sub of revisionRows.get(`${r.work}/${r.token}`)) els.rows.appendChild(sub);
   }
   els.count.textContent = shown.length === allRows.length ? `${allRows.length} programs on the chain` : `${shown.length} of ${allRows.length}`;
+}
+
+// ------------------------------------------------------------------ the revisions of a mind
+// REVISIONS on a mind's row reads its head and every record through one node at one block and lists them under the
+// row: genesis first, the blank slot the program ships, then each save with its lessons, its block and who saved it.
+// The list is the node's word (NODE-REPORTED); a revision is held to its hash when it is loaded.
+const revisionRows = new Map();   // work/token -> the rows listed, kept across a re-render of the list
+const shortAddr = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+async function listRevisions(work, token, row) {
+  const key = `${work}/${token}`;
+  if (revisionRows.has(key)) { for (const sub of revisionRows.get(key)) sub.remove(); revisionRows.delete(key); return; }   // a second press folds the list
+  const more = row.querySelector('.more');
+  more.disabled = true; more.textContent = 'READING';
+  try {
+    if (!catalogue) throw Object.assign(new Error('the catalogue has not loaded'), { code: 'NO_CATALOGUE' });
+    node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
+    const { head, revisions, observation } = await revisionsOf(node, catalogue, work, token, say);
+    say(`${revisions.length} revisions of token ${token}'s mind, 0 to ${head}, from ${observation.node} at block ${num(observation.block)}: NODE-REPORTED until one is loaded`);
+    const subs = [];
+    for (const rec of revisions.slice().reverse()) {
+      const sub = document.createElement('div');
+      sub.className = 'row sub';
+      sub.dataset.work = work; sub.dataset.token = String(token); sub.dataset.revision = String(rec.r);
+      sub.innerHTML = `<div class="t"><span class="title"></span><span class="sub"></span></div><button class="load" type="button">LOAD</button>`;
+      sub.querySelector('.title').textContent = `revision ${rec.r}${rec.r === head ? ' · the head' : rec.r === 0 ? ' · genesis' : ''}`;
+      sub.querySelector('.sub').textContent = rec.r === 0 ? `the blank slot the program ships · hash ${SHORT(rec.canonicalHash)}`
+        : `${rec.educationCount} lesson${rec.educationCount === 1 ? '' : 's'} taught in all · saved at block ${num(rec.savedAtBlock)} by ${shortAddr(rec.savedBy)} · hash ${SHORT(rec.canonicalHash)}`;
+      sub.querySelector('button').addEventListener('click', () => load(work, token, rec.r));
+      subs.push(sub);
+    }
+    revisionRows.set(key, subs);
+    let after = row;
+    for (const sub of subs) { after.insertAdjacentElement('afterend', sub); after = sub; }
+    if (playing && playing.program.facts.work === work && playing.program.facts.token === token) markOffered(work, token, playing.program.facts.revision);
+  } catch (e) {
+    say(`the revisions could not be listed (${e.code || 'FAILED'}): ${e.message}`);
+  } finally {
+    more.disabled = false; more.textContent = 'REVISIONS';
+  }
 }
 
 // ------------------------------------------------------------------ the file door
@@ -460,7 +501,7 @@ async function run(ask) {
     node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
     await ensureMachine(d);
     renderNow();   // the machine's rows fill as soon as it is up, while the program is read
-    if (!fromFile) program = await programFromChain(node, catalogue, ask.work, ask.token, say);
+    if (!fromFile) program = await programFromChain(node, catalogue, ask.work, ask.token, say, ask.revision);
     setState('checking', 'CHECKING');
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
     if (fromFile) {
@@ -482,7 +523,7 @@ async function run(ask) {
     setState('running', 'RUNNING');
     say(`running ${program.label}`);
     renderNow();
-    markOffered(fromFile ? null : ask.work, fromFile ? null : ask.token);
+    markOffered(fromFile ? null : ask.work, fromFile ? null : ask.token, fromFile ? null : program.facts.revision);
     markDiskRow(ask.entry ? ask.entry.index : null);
     if (fromFile) told(ask, 'ok', `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim${loadsMore(program.facts.scan) ? ' · loads more from a disk: stops at the drive' : ''}`); else { doorRest(); els.pasteNote.textContent = ''; }
   } catch (e) {
@@ -508,10 +549,11 @@ async function run(ask) {
     else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; run(next); }
   }
 }
-function load(work, token) { return run({ work, token }); }
+function load(work, token, revision) { return run(revision === undefined ? { work, token } : { work, token, revision }); }
 
-function markOffered(work, token) {
-  for (const row of els.rows.querySelectorAll('.row')) row.classList.toggle('now', row.dataset.work === work && row.dataset.token === String(token));
+function markOffered(work, token, revision) {
+  // the work's row is marked for any of its revisions; a revision's own row only for itself
+  for (const row of els.rows.querySelectorAll('.row')) row.classList.toggle('now', row.dataset.work === work && row.dataset.token === String(token) && (row.dataset.revision === undefined || row.dataset.revision === String(revision)));
 }
 function markDiskRow(index) {
   for (const row of els.diskRows.querySelectorAll('.row')) row.classList.toggle('now', index !== null && row.dataset.index === String(index));
@@ -545,7 +587,7 @@ function provenance() {
     machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, mode: 'PURE', intervened: playing.intervened,
   };
   if (p.kind === 'stamped') out.stamp = { status: p.statuses.stamp, block: f.block, stampedAt: f.stampedAt, previousBlockHash: f.prevHash, digits: f.digits, seed: f.seed, row: f.row };
-  if (p.kind === 'slotted') out.mind = { status: p.statuses.mind, head: f.head, headStatus: p.statuses.head, canonicalHash: f.canonicalHash, brainBlob: f.brainBlob };
+  if (p.kind === 'slotted') out.mind = { status: p.statuses.mind, revision: f.revision, head: f.head, headStatus: p.statuses.head, canonicalHash: f.canonicalHash, brainBlob: f.brainBlob, record: f.record };
   return out;
 }
 /** A row: the key, then the value as text or as parts, a part being text or a link {text, href} that opens in a new tab so the machine plays on. */
@@ -611,7 +653,10 @@ function programRows(code, text) {
       rows.push(['STAMP', `${p.statuses.stamp} · block ${num(f.stampedAt)} · the character, the colour, the digits and the seed agree with the node's block hash`, '']);
     } else if (p.kind === 'slotted') {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`, '']);
-      rows.push(['MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`, '']);
+      const rec = f.record || {};
+      const which = f.revision === f.head ? `revision ${f.head}, the head (${p.statuses.head})` : `revision ${f.revision} of ${f.head} (the head ${p.statuses.head})`;
+      const saved = f.revision === 0 ? 'the blank slot the program ships' : `${rec.educationCount} lesson${rec.educationCount === 1 ? '' : 's'} · saved at block ${num(rec.savedAtBlock)} by ${shortAddr(rec.savedBy)}`;
+      rows.push(['MIND', `${p.statuses.mind} · ${which} · hash ${SHORT(f.canonicalHash)} equals the record's${f.revision === 0 ? ' and the pin' : ''} · ${saved}`, '']);
     } else if (p.kind === 'file' && p.cart) {
       const c = f.cartridge;
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · sha256 ${SHORT(f.sha256)}`, '']);
@@ -796,10 +841,11 @@ async function start() {
   // the machine starts on a program: the one the address names, or the Tony demo, the first token of the series
   const q = new URLSearchParams(location.search);
   let work = q.get('work'), token = parseInt(q.get('token') || '1', 10);
+  const revision = q.has('revision') && /^\d+$/.test(q.get('revision')) ? parseInt(q.get('revision'), 10) : undefined;
   if (!(work && allRows.some((r) => r.work === work && r.token === token))) { work = 'tony'; token = 1; }
   if (!allRows.some((r) => r.work === work && r.token === token)) { work = allRows[0].work; token = allRows[0].token; }
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
-  load(work, token);
+  load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
 window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
 start();

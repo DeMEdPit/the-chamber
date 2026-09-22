@@ -127,7 +127,25 @@ try {
   const running2 = await until(() => pg.evaluate(() => /revision 2/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running'), 30000, 500);
   check(!!running2, 'the Perception head loads: revision 2, the mind CONTRACT-CONSISTENT');
   const now2 = await pg.evaluate(() => document.getElementById('now').textContent);
-  check(/MIND/.test(now2) && /CONTRACT-CONSISTENT/.test(now2) && /NODE-REPORTED/.test(now2), 'NOW PLAYING for a mind: MIND CONTRACT-CONSISTENT, the head NODE-REPORTED');
+  check(/MIND/.test(now2) && /CONTRACT-CONSISTENT/.test(now2) && /NODE-REPORTED/.test(now2) && /revision 2, the head \(NODE-REPORTED\)/.test(now2) && /2 lessons · saved at block 12,347 by 0x1111…1111/.test(now2), 'NOW PLAYING for a mind: MIND CONTRACT-CONSISTENT, the head NODE-REPORTED, its lessons, block and saver');
+  // the revision picker: REVISIONS on the mind's row lists every mind it has held, genesis first in the record and last in
+  // the list; any one loads, held to its record's hash, genesis to its pin as well; the address names a revision
+  await pg.click('#rows .row[data-work="perception-canary"] button.more');
+  const revList = await until(() => pg.evaluate(() => { const subs = [...document.querySelectorAll('#rows .row.sub')]; return subs.length === 3 ? subs.map((r) => r.dataset.revision + '|' + r.querySelector('.title').textContent + '|' + r.querySelector('.sub').textContent) : null; }), 20000, 200);
+  check(!!revList && /^2\|revision 2 · the head\|2 lessons taught in all · saved at block 12,347 by 0x1111…1111 · hash [0-9a-f]{12}…$/.test(revList[0]) && /^1\|revision 1\|1 lesson taught in all · saved at block 12,346 by 0x1111…1111 · hash [0-9a-f]{12}…$/.test(revList[1]) && /^0\|revision 0 · genesis\|the blank slot the program ships · hash [0-9a-f]{12}…$/.test(revList[2]), `REVISIONS lists the mind's three revisions under its row, the head first and genesis last (${revList ? revList.map((l) => l.split('|')[1]).join('; ') : 'not listed'})`);
+  const rowMarked = (sel) => pg.evaluate((q) => { const e = document.querySelector(q); return e ? e.classList.contains('now') : null; }, sel);
+  check((await rowMarked('#rows .row.sub[data-revision="2"]')) === true && (await rowMarked('#rows .row.sub[data-revision="1"]')) === false, 'the head\'s row is marked while the head plays');
+  await pg.click('#rows .row.sub[data-revision="1"] button.load');
+  const rev1 = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /revision 1 of 2/.test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null)), 30000, 500);
+  check(!!rev1 && /MIND\s*CONTRACT-CONSISTENT · revision 1 of 2 \(the head NODE-REPORTED\) · hash [0-9a-f]{12}… equals the record's · 1 lesson · saved at block 12,346 by 0x1111…1111/.test(rev1) && /PROGRAM\s*Perception Chamber Canary · 1 · revision 1 of 2/.test(rev1), 'revision 1 loads: its mind read from its blob, CONTRACT-CONSISTENT with its record, said with its lessons, block and saver');
+  const provRev = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  check(provRev && provRev.mind.revision === 1 && provRev.mind.head === 2 && provRev.mind.status === 'CONTRACT-CONSISTENT' && provRev.mind.record.savedAtBlock === 12346 && provRev.mind.record.educationCount === 1 && /^0x[0-9a-fA-F]{40}$/.test(provRev.mind.brainBlob) && provRev.program.status === 'PINNED' && provRev.reads.some((r) => /the code of 0x/.test(r)), 'the provenance names the revision, the head, the record and the blob read');
+  check((await rowMarked('#rows .row.sub[data-revision="1"]')) === true && (await rowMarked('#rows .row.sub[data-revision="2"]')) === false && (await rowMarked('#rows .row[data-work="perception-canary"]:not(.sub)')) === true, 'the revision\'s row and the mind\'s row are marked, the head\'s no longer');
+  await pg.click('#rows .row.sub[data-revision="0"] button.load');
+  const rev0 = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /revision 0 of 2/.test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null)), 30000, 500);
+  check(!!rev0 && /MIND\s*PINNED · revision 0 of 2 \(the head NODE-REPORTED\) · hash [0-9a-f]{12}… equals the record's and the pin · the blank slot the program ships/.test(rev0), 'genesis loads: the blank slot, PINNED against the catalogue as well as its record');
+  await pg.click('#rows .row[data-work="perception-canary"] button.more');
+  check(await pg.evaluate(() => document.querySelectorAll('#rows .row.sub').length === 0), 'a second press on REVISIONS folds the list');
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
   const running3 = await until(() => pg.evaluate(() => /keccak256/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running'), 30000, 500);
@@ -325,6 +343,14 @@ try {
   const marked = await pa.evaluate(() => !!document.querySelector('#rows .row.now[data-token="7"]'));
   check(!!named && marked, 'an address opens on the program it names, token 7, running and marked');
   await pa.close();
+  const pr = await b.newPage({ viewport: { width: 1180, height: 900 } });
+  await pr.goto(`${A.base}/machine/?work=perception-canary&token=1&revision=1`, { waitUntil: 'load' });
+  const openedRev = await until(() => pr.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /revision 1 of 2/.test(document.getElementById('now').textContent) ? true : null)), 90000, 500);
+  check(!!openedRev, 'the address names a revision and the page opens on it');
+  await pr.goto(`${A.base}/machine/?work=perception-canary&token=1&revision=9`, { waitUntil: 'load' });
+  const beyond = await until(() => pr.evaluate(() => (document.getElementById('state').dataset.phase === 'refused' ? document.getElementById('state').textContent + ' · ' + document.getElementById('now').textContent : null)), 90000, 500);
+  check(!!beyond && /REFUSED · NO_SUCH_REVISION/.test(beyond) && /has revisions 0 to 2 at block/.test(beyond), `a revision beyond the head is refused in words (${beyond ? beyond.slice(0, 60) : 'no refusal'})`);
+  await pr.close();
 
   // widths
   // the tiers the stylesheet sets by the window's height on a wide screen: the log gives up height first, then the machine gives up size

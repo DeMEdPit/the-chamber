@@ -236,12 +236,39 @@ export async function firmwareFromChain(node, onStatus = () => {}) {
   });
 }
 
+// ------------------------------------------------------------------ the revisions of a mind
+/** A revision record's nine words, named as the contract returns them. */
+function decodeRecord(rec) {
+  return { brain: '0x' + hex(rec[0].subarray(12)), parent: Number(BigInt('0x' + hex(rec[1]))), lessons: Number(BigInt('0x' + hex(rec[2]))), educationCount: Number(BigInt('0x' + hex(rec[3]))),
+    learner: Number(BigInt('0x' + hex(rec[4]))), education: '0x' + hex(rec[5].subarray(12)), savedAtBlock: Number(BigInt('0x' + hex(rec[6]))), canonicalHash: hex(rec[7]), savedBy: '0x' + hex(rec[8].subarray(12)) };
+}
+/**
+ * Every revision of a token's mind, 0 (genesis) to the head, each record read through one node at one block: what a
+ * picker lists. Nothing is verified here beyond the node's word (NODE-REPORTED); a revision is held to its hash when it
+ * is loaded. Returns {head, revisions: [record with r], observation}.
+ */
+export async function revisionsOf(node, catalogue, workKey, tokenId, onStatus = () => {}) {
+  const work = catalogue.works.find((w) => w.key === workKey);
+  if (!work || work.program.kind !== 'slotted') throw new MachineError('NO_SUCH_WORK', `${workKey} has no revisions`);
+  return node.observe(async (s) => {
+    onStatus(`asking the node for the head of ${work.name} token ${tokenId}, at block ${s.block.toLocaleString('en-US')}`);
+    const head = decUint(await s.ethCall(work.address, encCall('head(uint256)', tokenId)));
+    const revisions = [];
+    for (let r = 0; r <= head; r++) {
+      const rec = decWords(await s.ethCall(work.address, encCall('revision(uint256,uint32)', tokenId, r)));
+      if (rec.length < 9) throw new MachineError('BAD_RETURN', `revision(${tokenId}, ${r}) came back with ${rec.length} words`);
+      revisions.push({ r, ...decodeRecord(rec) });
+    }
+    return { head, revisions, observation: s.facts() };
+  });
+}
+
 // ------------------------------------------------------------------ programs: one record whatever the source
 /**
  * Read a program of the catalogue from the chain and hold it to its pins.
  * Returns {bytes, work, token, label, kind, statuses, facts} or throws a MachineError with a code.
  */
-export async function programFromChain(node, catalogue, workKey, tokenId, onStatus = () => {}) {
+export async function programFromChain(node, catalogue, workKey, tokenId, onStatus = () => {}, revision = undefined) {
   const work = catalogue.works.find((w) => w.key === workKey);
   if (!work) throw new MachineError('NO_SUCH_WORK', `the catalogue has no work ${workKey}`);
   const kind = work.program.kind;
@@ -300,20 +327,39 @@ export async function programFromChain(node, catalogue, workKey, tokenId, onStat
         throw new MachineError('HASH_MISMATCH', `the program outside its slot hashes to ${short(outside)}, the pin is ${short(work.program.slot.sha256WindowZeroed)}`);
       }
       statuses.program = STATUS.PINNED;
-      onStatus(`checking the mind against revision ${head}'s record`);
-      const recRaw = await s.ethCall(work.address, encCall('revision(uint256,uint32)', tokenId, head));
+      // the mind: the head's, already in the program, or an earlier revision's, read from the blob its record names and
+      // spliced into the slot; either is held to the record's hash at the same block, and genesis to its pin as well
+      const r = revision === undefined ? head : revision;
+      if (!Number.isInteger(r) || r < 0) throw new MachineError('NO_SUCH_REVISION', `${r} is not a revision`);
+      if (r > head) throw new MachineError('NO_SUCH_REVISION', `${work.name} token ${tokenId} has revisions 0 to ${head} at block ${s.block}; ${r} does not exist yet`);
+      onStatus(`checking the mind against revision ${r}'s record`);
+      const recRaw = await s.ethCall(work.address, encCall('revision(uint256,uint32)', tokenId, r));
       const rec = decode('revision', () => decWords(recRaw));
-      facts.reads.push(`revision(${tokenId}, ${head}) at block ${s.block}`);
-      if (rec.length < 8) throw new MachineError('BAD_RETURN', `revision(${tokenId}, ${head}) came back with ${rec.length} words`);
-      const canonical = hex(rec[7]);
-      const slotHash = await sha256Hex(p.subarray(off, off + 834));
+      facts.reads.push(`revision(${tokenId}, ${r}) at block ${s.block}`);
+      if (rec.length < 9) throw new MachineError('BAD_RETURN', `revision(${tokenId}, ${r}) came back with ${rec.length} words`);
+      const record = decodeRecord(rec);
+      let slot;
+      if (r === head) slot = p.subarray(off, off + 834);
+      else {
+        onStatus(`reading revision ${r}'s mind from its blob`);
+        const code = await s.code(record.brain);
+        facts.reads.push(`the code of ${record.brain} at block ${s.block}`);
+        if (code.length !== 835 || code[0] !== 0) throw new MachineError('NOT_A_DATA_CONTRACT', `${record.brain} is not a mind blob (${code.length} bytes)`);
+        slot = code.subarray(1);
+        p.set(slot, off);
+      }
+      const slotHash = await sha256Hex(slot);
       // the same block served the mind and its record; a disagreement is the node's, so it sets the node aside
-      if (slotHash !== canonical) throw new MachineError('HASH_MISMATCH', `the mind in the program hashes to ${short(slotHash)}, the record at the same block says ${short(canonical)}`);
+      if (slotHash !== record.canonicalHash) throw new MachineError('HASH_MISMATCH', `the mind hashes to ${short(slotHash)}, the record at the same block says ${short(record.canonicalHash)}`);
       statuses.mind = STATUS.CONTRACT_CONSISTENT;
-      Object.assign(facts, { head, canonicalHash: canonical, brainBlob: '0x' + hex(rec[0].subarray(12)), sha256: await sha256Hex(p),
-        pins: { sha256WindowZeroed: work.program.slot.sha256WindowZeroed, frozenSha256: work.program.sha256 } });
+      if (r === 0) {
+        if (slotHash !== work.program.genesis.sha256) throw new MachineError('HASH_MISMATCH', `genesis hashes to ${short(slotHash)}, the pin is ${short(work.program.genesis.sha256)}`);
+        statuses.mind = STATUS.PINNED;
+      }
+      Object.assign(facts, { head, revision: r, canonicalHash: record.canonicalHash, brainBlob: record.brain, record, sha256: await sha256Hex(p),
+        pins: { sha256WindowZeroed: work.program.slot.sha256WindowZeroed, frozenSha256: work.program.sha256, genesisSha256: work.program.genesis.sha256 } });
       bytes = p;
-      label = `${work.name} · ${tokenId} · revision ${head}`;
+      label = `${work.name} · ${tokenId} · revision ${r}${r === head ? '' : ` of ${head}`}`;
     } else {
       onStatus(`reading ${work.name} at block ${s.block.toLocaleString('en-US')}`);
       const pRaw = await s.ethCall(work.address, encCall('prg()'));
