@@ -185,7 +185,7 @@ try {
     const badge = await pw.evaluate(() => { const l = document.getElementById('link').getBoundingClientRect(), f = document.getElementById('frame').getBoundingClientRect(); return { right: f.right - l.right, left: l.left - f.left, block: document.getElementById('link-block').innerText }; });
     check(w < 1140 ? (badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge sits ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block})`);
     const badgeNow = await pw.evaluate(() => document.getElementById('link').getBoundingClientRect().width);
-    if (w < 1140) check(Math.abs(badgeNow - shape0.badge) <= 1, `at ${w} wide: the badge keeps one width from first paint to a held read (${Math.round(shape0.badge)} then ${Math.round(badgeNow)})`);
+    check(Math.abs(badgeNow - shape0.badge) <= 1, `at ${w} wide: the badge keeps one width from first paint to a held read, in its ${w < 1140 ? 'short' : 'long'} form (${Math.round(shape0.badge)} then ${Math.round(badgeNow)})`);
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }
@@ -289,8 +289,8 @@ try {
   check(nodesE.setAside.length === 1 && nodesE.setAside[0].node === '/rpc' && /HASH_MISMATCH/.test(nodesE.setAside[0].why) && nodesE.demoted.length === 0,
         `the first endpoint is set aside for the visit, not merely demoted (${JSON.stringify(nodesE)})`);
   check(await pe.evaluate(() => /1 set aside this visit/.test(document.getElementById('now').textContent)), 'NOW PLAYING says one endpoint is set aside');
-  const linkE = await pe.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').innerText, block: document.getElementById('link-block').innerText, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
-  check(linkE.phase === 'held' && linkE.node === '/rpc2' && /1 set aside/.test(linkE.block) && linkE.cells.join() === 'set-aside,held', `THE CHAIN strip shows the first cell set aside and the second holding (${linkE.cells.join()}; ${linkE.block})`);
+  const linkE = await pe.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, node: document.getElementById('link-node').innerText, block: document.getElementById('link-block').innerText, title: document.getElementById('link').title, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state) }));
+  check(linkE.phase === 'held' && linkE.node === '/rpc2' && /^block [\d,]+ · [0-9a-f]{12}…$/.test(linkE.block) && /1 set aside this visit$/.test(linkE.title) && linkE.cells.join() === 'set-aside,held', `the badge shows the first cell set aside and the second holding, the words in its title (${linkE.cells.join()}; ${linkE.block}; ${linkE.title})`);
   const readsE = E.log.filter((r) => r.path === '/rpc' && r.method === 'eth_call');
   check(readsE.length === 0, `no contract call went to the set-aside endpoint after its contradiction (${readsE.length})`);
   await pe.close();

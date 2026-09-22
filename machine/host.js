@@ -75,16 +75,14 @@ function renderLink(st) {
   const pair = (el, short, long) => { el.textContent = ''; for (const [cls, text] of [['s', short], ['l', long]]) { const b = document.createElement('span'); b.className = cls; b.textContent = text; el.appendChild(b); } };
   const none = st.phase === 'off' ? 'no node yet' : 'no node';
   pair(els.linkNode, st.host ? shortHost(st.host) : none, st.host || none);
-  // the short form keeps one width: the reads take the block's place while a read is in flight, and a node set
-  // aside shows as its red cell; the long form says everything in words
+  // both forms keep one width, on fixed columns: while a read is in flight the reads take the place of the block
+  // number (short form) or of the block's hash (long form), and a node set aside shows as its red cell; the words
+  // for it are in the badge's title and in NOW PLAYING
   const reading = st.phase === 'reading' && st.reads ? `${st.reads} read${st.reads === 1 ? '' : 's'}` : null;
-  const long = [];
-  if (st.block) long.push(`block ${num(st.block)} · ${SHORT(st.blockHash)}`);
-  if (reading) long.push(reading);
-  if (st.setAside) long.push(`${st.setAside} set aside`);
-  pair(els.linkBlock, reading || (st.block ? `#${st.block}` : ''), long.join(' · '));
+  pair(els.linkBlock, reading || (st.block ? `#${st.block}` : ''), st.block ? `block ${num(st.block)} · ${reading || SHORT(st.blockHash)}` : (reading || ''));
   const chain = catalogue ? `${chainName(catalogue.chainId)} (chain ${catalogue.chainId})` : 'the chain';
-  els.link.title = st.host ? `${chain} · ${st.host}${st.block ? ` · block ${num(st.block)} · ${st.blockHash}` : ''}` : `${chain} · no node yet`;
+  const aside = st.setAside ? ` · ${st.setAside} set aside this visit` : '';
+  els.link.title = (st.host ? `${chain} · ${st.host}${st.block ? ` · block ${num(st.block)} · ${st.blockHash}` : ''}` : `${chain} · no node yet`) + aside;
   els.linkEndpoints.textContent = '';
   for (const e of st.endpoints) {
     const i = document.createElement('i');
