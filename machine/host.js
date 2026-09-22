@@ -5,7 +5,7 @@
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
 import { createMachine, bootMachine, partsFromSite, STATUS } from './bridge-client.js';
-import { Node, machineFromChain, programFromChain } from './chain.js';
+import { Node, machineFromChain, firmwareFromChain, programFromChain } from './chain.js';
 import { createAudio } from './audio.js';
 
 const PAGE = 'machine/1c';
@@ -14,13 +14,15 @@ const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
-  sound: $('sound'), ring: $('ring'), ways: $('ways'),
+  sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
-let busy = false, pendingAsk = null;
+let busy = false, pendingAsk = null, pendingFirmware = null;
 let inputMode = 'joystick';
+let firmwareMode = 'off';   // 'off': the machine bare, as the programs of the series run on chain; 'on': OpenROMs pressing 1, READY first
+const FIRMWARE_NAME = 'OpenROMs pressing 1';
 const state = { phase: 'off' };
 const LOG_LINES = 14;
 const fullLog = [];
@@ -128,11 +130,63 @@ async function ensureMachine() {
     bytes = await partsFromSite();
     say('the site\'s copies matched their pins: PINNED');
   }
-  const ready = await bootMachine(machine, bytes, { firmware: false });
-  machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, firmware: false };
+  let firmware = { mode: 'off' };
+  if (firmwareMode === 'on') {
+    let fw;
+    try {
+      fw = await firmwareFromChain(node, say);
+      say(`the firmware matched its pins: ${fw.status}, from the chain`);
+    } catch (e) {
+      say(`the chain did not give the firmware (${e.code}: ${e.message}); the site's copies instead`);
+      const site = await partsFromSite();
+      fw = { roms: site.roms, status: site.status, source: site.source };
+      say('the site\'s copies of the firmware matched their pins: PINNED');
+    }
+    bytes = { parts: bytes.parts, roms: fw.roms };
+    firmware = { mode: 'on', name: FIRMWARE_NAME, status: fw.status, source: fw.source };
+  }
+  const ready = await bootMachine(machine, bytes, { firmware: firmwareMode === 'on', status: firmware.status });
+  machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, firmware };
   await machine.request('input', { mode: inputMode });
   await attachSound();
   veil('');
+}
+/** The firmware switch: the machine is rebuilt with or without the ROMs, and what was playing is read and run again. */
+async function setFirmware(mode) {
+  if (mode === firmwareMode) return;
+  if (busy) { pendingFirmware = mode; return; }
+  busy = true;
+  firmwareMode = mode;
+  els.firmware.value = mode;
+  // a READY prompt wants the keyboard; a program of the series wants the stick
+  inputMode = mode === 'on' ? 'keyboard' : 'joystick';
+  els.input.value = inputMode;
+  const was = playing ? { work: playing.program.facts.work, token: playing.program.facts.token } : null;
+  try {
+    if (machine) {
+      say(mode === 'on' ? `firmware on: rebuilding the machine with ${FIRMWARE_NAME}` : 'firmware off: rebuilding the machine bare');
+      audio.detach();
+      machine.destroy();
+      machine = null;
+      playing = null;
+      setState('reading', 'REBUILDING');
+      node = node || new Node(catalogue.endpoints, catalogue.chainId, say);
+      await ensureMachine();
+      if (was) pendingAsk = was;
+      else { setState('idle', mode === 'on' ? 'READY' : 'THE MACHINE IS ON'); renderNow(); markOffered(null, null); }
+    } else {
+      say(mode === 'on' ? `firmware on: the machine will boot ${FIRMWARE_NAME} when it starts` : 'firmware off: the machine will start bare');
+    }
+  } catch (e) {
+    setState('failed', 'THE MACHINE DID NOT START');
+    say(`the machine did not start under the firmware switch (${e.code || 'FAILED'}: ${e.message})`);
+    veil('THE MACHINE STOPPED · press LOAD to start it again');
+    renderNow(e.code || 'FAILED', e.message);
+  } finally {
+    busy = false;
+    if (pendingFirmware !== null) { const m = pendingFirmware; pendingFirmware = null; setFirmware(m); }
+    else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; load(next.work, next.token); }
+  }
 }
 /** The page plays the machine's sound once a gesture has unlocked the page's audio; until then the next tap does it. */
 async function attachSound() {
@@ -177,7 +231,8 @@ async function load(work, token) {
     renderNow(code, e.message);
   } finally {
     busy = false;
-    if (pendingAsk) { const next = pendingAsk; pendingAsk = null; load(next.work, next.token); }
+    if (pendingFirmware !== null) { const m = pendingFirmware; pendingFirmware = null; setFirmware(m); }
+    else if (pendingAsk) { const next = pendingAsk; pendingAsk = null; load(next.work, next.token); }
   }
 }
 
@@ -199,7 +254,7 @@ function provenance() {
     page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: f.contract, token: f.token, label: p.label,
     program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, pins: f.pins },
     node: f.node, reads: f.reads,
-    machine: machineFacts, firmware: false, input: inputMode, mode: 'PURE', intervened: playing.intervened,
+    machine: machineFacts, firmware: machineFacts.firmware, input: inputMode, mode: 'PURE', intervened: playing.intervened,
   };
   if (p.kind === 'stamped') out.stamp = { status: p.statuses.stamp, block: f.block, stampedAt: f.stampedAt, previousBlockHash: f.prevHash, digits: f.digits, seed: f.seed, row: f.row };
   if (p.kind === 'slotted') out.mind = { status: p.statuses.mind, head: f.head, headStatus: p.statuses.head, canonicalHash: f.canonicalHash, brainBlob: f.brainBlob };
@@ -219,6 +274,10 @@ function renderNow(code, text) {
     if (code) {
       els.now.appendChild(line(code === 'RPC_UNAVAILABLE' ? 'NO NODE' : 'REFUSED', text, 'bad'));
       if (code !== 'RPC_UNAVAILABLE') els.now.appendChild(line('WHAT THAT MEANS', 'the bytes did not match what the catalogue pinned, so they did not run', 'muted'));
+    } else if (state.phase === 'idle' && machineFacts && machineFacts.firmware.mode === 'on') {
+      els.now.appendChild(line('READY', `${FIRMWARE_NAME} is up at its prompt · type at it, or LOAD a program`, 'muted'));
+      els.now.appendChild(line('FIRMWARE', `on · ${FIRMWARE_NAME} · ${machineFacts.firmware.status} · from ${machineFacts.firmware.source}`));
+      els.now.appendChild(line('INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix'));
     } else {
       els.now.appendChild(line('NOTHING', 'choose a program; nothing runs until you press LOAD', 'muted'));
     }
@@ -238,7 +297,7 @@ function renderNow(code, text) {
     els.now.appendChild(line('BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · keccak256 ${SHORT(f.keccak256)} equals the pin`));
   }
   els.now.appendChild(line('MACHINE', `${machineFacts.status} · ${machineFacts.name} · from ${machineFacts.source}`));
-  els.now.appendChild(line('FIRMWARE', 'off · the program runs bare, as it does on chain'));
+  els.now.appendChild(line('FIRMWARE', machineFacts.firmware.mode === 'on' ? `on · ${FIRMWARE_NAME} · ${machineFacts.firmware.status} · from ${machineFacts.firmware.source} · the program runs the same, it banks the ROMs out as it starts` : 'off · the program runs bare, as it does on chain'));
   els.now.appendChild(line('INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix'));
   els.now.appendChild(line('MODE', playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine'));
   els.now.appendChild(line('NODE', f.node || '—'));
@@ -267,11 +326,12 @@ els.reset.addEventListener('click', async () => {
   if (!machine || !machine.alive) return;
   try { await machine.request('reset'); } catch (e) { return; }
   playing = null;
-  setState('idle', 'RESET');
-  say('the machine was reset; it is on and bare');
+  setState('idle', firmwareMode === 'on' ? 'READY' : 'RESET');
+  say(firmwareMode === 'on' ? `the machine was reset; ${FIRMWARE_NAME} is at READY` : 'the machine was reset; it is on and bare');
   renderNow();
   markOffered(null, null);
 });
+els.firmware.addEventListener('change', () => { setFirmware(els.firmware.value === 'on' ? 'on' : 'off'); });
 els.retry.addEventListener('click', () => { if (lastAsk) load(lastAsk.work, lastAsk.token); });
 // ------------------------------------------------------------------ the touch controls
 // The ring is read as an ANGLE from its centre, so every part of it outside the
@@ -374,5 +434,5 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return firmwareMode; }, get input() { return inputMode; }, provenance, report, STATUS };
 start();

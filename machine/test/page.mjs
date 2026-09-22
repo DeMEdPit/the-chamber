@@ -104,6 +104,23 @@ try {
   await pg.click('#rows .row[data-work="tony"] button.load');
   const running3 = await until(() => pg.evaluate(() => /keccak256/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running'), 30000, 500);
   check(!!running3, 'a whole program loads: PINNED by keccak256');
+  // the firmware switch: the machine rebuilt with the ROMs from the chain, the program running the same, READY on reset, and back
+  await pg.selectOption('#firmware', 'on');
+  const fwOn = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 90000, 500);
+  check(!!fwOn, 'FIRMWARE on: the machine rebuilt with OpenROMs pressing 1 from the chain, PINNED, the program running again');
+  const fwProv = await pg.evaluate(() => { const p = window.machinePage.provenance(); return p && p.firmware && p.firmware.mode === 'on' && p.firmware.status === 'PINNED' && /ethereum/.test(p.firmware.source); });
+  check(fwProv, 'the provenance says firmware on, PINNED, from ethereum');
+  check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard'), 'the keyboard is the input under the firmware');
+  await pg.click('#reset');
+  const readyText = await until(() => pg.evaluate(() => window.machinePage.machine.request('screen').then((r) => (/READY\./.test(r.text) && /OPEN ROMS C64/.test(r.text) ? r.text : null)).catch(() => null)), 15000, 500);
+  check(!!readyText && (await pg.evaluate(() => document.getElementById('state').textContent === 'READY')), 'RESET under the firmware: the OpenROMs banner and READY on the screen, the state READY');
+  await pg.selectOption('#firmware', 'off');
+  const fwOff = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'THE MACHINE IS ON' && window.machinePage.input === 'joystick'), 90000, 500);
+  check(!!fwOff, 'FIRMWARE off: the machine rebuilt bare, the stick the input again');
+  await pg.fill('#search', 'tony');
+  await pg.click('#rows .row[data-work="tony"] button.load');
+  const running4 = await until(() => pg.evaluate(() => /FIRMWARE.*off · the program runs bare/.test(document.getElementById('now').textContent) && document.getElementById('state').dataset.phase === 'running'), 30000, 500);
+  check(!!running4, 'a program runs bare again after the switch');
   await pg.click('#reset');
   const reset = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'RESET'), 5000);
   check(!!reset, 'RESET');

@@ -281,7 +281,7 @@ checked the same way; choose any other program below.</p>
         <dt>DIAGONALS</dt><dd><select class="mode" id="ways" aria-label="how the ring reads a diagonal"><option value="4" selected>one direction</option><option value="8">both directions, eight ways</option></select> <span class="hint">on a touch screen the ring is read by angle, and the hole is rest. The programs of the series stand still when two directions are pressed together, so a diagonal is read as one direction, left or right first, until you say otherwise.</span></dd>
         <dt>KEYBOARD</dt><dd>your keys are the C64's; Escape is RUN/STOP, Home is CLR/HOME, the function keys are F1 to F7.</dd>
         <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint">the page plays what the machine's sound chip makes</span></dd>
-        <dt>FIRMWARE</dt><dd>off: the programs of the series run bare, as they do on chain.</dd>
+        <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware"><option value="off" selected>off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="hint">the programs of the series run bare, as they do on chain, and run the same with the firmware present, because they bank it out as they start. With it on, the machine boots the on-chain OpenROMs to READY, RESET brings the prompt back, and the keyboard is yours.</span></dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button></dd>
       </dl>
     </section>

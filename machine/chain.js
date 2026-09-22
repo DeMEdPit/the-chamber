@@ -110,6 +110,29 @@ export async function machineFromChain(node, onStatus = () => {}) {
   return { parts, roms: null, status: STATUS.PINNED, source: `ethereum, through ${node.url.replace(/^https?:\/\//, '')}` };
 }
 
+/**
+ * Read the firmware, OpenROMs pressing 1, from the chain: the three ROM blobs
+ * at the addresses pinned in bridge-client.js, each held to its pinned hash,
+ * so the statement is PINNED, a commitment held before the node was asked.
+ * The ROM set's own stated hashes are not consulted: the pin is the stronger
+ * claim, and the standalone document is where the contract's word is read.
+ */
+export async function firmwareFromChain(node, onStatus = () => {}) {
+  const roms = {};
+  const names = ['kernal', 'basic', 'chargen'];
+  for (let i = 0; i < names.length; i++) {
+    const pin = PINS.firmware[names[i]];
+    onStatus(`reading the firmware from ethereum, ${i + 1} of ${names.length}`);
+    const code = await node.code(pin.address);
+    if (code.length < 2 || code[0] !== 0) throw new MachineError('NOT_A_DATA_CONTRACT', `${pin.address} is not a data contract`);
+    const payload = code.slice(1);
+    const h = await sha256Hex(payload);
+    if (h !== pin.sha256) throw new MachineError('HASH_MISMATCH', `${pin.file}: the chain's bytes hash to ${short(h)}, the pin is ${short(pin.sha256)}`);
+    roms[names[i]] = payload.buffer;
+  }
+  return { roms, status: STATUS.PINNED, source: `ethereum, through ${node.url.replace(/^https?:\/\//, '')}` };
+}
+
 // ------------------------------------------------------------------ programs: one record whatever the source
 /**
  * Read a program of the catalogue from the chain and hold it to its pins.
