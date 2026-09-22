@@ -8,6 +8,7 @@ import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './
 import { Node, machineFromChain, firmwareFromChain, programFromChain, zeroWindow } from './chain.js';
 import { keccakHex } from './keccak.js';
 import { scanProgram, needsOf, inputOf, scanWords, hex4 } from './scan.js';
+import { parseD64, readFile as readDiskFile, D64_SIZES } from './d64.js';
 import { createAudio } from './audio.js';
 
 const PAGE = 'machine/2b';
@@ -17,7 +18,8 @@ const els = {
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'), firmwareWhy: $('firmware-why'),
-  door: $('door'), doorText: $('door-text'), file: $('file'),
+  door: $('door'), doorText: $('door-text'), file: $('file'), disk: $('disk'), diskName: $('disk-name'), diskCount: $('disk-count'), diskRows: $('disk-rows'),
+  paste: $('paste'), runPaste: $('run-paste'), pasteNote: $('paste-note'),
   link: $('link'), linkChain: $('link-chain'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
@@ -153,25 +155,102 @@ function renderRows(filter) {
 // A file of the visitor's becomes the same record a chain program is, judged for its shape and for nothing else:
 // the status is YOUR FILE and no chain claim is made. It is read in this browser and sent nowhere. What is not a
 // program the machine loads is refused with a code and a sentence that names what the file is.
-const D64_SIZES = new Set([174848, 175531, 196608, 197376]);   // a disk image: 35 tracks, with error bytes; 40 tracks, with error bytes
 const FILE_LIMIT = 65538;   // a two-byte load address and at most 64K after it: the machine document's own limit (PROTOCOL.md)
+const refuse = (code, text) => { throw Object.assign(new Error(text), { code }); };
+/** The same record for bytes from anywhere: a .prg, a program picked off a disk, a paste. The shape is checked (a load
+ *  address, a size that fits), the bytes read for what they need, recognised if they are the series' own; no chain claim. */
+async function programFromBytes(bytes, meta) {
+  const name = meta.name, size = bytes.length;
+  if (size < 3) refuse('PRG_TOO_SHORT', `${name} is ${size} byte${size === 1 ? '' : 's'}; a program file carries a two-byte load address and at least one byte after it`);
+  if (size > FILE_LIMIT) refuse('FILE_TOO_LARGE', `${name} is ${num(size)} bytes; a program is at most 65,536 bytes after its load address`);
+  const load = bytes[0] | (bytes[1] << 8);
+  if (load + size - 2 > 0x10000) refuse('PRG_ADDRESS_OVERFLOW', `${name} loads at ${hex4(load)} and its ${num(size - 2)} bytes would run past 64K`);
+  const sha256 = await sha256Hex(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  const scan = scanProgram(bytes), needs = needsOf(scan), known = await recognise(bytes);
+  return { kind: 'file', label: meta.label.slice(0, 80), bytes, statuses: { program: STATUS.YOUR_FILE },
+    facts: { work: 'file', workName: 'your file', contract: null, token: null, name, size, source: meta.source, file: meta.file || null, pasted: meta.pasted || null,
+      load, sha256, scan, needs, known, node: null, observation: null, reads: [] } };
+}
+const fileFacts = (file) => ({ name: file.name || 'a file', size: file.size, type: file.type || '', modified: Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : null });
+const isDiskFile = (file) => !!D64_SIZES[file.size] || /\.d64$/i.test(file.name || '');
+/** A .prg of the visitor's: what is not one is refused with a code and a sentence that names what the file is. */
 async function programFromFile(file) {
-  const refuse = (code, text) => { throw Object.assign(new Error(text), { code }); };
   const name = file.name || 'a file', size = file.size;
   const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const first = Array.from(head.subarray(0, 8), (b) => b.toString(16).padStart(2, '0')).join(' ');
   if (head.length === 16 && String.fromCharCode(...head) === 'C64 CARTRIDGE   ') refuse('KIND_UNSUPPORTED', `${name} is a cartridge image (${num(size)} bytes); the cartridge door comes in a later phase of this page`);
-  if (D64_SIZES.has(size)) refuse('KIND_UNSUPPORTED', `${name} is a disk image (${num(size)} bytes); the disk door comes in a later phase of this page`);
-  if (!/\.prg$/i.test(name)) refuse('KIND_UNSUPPORTED', `${name} is not a .prg file (${num(size)} bytes${first ? ', beginning ' + first : ''}); this page loads .prg files`);
-  if (size < 3) refuse('PRG_TOO_SHORT', `${name} is ${size} byte${size === 1 ? '' : 's'}; a program file carries a two-byte load address and at least one byte after it`);
+  if (!/\.prg$/i.test(name)) refuse('KIND_UNSUPPORTED', `${name} is not a .prg file (${num(size)} bytes${first ? ', beginning ' + first : ''}); this page loads .prg files, .d64 images and pasted hex`);
   if (size > FILE_LIMIT) refuse('FILE_TOO_LARGE', `${name} is ${num(size)} bytes; a program is at most 65,536 bytes after its load address`);
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const load = bytes[0] | (bytes[1] << 8);
-  if (load + bytes.length - 2 > 0x10000) refuse('PRG_ADDRESS_OVERFLOW', `${name} loads at ${hex4(load)} and its ${num(bytes.length - 2)} bytes would run past 64K`);
-  const sha256 = await sha256Hex(bytes.buffer);
-  const scan = scanProgram(bytes), needs = needsOf(scan), known = await recognise(bytes);
-  return { kind: 'file', label: name.slice(0, 80), bytes, statuses: { program: STATUS.YOUR_FILE },
-    facts: { work: 'file', workName: 'your file', contract: null, token: null, name, size, type: file.type || '', modified: Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : null, load, sha256, scan, needs, known, node: null, observation: null, reads: [] } };
+  return programFromBytes(new Uint8Array(await file.arrayBuffer()), { name, label: name, source: 'file', file: fileFacts(file) });
+}
+// A disk: opened, its directory listed, nothing run until a program is picked. The machine has no drive (nopsta's build
+// has nothing behind its serial bus), so a program of a disk runs alone, and one that loads more from the disk stops there.
+let disk = null;   // the open disk: { file, image, dir }
+async function openDisk(file) {
+  const name = file.name || 'a disk';
+  door('busy', `reading ${name}`);
+  try {
+    const image = new Uint8Array(await file.arrayBuffer());
+    const dir = parseD64(image);
+    const programs = dir.entries.filter((e) => e.typeName === 'PRG');
+    if (!programs.length) refuse('D64_EMPTY', `${name}${dir.name ? ` ("${dir.name}")` : ''}: no program in its directory (${dir.entries.length} ${dir.entries.length === 1 ? 'entry' : 'entries'}, none PRG)`);
+    disk = { file: fileFacts(file), image, dir, summary: `${name} · ${dir.name || 'unnamed'} · ${programs.length} program${programs.length === 1 ? '' : 's'} · pick one below` };
+    renderDisk();
+    door('ok', disk.summary);
+    say(`your disk ${name}: ${num(image.length)} bytes, ${dir.tracks} tracks${dir.errorBytes ? ' with error bytes' : ''}, "${dir.name}" ${dir.id} ${dir.dos}, ${dir.entries.length} entries, ${programs.length} PRG; read in this browser, sent nowhere; the machine has no drive, so a program of it runs alone`);
+  } catch (e) {
+    const code = e.code || 'FAILED';
+    disk = null; els.disk.hidden = true;
+    door('refused', `${code} · ${e.message}`);
+    say(`your disk was refused (${code}): ${e.message}`);
+  }
+}
+function renderDisk() {
+  const { file, dir } = disk;
+  els.diskName.textContent = `${dir.name || 'unnamed'} · ${dir.id}${dir.dos ? ' ' + dir.dos : ''}`;
+  els.diskCount.textContent = `${file.name} · ${dir.tracks} tracks`;
+  els.diskRows.textContent = '';
+  for (const e of dir.entries) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.index = String(e.index);
+    const prg = e.typeName === 'PRG';
+    row.innerHTML = `<div class="t"><span class="title"></span><span class="sub"></span></div>`;
+    row.querySelector('.title').textContent = e.name || `(entry ${e.index + 1})`;
+    row.querySelector('.sub').textContent = `${e.typeName} · ${e.blocks} block${e.blocks === 1 ? '' : 's'}${e.locked ? ' · locked' : ''}${prg ? '' : ' · not a program'}`;
+    if (prg) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'load'; b.textContent = 'LOAD';
+      b.addEventListener('click', () => run({ disk, entry: e }));
+      row.appendChild(b);
+    }
+    els.diskRows.appendChild(row);
+  }
+  els.disk.hidden = false;
+}
+function programFromDisk(d, entry) {
+  const bytes = readDiskFile(d.image, entry, FILE_LIMIT);
+  const label = `${entry.name || 'entry ' + (entry.index + 1)} from ${d.file.name}`;
+  return programFromBytes(bytes, { name: `${entry.name || 'entry ' + (entry.index + 1)} (${d.file.name})`, label, source: 'disk',
+    file: { ...d.file, disk: { name: d.dir.name, id: d.dir.id, dos: d.dir.dos, tracks: d.dir.tracks, errorBytes: d.dir.errorBytes, entry: { index: entry.index, name: entry.name, type: entry.typeName, track: entry.track, sector: entry.sector, blocks: entry.blocks } } } });
+}
+/** A paste: hex with or without 0x, or base64, whitespace anywhere; the bytes are a program file's, its load address first. */
+async function programFromText(text) {
+  let t = String(text || '').replace(/\s+/g, '');
+  if (/^0x/i.test(t)) t = t.slice(2);
+  if (!t) refuse('PASTE_EMPTY', 'nothing pasted: a program as hex or base64, its load address first');
+  let bytes, format;
+  if (/^[0-9a-f]+$/i.test(t)) {
+    if (t.length % 2) refuse('PASTE_ODD_HEX', `${num(t.length)} hex digits: an odd count, and each byte needs two`);
+    bytes = new Uint8Array(t.length / 2);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(t.substr(i * 2, 2), 16);
+    format = 'hex';
+  } else if (/^[A-Za-z0-9+/]+={0,2}$/.test(t) && t.length % 4 === 0) {
+    let bin;
+    try { bin = atob(t); } catch (e) { refuse('PASTE_BAD_BASE64', 'the paste looks like base64 but does not decode'); }
+    bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    format = 'base64';
+  } else refuse('PASTE_NOT_HEX_OR_BASE64', `${num(t.length)} characters that are neither hex nor base64`);
+  return programFromBytes(bytes, { name: `pasted ${format}`, label: `pasted ${format}`, source: 'paste', pasted: { format, chars: t.length } });
 }
 /** A file that is one of the series' own programs is recognised by the catalogue's pins: the Chamber's outside its 42-byte
  *  stamp, the Perception Chamber's outside its mind, the two older tokens whole. No node is asked, and what sits inside the
@@ -207,8 +286,15 @@ function decide(program) {
   const inp = inputOf(f.scan, on);
   return { on, input: inp.input, inputWhy: inp.why, why: firmwareMode === 'auto' ? f.needs.why : `${firmwareMode} by the switch` };
 }
-const DOOR_IDLE = 'drop a .prg here, or choose one';
+const DOOR_IDLE = 'drop a .prg or a .d64 here, or choose one';
 function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; }
+/** The door at rest: the open disk's summary, or the invitation. */
+function doorRest() { if (disk) door('ok', disk.summary); else door('idle', ''); }
+/** Where an ask is answered: the paste's own note for a paste, the door for a file or a disk's program; on a run, the other rests. */
+function told(ask, state, text) {
+  if (ask.text !== undefined) { els.pasteNote.textContent = state === 'idle' ? '' : text; if (state === 'ok') doorRest(); }
+  else { door(state, text); if (state === 'ok') els.pasteNote.textContent = ''; }
+}
 
 // ------------------------------------------------------------------ the machine
 async function ensureMachine(d) {
@@ -324,15 +410,18 @@ for (const ev of ['pointerup', 'click', 'keydown', 'touchend']) {
 /** One ask, whichever door it came through: {work, token} from the chain, {file} from the visitor's own files. A file
  *  is judged before the machine is asked for, so a wrong file costs nothing and leaves whatever is playing alone. */
 async function run(ask) {
+  if (ask.file && isDiskFile(ask.file)) { await openDisk(ask.file); return; }   // a disk is opened and listed; a program of it is a later ask
   if (busy) { pendingAsk = ask; return; }
   busy = true;
   lastAsk = ask;
   els.copied.textContent = '';
-  const fromFile = !!ask.file;
+  const fromFile = !!(ask.file || ask.entry || ask.text !== undefined);
   let program = null;
   try {
     if (!catalogue) throw Object.assign(new Error('the catalogue has not loaded'), { code: 'NO_CATALOGUE' });
-    if (fromFile) { door('busy', `reading ${ask.file.name}`); program = await programFromFile(ask.file); }
+    if (ask.file) { disk = null; els.disk.hidden = true; door('busy', `reading ${ask.file.name}`); program = await programFromFile(ask.file); }
+    else if (ask.entry) { door('busy', `reading ${ask.entry.name} from ${ask.disk.file.name}`); program = await programFromDisk(ask.disk, ask.entry); }
+    else if (ask.text !== undefined) { told(ask, 'busy', 'reading the paste'); program = await programFromText(ask.text); }
     const d = decide(program);   // a program of the chain is decided before it is read: bare under AUTO
     setState('reading', 'READING');
     node = node || new Node(catalogue.endpoints, catalogue.chainId, say, renderLink);
@@ -343,7 +432,7 @@ async function run(ask) {
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
     if (fromFile) {
       const f = program.facts;
-      say(`your file ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim`);
+      say(`your ${f.source === 'paste' ? 'paste' : f.source === 'disk' ? 'disk\'s program' : 'file'} ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim${f.source === 'disk' ? '; the machine has no drive, so what it loads from the disk stops there' : ''}`);
       say(`the scan: ${scanWords(f.scan)}`);
       if (f.known) say(`recognised: ${f.known.words}`);
       say(`firmware ${firmwareOn ? 'on' : 'off'} (${firmwareMode === 'auto' ? 'AUTO: ' + d.why : d.why}); input ${d.input} (${d.inputWhy})`);
@@ -359,10 +448,11 @@ async function run(ask) {
     say(`running ${program.label}`);
     renderNow();
     markOffered(fromFile ? null : ask.work, fromFile ? null : ask.token);
-    door(fromFile ? 'ok' : 'idle', fromFile ? `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim` : '');
+    markDiskRow(ask.entry ? ask.entry.index : null);
+    if (fromFile) told(ask, 'ok', `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim`); else { doorRest(); els.pasteNote.textContent = ''; }
   } catch (e) {
     const code = e.code || 'FAILED';
-    if (fromFile) door('refused', `${code} · ${e.message}`);
+    if (fromFile) told(ask, 'refused', `${code} · ${e.message}`);
     if (fromFile && !program) {
       // not a program the machine loads: said at the door and in the log; what was playing plays on
       say(`your file was refused (${code}): ${e.message}`);
@@ -388,6 +478,9 @@ function load(work, token) { return run({ work, token }); }
 function markOffered(work, token) {
   for (const row of els.rows.querySelectorAll('.row')) row.classList.toggle('now', row.dataset.work === work && row.dataset.token === String(token));
 }
+function markDiskRow(index) {
+  for (const row of els.diskRows.querySelectorAll('.row')) row.classList.toggle('now', index !== null && row.dataset.index === String(index));
+}
 /** Bring a row into view inside the list only: the page itself must never move, least of all on a phone where the list sits below the machine. */
 function revealRow(row) {
   if (!row) return;
@@ -403,7 +496,7 @@ function provenance() {
     return {
       page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: null, token: null, label: p.label,
       program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, load: f.load },
-      file: { name: f.name, size: f.size, type: f.type, modified: f.modified },
+      source: f.source, file: f.file, pasted: f.pasted,
       claim: 'none: a file of yours, read in this browser and sent nowhere, checked for its shape only',
       scan: f.scan, needs: f.needs, known: f.known ? { work: f.known.work, name: f.known.name, words: f.known.words } : null,
       node: null, observation: null, reads: [], nodes: node ? node.facts() : null,
@@ -489,7 +582,8 @@ function programRows(code, text) {
       rows.push(['SCAN', scanWords(f.scan), '']);
       if (f.known) rows.push(['KNOWN', f.known.words, '']);
       const start = firmwareOn && f.load !== 0x0801 ? ` · the firmware starts only a program at $0801: type SYS ${f.load} at READY` : !firmwareOn && !f.scan.entry ? ' · a bare machine starts nothing without a SYS in a BASIC stub: switch FIRMWARE on' : '';
-      rows.push(['CHECK', 'no chain claim · read in this browser and sent nowhere · its shape checked: a load address and a size within 64K' + start, '']);
+      const drive = f.source === 'disk' ? ' · the machine has no drive: a program that loads more from the disk stops there' : '';
+      rows.push(['CHECK', 'no chain claim · read in this browser and sent nowhere · its shape checked: a load address and a size within 64K' + start + drive, '']);
     } else {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes`, '']);
       rows.push(['PIN', `keccak256 ${SHORT(f.keccak256)} equals the pin`, '']);
@@ -554,6 +648,7 @@ els.firmware.addEventListener('change', () => { setFirmware(['on', 'off', 'auto'
 els.retry.addEventListener('click', () => { if (lastAsk) run(lastAsk); });
 // the file door: the picker and the drop zone are one control; a file dropped anywhere else must not take the visitor away
 els.file.addEventListener('change', () => { const f = els.file.files && els.file.files[0]; els.file.value = ''; if (f) run({ file: f }); });
+els.runPaste.addEventListener('click', () => run({ text: els.paste.value }));
 els.door.addEventListener('dragover', (e) => { e.preventDefault(); els.door.classList.add('over'); });
 els.door.addEventListener('dragleave', () => els.door.classList.remove('over'));
 els.door.addEventListener('drop', (e) => { e.preventDefault(); els.door.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) run({ file: f }); });

@@ -14,7 +14,8 @@ its decisions are in the private study; what is public is here, all of it.
 | `standalone.html` | built: the STANDALONE machine document, which reads the chain itself and boots to READY (`?mode=bare`, `?prg=<hex>`, `?input=joystick`, `?rpc=<url>`). A harness and a copy-and-run surface: no policy, any RPC; the security boundary is the embedded build's alone | GPL-2.0-only |
 | `build.py` | builds both from the source; refuses to build unless the copies match their manifest, the pins agree, and the licence gate holds | MIT |
 | `index.html` | built: the page, THE MACHINE at `/machine/`: the frame, FROM THE CHAIN, FROM A FILE, NOW PLAYING, the keys, the way out; its policy allows scripts and frames from this site only and connections to this site and the shared endpoints only, nothing inline | MIT |
-| `host.js` | the page's script: the search over the catalogue, the file door (a `.prg` of the visitor's, read in the browser and sent nowhere, judged for its shape only and said as YOUR FILE; what is not a program refused with a code and a sentence), the states, the provenance, the controls | MIT |
+| `host.js` | the page's script: the search over the catalogue, the file door (a `.prg` of the visitor's, a program picked from a `.d64`'s directory, or hex or base64 pasted in, read in the browser and sent nowhere, judged for its shape only and said as YOUR FILE; what is not a program refused with a code and a sentence), the states, the provenance, the controls | MIT |
+| `d64.js` | a `.d64` disk image read for its directory and for one file's bytes: the four sizes, the sector arithmetic, the chains; no drive, since the machine has none | MIT |
 | `chain.js` | the page's reads from Ethereum and what each may claim: one node of the session, named; a program as one record with its statuses; a mismatch refused. Every read of one thing is one observation through one node at one block, the block's hash recorded; a node that contradicts a pin, the chain or a contract's own invariant is set aside for the visit, one that fails in transport is demoted and the read restarts elsewhere | MIT |
 | `keccak.js` | keccak-256 for the page (a stamp's seed, the older tokens' pins, selectors) | MIT |
 | `scan.js` | the scan of a program file: its range and stub, whether it is BASIC, its calls into the ROMs by name, its interrupt vectors, whether it banks the ROMs out, what it reads and whether it writes the SID; byte patterns only, said so; what the firmware switch decides by under AUTO | MIT |
@@ -28,7 +29,7 @@ its decisions are in the private study; what is public is here, all of it.
 | `licenses/` | the licence texts | |
 | `PROTOCOL.md` | the bridge protocol, version 1: messages, refusal codes, the trust vocabulary | |
 | `LICENSES.md` | what is under which licence, and where the corresponding source is | |
-| `test/` | the headless gate (`bridge.mjs`), its server with a stand-in mainnet built from the copies (`serve.mjs`), the harness page; the scan's gate (`scan.mjs`, Node alone); the verifier's gate (`test_verify.py`) and its stand-in node (`mocknode.py`) | MIT |
+| `test/` | the headless gate (`bridge.mjs`), its server with a stand-in mainnet built from the copies (`serve.mjs`), the harness page; the scan's gate (`scan.mjs`, Node alone); the disk image reader's gate (`d64.mjs`) and its image maker (`make-d64.mjs`); the verifier's gate (`test_verify.py`) and its stand-in node (`mocknode.py`) | MIT |
 
 ## Build and check
 

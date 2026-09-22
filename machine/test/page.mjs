@@ -32,6 +32,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { browser } from './pw.mjs';
 import { start } from './serve.mjs';
+import { makeD64 } from './make-d64.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EVIDENCE = join(HERE, 'evidence');
@@ -150,7 +151,7 @@ try {
     ['big.prg', Buffer.alloc(65539, 1), 'FILE_TOO_LARGE', /65,539 bytes/],
     ['high.prg', Buffer.concat([Buffer.from([0x00, 0xff]), Buffer.alloc(512, 1)]), 'PRG_ADDRESS_OVERFLOW', /\$ff00/],
     ['notes.txt', Buffer.from('hello, machine\n'), 'KIND_UNSUPPORTED', /not a \.prg file \(15 bytes, beginning 68 65 6c 6c 6f 2c 20 6d\)/],
-    ['disk.d64', Buffer.alloc(174848), 'KIND_UNSUPPORTED', /a disk image \(174,848 bytes\)/],
+    ['disk.d64', Buffer.alloc(174848), 'D64_EMPTY', /no program in its directory \(0 entries, none PRG\)/],
     ['cart.crt', Buffer.concat([Buffer.from('C64 CARTRIDGE   '), Buffer.alloc(48)]), 'KIND_UNSUPPORTED', /a cartridge image/],
   ];
   for (const [name, buffer, code, words] of refusals) {
@@ -159,6 +160,51 @@ try {
     check(!!said && said.includes(code) && words.test(said), `${name} is refused ${code} in words: ${said ? said.trim().slice(0, 120) : 'nothing said'}`);
   }
   check(await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 'a refused file leaves the running program alone');
+  // the disk door: a .d64 is opened and its directory listed, nothing run; a program picked from it runs, said as YOUR FILE
+  // with the drive's absence said; the provenance names the disk and the entry; a paste runs the same way, hex or base64,
+  // what is neither refused in words, the running program left alone
+  const writes = (n) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, 0xa9, n, 0x8d, 0x00, 0x04, 0x60]);   // 10 SYS2061 : LDA #n ; STA $0400 ; RTS
+  const image = makeD64({ name: 'CHAMBER TEST', id: 'C6', files: [{ name: 'FOUR', type: 'PRG', bytes: writes(4) }, { name: 'NOTES', type: 'SEQ', bytes: Buffer.from('HI') }, { name: 'LONG', type: 'PRG', bytes: Buffer.concat([Buffer.from([0x00, 0x20]), Buffer.alloc(600, 0xea)]) }] });
+  const requestsBeforeDisk = requests.length;
+  await pg.setInputFiles('#file', { name: 'games.d64', mimeType: 'application/octet-stream', buffer: Buffer.from(image) });
+  const listed = await until(() => pg.evaluate(() => (document.getElementById('door').dataset.state === 'ok' && !document.getElementById('disk').hidden ? { door: document.getElementById('door-text').textContent, name: document.getElementById('disk-name').textContent, count: document.getElementById('disk-count').textContent, rows: [...document.querySelectorAll('#disk-rows .row')].map((r) => r.querySelector('.title').textContent + '|' + r.querySelector('.sub').textContent + '|' + !!r.querySelector('button')) } : null)), 10000, 100);
+  check(!!listed && listed.door === 'games.d64 · CHAMBER TEST · 2 programs · pick one below' && listed.name === 'CHAMBER TEST · C6 2A' && listed.count === 'games.d64 · 35 tracks' && listed.rows.join(';') === 'FOUR|PRG · 1 block|true;NOTES|SEQ · 1 block · not a program|false;LONG|PRG · 3 blocks|true', `a .d64 is opened and its directory listed, LOAD on each program (${listed ? listed.rows.join('; ') : 'not listed'})`);
+  check(await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 'opening a disk runs nothing: the program playing plays on');
+  await pg.click('#disk-rows .row[data-index="0"] button.load');
+  const diskRan = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /FOUR from games\.d64/.test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null)), 30000, 500);
+  check(!!diskRan && /YOUR FILE/.test(diskRan) && /the machine has no drive: a program that loads more from the disk stops there/.test(diskRan), 'a program picked from the disk runs, said as YOUR FILE, the drive\'s absence said in NOW PLAYING');
+  check(!!(await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 4)), 10000)), 'the disk\'s program ran on the machine (screen code 4 at $0400)');
+  const provDisk = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  check(provDisk && provDisk.source === 'disk' && provDisk.file.name === 'games.d64' && provDisk.file.size === 174848 && provDisk.file.disk.name === 'CHAMBER TEST' && provDisk.file.disk.id === 'C6' && provDisk.file.disk.entry.name === 'FOUR' && provDisk.file.disk.entry.type === 'PRG' && provDisk.file.disk.entry.blocks === 1 && provDisk.program.status === 'YOUR FILE' && provDisk.program.bytes === 20 && provDisk.node === null && provDisk.pasted === null,
+        'the provenance names the disk, its entry and no chain');
+  check(await pg.evaluate(() => document.querySelector('#disk-rows .row.now') && document.querySelector('#disk-rows .row.now').dataset.index === '0' && !document.getElementById('disk').hidden && /^FOUR from games\.d64 · 20 bytes · running · no chain claim$/.test(document.getElementById('door-text').textContent)), 'the disk\'s row is marked, the directory stays, the door says what it ran');
+  check(requests.length === requestsBeforeDisk, `the disk made no request of any kind (${requests.length - requestsBeforeDisk})`);
+  // the paste
+  const hex = Array.from(writes(5), (b) => b.toString(16).padStart(2, '0')).join(' ');
+  await pg.click('#paste-door summary');
+  await pg.fill('#paste', '0x' + hex);
+  await pg.click('#run-paste');
+  const pasted = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /PROGRAM\s*pasted hex/.test(document.getElementById('now').textContent) ? document.getElementById('paste-note').textContent : null)), 30000, 500);
+  check(!!pasted && /^pasted hex · 20 bytes · running · no chain claim$/.test(pasted), `pasted hex runs, said at the paste (${pasted})`);
+  check(await pg.evaluate(() => document.getElementById('door-text').textContent === 'games.d64 · CHAMBER TEST · 2 programs · pick one below' && !document.querySelector('#disk-rows .row.now')), 'the door rests at the disk\'s summary while the paste runs: only one thing says running');
+  check(!!(await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 5)), 10000)), 'the paste ran on the machine (screen code 5 at $0400)');
+  const provPaste = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  check(provPaste && provPaste.source === 'paste' && provPaste.file === null && provPaste.pasted.format === 'hex' && provPaste.pasted.chars === 40 && provPaste.program.status === 'YOUR FILE' && provPaste.node === null, 'the provenance of a paste: no file, the format and the count, no chain');
+  await pg.fill('#paste', Buffer.from(writes(6)).toString('base64'));
+  await pg.click('#run-paste');
+  const pasted64 = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /PROGRAM\s*pasted base64/.test(document.getElementById('now').textContent) ? true : null)), 30000, 500);
+  check(!!pasted64 && !!(await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 6)), 10000)), 'pasted base64 runs too (screen code 6 at $0400)');
+  await pg.fill('#paste', 'hello, machine!');   // 'zz zz' would be base64: four letters of its alphabet decode to three bytes, and the page would run them
+  await pg.click('#run-paste');
+  const badPaste = await until(() => pg.evaluate(() => (/^PASTE_/.test(document.getElementById('paste-note').textContent) ? document.getElementById('paste-note').textContent : null)), 10000, 100);
+  check(!!badPaste && /^PASTE_NOT_HEX_OR_BASE64 · 14 characters that are neither hex nor base64$/.test(badPaste) && (await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /pasted base64/.test(document.getElementById('now').textContent))), `a paste that is neither hex nor base64 is refused in words and the running program plays on (${badPaste})`);
+  await pg.fill('#paste', 'abc');
+  await pg.click('#run-paste');
+  const oddPaste = await until(() => pg.evaluate(() => (/^PASTE_ODD_HEX/.test(document.getElementById('paste-note').textContent) ? document.getElementById('paste-note').textContent : null)), 10000, 100);
+  check(!!oddPaste && /3 hex digits: an odd count/.test(oddPaste), `an odd count of hex digits is refused in words (${oddPaste})`);
+  await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
+  await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 30000, 500);
+  check(await pg.evaluate(() => document.getElementById('disk').hidden), 'a .prg dropped after a disk closes the directory');
   check(requests.length === requestsBefore, `the refusals made no request either (${requests.length - requestsBefore})`);
   // AUTO: the switch reads a file for what it needs. A file that calls the KERNAL gets the firmware, the machine rebuilt with
   // the pressing from the chain; a BASIC program is RUN under it; a file that needs nothing runs bare again; a program of

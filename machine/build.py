@@ -273,6 +273,20 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 .door[data-state="ok"]{{border-style:solid;border-color:#2c3f36;color:var(--accent)}}
 .door[data-state="refused"]{{border-style:solid;border-color:#5a2a2a;color:#ff9d9d}}
 .fine{{margin:10px 0 0;font-size:.74rem;line-height:1.45;color:var(--muted)}}
+/* a disk's directory under the door: the disk's name and id, its entries as rows, LOAD on each program */
+.disk{{margin:10px 0 0}}
+.disk .dh{{display:flex;justify-content:space-between;gap:12px;font:700 .6rem/2.2 {MONO};letter-spacing:.16em;text-transform:uppercase;color:var(--accent2)}}
+.disk .dh .n{{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none;text-align:right}}
+.disk .rows{{height:auto;max-height:224px}}
+/* a fold: a small mono summary with a plus, the rest muted */
+.fold{{font-size:.78rem;line-height:1.45;color:var(--muted)}}
+.fold summary{{cursor:pointer;list-style:none;font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--accent2)}}
+.fold summary::-webkit-details-marker{{display:none}}
+.fold summary::before{{content:"+ "}}
+.fold[open] summary::before{{content:"− "}}
+.paste{{margin:10px 0 0}}
+.paste textarea.json{{height:72px;margin:6px 0 0;color:var(--ink)}}
+.paste .tools{{margin-top:8px}}
 .rows .g{{position:sticky;top:0;background:var(--panel);font:700 .6rem/2.2 {MONO};letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}}
 .row{{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #161616}}
 .row .t{{display:flex;flex-direction:column;min-width:0}}
@@ -307,11 +321,7 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .keys dd{{margin:0}}
 .keys .hint{{display:block;margin:3px 0 0;font-size:.78rem;line-height:1.45;color:var(--muted)}}
 .keys .why{{display:block;font:600 .66rem/1.6 {MONO};letter-spacing:.06em;color:var(--accent2);margin:4px 0 0}}
-.keys .how{{margin:4px 0 0;font-size:.78rem;line-height:1.45;color:var(--muted)}}
-.keys .how summary{{cursor:pointer;list-style:none;font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--accent2)}}
-.keys .how summary::-webkit-details-marker{{display:none}}
-.keys .how summary::before{{content:"+ "}}
-.keys .how[open] summary::before{{content:"− "}}
+.keys .how{{margin:4px 0 0}}
 .keys .how p{{margin:2px 0 4px;font-size:inherit;line-height:inherit;color:inherit}}   /* the site's paragraph rule would size it as prose */
 .keys .touch-only{{display:none}}   /* DIAGONALS governs the ring, and the note about a phone on silent is for a phone: shown where the ring shows */
 @media(pointer:coarse){{.keys dt.touch-only,.keys dd.touch-only{{display:block}}.keys span.touch-only{{display:inline}}}}
@@ -483,9 +493,17 @@ def page_body():
       <div class="rows" id="rows" aria-live="polite"></div>
     </section>
     <section class="panel file" aria-labelledby="lab-file">
-      <div class="lab"><span id="lab-file">FROM A FILE</span><span class="n">a .prg of yours</span></div>
-      <label class="door" id="door" data-state="idle"><input type="file" id="file" aria-label="choose a program file"><span id="door-text">drop a .prg here, or choose one</span></label>
-      <p class="fine">It stays in this browser and is sent nowhere. The page checks its shape, a load address and a size that fits, reads it for what it needs (the KERNAL, BASIC, the joystick, the keyboard, the SID) and claims nothing else about it: NOW PLAYING says YOUR FILE, and FIRMWARE on AUTO gives it the on-chain OpenROMs when it needs them. A program of the series dropped here is recognised by its pins and runs as it does on chain. The disk and cartridge doors come in later phases.</p>
+      <div class="lab"><span id="lab-file">FROM A FILE</span><span class="n">a .prg or a .d64 of yours</span></div>
+      <label class="door" id="door" data-state="idle"><input type="file" id="file" accept=".prg,.d64" aria-label="choose a program file or a disk image"><span id="door-text">drop a .prg or a .d64 here, or choose one</span></label>
+      <div class="disk" id="disk" hidden aria-label="the disk's directory">
+        <div class="dh"><span id="disk-name"></span><span class="n" id="disk-count"></span></div>
+        <div class="rows" id="disk-rows"></div>
+      </div>
+      <details class="fold paste" id="paste-door"><summary>OR PASTE</summary>
+        <textarea class="json" id="paste" spellcheck="false" autocomplete="off" aria-label="a program as hex or base64" placeholder="a program as hex or base64, its load address first"></textarea>
+        <div class="tools"><button type="button" class="b" id="run-paste">RUN</button><span class="copied" id="paste-note"></span></div>
+      </details>
+      <p class="fine">It stays in this browser and is sent nowhere. A .prg is checked for its shape, a load address and a size that fits, read for what it needs (the KERNAL, BASIC, the joystick, the keyboard, the SID) and claimed nothing else about: NOW PLAYING says YOUR FILE, and FIRMWARE on AUTO gives it the on-chain OpenROMs when it needs them. A .d64 is opened here too: its directory is listed and one program runs at a time, because the machine has no drive; a program that loads more from the disk stops there. Pasted hex or base64 runs the same way. A program of the series dropped here is recognised by its pins and runs as it does on chain. The cartridge door comes in a later phase.</p>
     </section>
     <section class="panel now" aria-labelledby="lab-now">
       <div class="lab"><span id="lab-now">NOW PLAYING</span><span class="n">copies under the machine</span></div>
@@ -506,7 +524,7 @@ def page_body():
       <p class="grp">MACHINE</p>
       <dl class="keys">
         <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span>
-          <details class="how" id="how-auto"><summary>HOW AUTO DECIDES</summary><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></details></dd>
+          <details class="fold how" id="how-auto"><summary>HOW AUTO DECIDES</summary><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></details></dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button> <span class="hint">starts the machine over; under the firmware, READY comes back</span></dd>
       </dl>
     </section>
@@ -524,7 +542,7 @@ def page_body():
   <h3 id="about-programs">The programs</h3>
   <p>The page starts on Tony: Born for Adventure, the proof-of-concept token from before the series and the demo its programs are built on, read from its contract and checked the same way; any other program is one LOAD away in the list.</p>
   <p>A program is read from its contract the way anyone can read it: <a href="https://etherscan.io/address/{chamber}#readContract" target="_blank" rel="noopener">the Chamber's</a> <code>prg(id)</code>, stamped with the block you load it at, is held to the pinned base outside its 42-byte stamp and to the row and the block inside it; <a href="https://etherscan.io/address/{perception}#readContract" target="_blank" rel="noopener">the Perception Chamber Canary's</a> <code>prgWithBrain(1)</code> is held to the frozen program outside its mind and to the head revision's record inside it; the two older tokens are held to their pinned hashes. The pins are in <a href="catalogue.json">the catalogue</a>, which <a href="verify.py">a public script</a> checks against the chain for anyone who runs it (<a href="CATALOGUE.md">how</a>).</p>
-  <p>A program file of your own, a .prg, runs here too, through FROM A FILE: it stays in this browser, the page checks only its shape and reads it for what it needs, and NOW PLAYING says YOUR FILE. A disk image and a cartridge come in later phases.</p>
+  <p>A program of your own runs here too, through FROM A FILE: a .prg, a program picked from the directory of a .d64, or hex or base64 pasted in. It stays in this browser, the page checks only its shape and reads it for what it needs, and NOW PLAYING says YOUR FILE. The machine has no drive, nopsta's build having nothing behind its serial bus, so a program of a disk runs alone, and one that loads more from the disk stops there. A cartridge comes in a later phase.</p>
   <h3 id="about-words">What the words mean</h3>
   <p>The words on the provenance line mean what they say: <b>PINNED</b>, the bytes matched a commitment this page held before it asked; <b>CONTRACT-CONSISTENT</b>, they matched what the same node reported in the same session; <b>NODE-REPORTED</b>, a fact one node stated; <b>YOUR FILE</b>, a file of yours, about which the page claims nothing. One node is asked, and it is named. The links in NOW PLAYING open the same contracts, tokens and blocks on Etherscan, in a new tab, so every claim can be checked against a second source while the machine runs on.</p>
   <h3 id="about-controls">Controls and boundaries</h3>

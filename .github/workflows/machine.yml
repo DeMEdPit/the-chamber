@@ -46,6 +46,9 @@ jobs:
       - name: The scan's gate
         run: node machine/test/scan.mjs
 
+      - name: The disk image reader's gate
+        run: node machine/test/d64.mjs
+
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save playwright@1.56.1
