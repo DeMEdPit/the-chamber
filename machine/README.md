@@ -15,7 +15,7 @@ its decisions are in the private study; what is public is here, all of it.
 | `build.py` | builds both from the source; refuses to build unless the copies match their manifest, the pins agree, and the licence gate holds | MIT |
 | `index.html` | built: the page, THE MACHINE at `/machine/`: the frame, FROM THE CHAIN, NOW PLAYING, the keys, the way out; its policy allows scripts and frames from this site only and connections to this site and the shared endpoints only, nothing inline | MIT |
 | `host.js` | the page's script: the search over the catalogue, the states, the provenance, the controls | MIT |
-| `chain.js` | the page's reads from Ethereum and what each may claim: one node of the session, named; a program as one record with its statuses; a mismatch refused | MIT |
+| `chain.js` | the page's reads from Ethereum and what each may claim: one node of the session, named; a program as one record with its statuses; a mismatch refused. Every read of one thing is one observation through one node at one block, the block's hash recorded; a node that contradicts a pin, the chain or a contract's own invariant is set aside for the visit, one that fails in transport is demoted and the read restarts elsewhere | MIT |
 | `keccak.js` | keccak-256 for the page (a stamp's seed, the older tokens' pins, selectors) | MIT |
 | `audio.js` | the page plays the machine's sound: samples pulled over the port and scheduled on the page's audio clock, paced as nopsta's player paces them | MIT |
 | `bridge-client.js` | the host's side of the bridge: the seven pins in code, request ids, timeouts, a frame destroyed and rebuilt rather than recovered, the site's copies held to the pins before they are handed over | MIT |

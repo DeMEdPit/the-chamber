@@ -17,7 +17,11 @@
 // HASH_MISMATCH and never runs; when the chain does not give the machine, the
 // page boots it from the site's copies and says so; on a coarse pointer the
 // ring reads by angle (one direction or both) and FIRE beside it, the machine's
-// own port proving what they hold.
+// own port proving what they hold; every read of the chain is at a block and the
+// provenance names the node, the block and its hash (the read session); on a
+// two-node rig, an endpoint that contradicts a pin is set aside for the visit
+// and the read restarts whole on the next, while one that fails in transport is
+// demoted and the read restarts there too, with no verdict on it.
 //
 //   node machine/test/page.mjs
 // Needs Playwright and Chromium (machine/test/pw.mjs finds them) and python3.
@@ -43,11 +47,12 @@ function synthetic(args) {
     p.on('exit', (code) => { if (!p.ready) reject(new Error('synthetic.py exited ' + code)); });
   });
 }
-async function world(args) {
+async function world(args, extra = {}) {
   const s = await synthetic(args);
+  const s2 = extra.second ? await synthetic(extra.second) : null;   // a second stand-in, served at /rpc2
   const port = nextPort++;
-  const server = await start(port, { catalogue: s.catalogue, rpcUpstream: s.rpc });
-  return { base: `http://127.0.0.1:${port}`, close() { server.close(); s.proc.stdin.end(); s.proc.kill(); } };
+  const server = await start(port, { catalogue: s.catalogue, rpcUpstreams: Object.assign({ '/rpc': s.rpc }, s2 ? { '/rpc2': s2.rpc } : {}), faults: extra.faults || {} });
+  return { base: `http://127.0.0.1:${port}`, log: server.log, close() { server.close(); for (const x of [s, s2]) { if (x) { x.proc.stdin.end(); x.proc.kill(); } } } };
 }
 async function until(fn, ms, step = 250) {
   const t0 = Date.now();
@@ -85,6 +90,10 @@ try {
   const prov = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
   check(prov && prov.program.status === 'PINNED' && prov.stamp.status === 'CONTRACT-CONSISTENT' && prov.stamp.stampedAt === 4999 && prov.machine.status === 'PINNED' && /ethereum/.test(prov.machine.source) && prov.mode === 'PURE' && prov.intervened === false,
         `the provenance as JSON: ${prov ? JSON.stringify({ program: prov.program.status, stamp: prov.stamp.status, machine: prov.machine.source }) : 'none'}`);
+  const readsA = A.log.filter((r) => ['eth_call', 'eth_getCode'].includes(r.method));
+  check(readsA.length > 0 && readsA.every((r) => /^0x[0-9a-f]+$/.test(String(r.params[1]))), `every contract read is at a block, none at latest (${readsA.length} reads)`);
+  const lastCall = readsA.filter((r) => r.method === 'eth_call').pop();
+  check(prov && prov.observation && prov.observation.node === '/rpc' && Number.isInteger(prov.observation.block) && /^[0-9a-f]{64}$/.test(prov.observation.blockHash) && parseInt(lastCall.params[1], 16) === prov.observation.block, `the provenance names the observation: node ${prov && prov.observation && prov.observation.node}, block ${prov && prov.observation && prov.observation.block}, its hash`);
   const ran = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 1)), 10000);
   check(!!ran, 'the program ran on the machine (screen code 1 at $0400)');
   const sound = await until(() => pg.evaluate(() => { const a = window.machinePage.audio; return a.attached && a.pulled > 3 ? a : null; }), 8000);
@@ -229,6 +238,12 @@ try {
   check(refused && /HASH_MISMATCH/.test(refused), `a tampered program: ${refused || 'not refused'}`);
   const playing = await pb.evaluate(() => window.machinePage.playing);
   check(playing === null, 'nothing is playing after the refusal');
+  const nodesB = await pb.evaluate(() => window.machinePage.nodes);
+  check(nodesB.setAside.length === 1 && nodesB.setAside[0].node === '/rpc' && /HASH_MISMATCH/.test(nodesB.setAside[0].why), `the endpoint that contradicted the pin is set aside for the visit (${JSON.stringify(nodesB.setAside)})`);
+  await pb.fill('#search', 'tony');
+  await pb.click('#rows .row[data-work="tony"] button.load');
+  const noNode = await until(() => pb.evaluate(() => document.getElementById('state').textContent === 'NO NODE ANSWERED' && /set aside for this visit/.test(window.machinePage.report())), 30000, 500);
+  check(!!noNode, 'nothing more is read through it: the next LOAD says NO NODE, with the reason in the log');
   await pb.close();
   B.close();
 
@@ -239,12 +254,53 @@ try {
   await until(() => pc.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
   await pc.fill('#search', '5');
   await pc.click('#rows .row[data-work="chamber"][data-token="5"] button.load');
-  const runningC = await until(() => pc.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /The Chamber · 5/.test(document.getElementById('now').textContent)), 90000, 500);
-  const provC = JSON.parse(await pc.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  const noNodeC = await until(() => pc.evaluate(() => document.getElementById('state').textContent === 'NO NODE ANSWERED'), 90000, 500);
   const logC = await pc.evaluate(() => window.machinePage.report());
-  check(!!runningC && provC && /copies/.test(provC.machine.source) && provC.machine.status === 'PINNED' && /site's copies instead/.test(logC), `the machine from the site's copies when the chain's part is wrong (${provC ? provC.machine.source : 'no provenance'})`);
+  const nodesC = await pc.evaluate(() => window.machinePage.nodes);
+  const machineC = await pc.evaluate(() => !!(window.machinePage.machine && window.machinePage.machine.alive));
+  check(!!noNodeC && machineC && /site's copies instead/.test(logC) && /set aside for this visit: HASH_MISMATCH/.test(logC) && nodesC.setAside.length === 1,
+        `the only endpoint contradicted the machine's pin: the machine from the site's copies, the endpoint set aside, and programs not read through it (NO NODE)`);
+  check(/every endpoint has been set aside/.test(logC), 'the log says why no node is left');
   await pc.close();
   C.close();
+
+  // E. two endpoints, the first contradicting the machine's pin: set aside, the second serves everything
+  const E = await world(['--real-machine', '--fault', 'part', '--endpoints', '/rpc,/rpc2'], { second: ['--real-machine'] });
+  const pe = await b.newPage({ viewport: { width: 1180, height: 900 } });
+  await pe.goto(`${E.base}/machine/`, { waitUntil: 'load' });
+  const runningE = await until(() => pe.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  const provE = JSON.parse(await pe.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  const nodesE = await pe.evaluate(() => window.machinePage.nodes);
+  check(!!runningE && provE && provE.machine.source === 'ethereum, through /rpc2' && provE.machine.status === 'PINNED' && provE.node === '/rpc2' && provE.observation.node === '/rpc2',
+        `quarantine: the machine and the program from the chain through the second endpoint (${provE ? provE.machine.source : 'no provenance'}; program via ${provE && provE.node})`);
+  check(nodesE.setAside.length === 1 && nodesE.setAside[0].node === '/rpc' && /HASH_MISMATCH/.test(nodesE.setAside[0].why) && nodesE.demoted.length === 0,
+        `the first endpoint is set aside for the visit, not merely demoted (${JSON.stringify(nodesE)})`);
+  check(await pe.evaluate(() => /1 set aside this visit/.test(document.getElementById('now').textContent)), 'NOW PLAYING says one endpoint is set aside');
+  const readsE = E.log.filter((r) => r.path === '/rpc' && r.method === 'eth_call');
+  check(readsE.length === 0, `no contract call went to the set-aside endpoint after its contradiction (${readsE.length})`);
+  await pe.close();
+  E.close();
+
+  // F. two endpoints, the first failing in transport on eth_call: demoted, the read restarted whole on the second, no verdict on the first
+  const F = await world(['--real-machine', '--endpoints', '/rpc,/rpc2'], { second: ['--real-machine'], faults: { '/rpc': { eth_call: 500 } } });
+  const pf = await b.newPage({ viewport: { width: 1180, height: 900 } });
+  await pf.goto(`${F.base}/machine/`, { waitUntil: 'load' });
+  await until(() => pf.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  await pf.click('#rows .row[data-work="chamber"][data-token="5"] button.load');
+  const runningF = await until(() => pf.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /The Chamber · 5/.test(document.getElementById('now').textContent)), 90000, 500);
+  const provF = JSON.parse(await pf.evaluate(() => document.getElementById('provenance-json').value) || 'null');
+  const nodesF = await pf.evaluate(() => window.machinePage.nodes);
+  check(!!runningF && provF && provF.machine.source === 'ethereum, through /rpc' && provF.node === '/rpc2' && provF.observation.node === '/rpc2',
+        `failover: the machine came through the first endpoint, the program through the second (${provF && provF.machine.source}; program via ${provF && provF.node})`);
+  check(nodesF.setAside.length === 0 && nodesF.demoted.includes('/rpc'), `the failing endpoint is demoted, not set aside (${JSON.stringify(nodesF)})`);
+  const obsF = F.log.filter((r) => r.path === '/rpc2' && ['eth_call', 'eth_getBlockByNumber'].includes(r.method));
+  const prgCalls = obsF.filter((r) => r.method === 'eth_call');
+  const blockTags = new Set(prgCalls.map((r) => r.params[1]));
+  const prevHashRead = provF && obsF.find((r) => r.method === 'eth_getBlockByNumber' && parseInt(r.params[0], 16) === provF.observation.block - 1);
+  check(prgCalls.length > 0 && blockTags.size === 1 && provF && parseInt([...blockTags][0], 16) === provF.observation.block && !!prevHashRead,
+        `one endpoint, one block: the program at block ${provF && provF.observation.block} and the previous block's hash, both through /rpc2`);
+  await pf.close();
+  F.close();
 } finally {
   await b.close();
 }

@@ -124,9 +124,9 @@ async function ensureMachine() {
   let bytes;
   try {
     bytes = await machineFromChain(node, say);
-    say('the machine matched its pins: PINNED, from the chain');
+    say(`the machine matched its pins: PINNED, from the chain through ${bytes.observation.node} at block ${num(bytes.observation.block)}`);
   } catch (e) {
-    say(`the chain did not give the machine (${e.code}: ${e.message}); the site's copies instead`);
+    say(`no endpoint gave the machine (${e.code}: ${e.message}); the site's copies instead`);
     bytes = await partsFromSite();
     say('the site\'s copies matched their pins: PINNED');
   }
@@ -135,18 +135,18 @@ async function ensureMachine() {
     let fw;
     try {
       fw = await firmwareFromChain(node, say);
-      say(`the firmware matched its pins: ${fw.status}, from the chain`);
+      say(`the firmware matched its pins: ${fw.status}, from the chain through ${fw.observation.node} at block ${num(fw.observation.block)}`);
     } catch (e) {
-      say(`the chain did not give the firmware (${e.code}: ${e.message}); the site's copies instead`);
+      say(`no endpoint gave the firmware (${e.code}: ${e.message}); the site's copies instead`);
       const site = await partsFromSite();
       fw = { roms: site.roms, status: site.status, source: site.source };
       say('the site\'s copies of the firmware matched their pins: PINNED');
     }
     bytes = { parts: bytes.parts, roms: fw.roms, status: bytes.status, source: bytes.source };   // the emulator's own source stays its own
-    firmware = { mode: 'on', name: FIRMWARE_NAME, status: fw.status, source: fw.source };
+    firmware = { mode: 'on', name: FIRMWARE_NAME, status: fw.status, source: fw.source, observation: fw.observation || null };
   }
   const ready = await bootMachine(machine, bytes, { firmware: firmwareMode === 'on', status: firmware.status });
-  machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, firmware };
+  machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, observation: bytes.observation || null, firmware };
   await machine.request('input', { mode: inputMode });
   await attachSound();
   veil('');
@@ -261,7 +261,7 @@ function provenance() {
   const out = {
     page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: f.contract, token: f.token, label: p.label,
     program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, pins: f.pins },
-    node: f.node, reads: f.reads,
+    node: f.node, observation: f.observation, reads: f.reads, nodes: node ? node.facts() : null,
     machine: machineFacts, firmware: machineFacts.firmware, input: inputMode, mode: 'PURE', intervened: playing.intervened,
   };
   if (p.kind === 'stamped') out.stamp = { status: p.statuses.stamp, block: f.block, stampedAt: f.stampedAt, previousBlockHash: f.prevHash, digits: f.digits, seed: f.seed, row: f.row };
@@ -284,13 +284,15 @@ function machineRows() {
   if (fw && fw.mode === 'on') firmware = `on · ${FIRMWARE_NAME} · ${fw.status} · from ${fw.source} · a program of the series runs the same, it banks the ROMs out as it starts`;
   else if (!mf && firmwareMode === 'on') firmware = `on · ${FIRMWARE_NAME} boots first when the machine starts`;
   else firmware = 'off · the program runs bare, as it does on chain';
-  const host = node && node.url ? node.url.replace(/^https?:\/\//, '') : null;
+  const obs = playing && playing.program.facts.observation;
+  const host = obs ? `${obs.node} · read at block ${num(obs.block)} · hash ${SHORT(obs.blockHash)}` : (node && node.url ? node.url.replace(/^https?:\/\//, '') : null);
+  const aside = node && node.quarantined.size ? ` · ${node.quarantined.size} set aside this visit` : '';
   return [
     ['MACHINE', mf ? `${mf.status} · ${mf.name} · from ${mf.source}` : `${DASH} · READY 64 starts with the first LOAD`, mf ? '' : 'muted'],
     ['FIRMWARE', firmware, ''],
     ['INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix', ''],
     ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
-    ['NODE', host || DASH, host ? '' : 'muted'],
+    ['NODE', (host || DASH) + aside, host ? '' : 'muted'],
   ];
 }
 /** The program's rows: what is playing, what was refused, or the dashes of nothing yet; always the same shape. */
@@ -463,5 +465,5 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return firmwareMode; }, get input() { return inputMode; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return firmwareMode; }, get input() { return inputMode; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
 start();

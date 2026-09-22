@@ -153,10 +153,11 @@ def main():
     ap.add_argument("--serve", action="store_true")
     ap.add_argument("--fault", action="append", default=[])
     ap.add_argument("--real-machine", action="store_true")
+    ap.add_argument("--endpoints", default="/rpc", help="the endpoints the catalogue lists, comma-separated (the gate maps each to a stand-in)")
     a = ap.parse_args()
     if not a.serve:
         ap.error("--serve")
-    w, cat = build(a.fault, a.real_machine, endpoints=["/rpc"])
+    w, cat = build(a.fault, a.real_machine, endpoints=[e.strip() for e in a.endpoints.split(",") if e.strip()])
     s = Server(w)
     url = s.start()
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="synthetic-")) / "catalogue.json"

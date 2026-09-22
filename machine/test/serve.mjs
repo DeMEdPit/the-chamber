@@ -68,21 +68,35 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
   '.png': 'image/png', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
 
 /**
- * start(port, { catalogue, rpcUpstream }): with `catalogue`, that file is served at
- * /machine/catalogue.json instead of the committed one; with `rpcUpstream`, /rpc is
- * forwarded to that URL (a stand-in node built by machine/test/synthetic.py). Both are
- * for the page's gate; without them this is the stand-in mainnet built from the copies.
+ * start(port, { catalogue, rpcUpstream, rpcUpstreams, faults }): with `catalogue`, that
+ * file is served at /machine/catalogue.json instead of the committed one; with
+ * `rpcUpstream`, /rpc is forwarded to that URL (a stand-in node built by
+ * machine/test/synthetic.py); `rpcUpstreams` maps several paths to several stand-ins
+ * ({ '/rpc': url, '/rpc2': url2 }) so a page can be given two nodes; `faults` makes a
+ * path fail in transport for a method ({ '/rpc': { eth_call: 500 } }), the failure of a
+ * node that answers but cannot serve. Every forwarded request is recorded on
+ * server.log as { path, method, params }, so a gate can hold a read to one node and
+ * one block. Without any of them this is the stand-in mainnet built from the copies.
  */
 export function start(port = 8260, opts = {}) {
+  const upstreams = Object.assign({}, opts.rpcUpstream ? { '/rpc': opts.rpcUpstream } : {}, opts.rpcUpstreams || {});
+  const faults = opts.faults || {};
+  const log = [];
   const server = createServer((q, r) => {
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
     if (q.method === 'OPTIONS') { r.writeHead(204, cors); r.end(); return; }
     const url = new URL(q.url, 'http://x');
-    if (url.pathname === '/rpc' && opts.rpcUpstream) {
+    if (upstreams[url.pathname]) {
       let body = '';
       q.on('data', (c) => (body += c));
       q.on('end', () => {
-        const up = new URL(opts.rpcUpstream);
+        let parsed = null;
+        try { parsed = JSON.parse(body); } catch (e) { parsed = null; }
+        for (const j of (Array.isArray(parsed) ? parsed : [parsed])) if (j && j.method) log.push({ path: url.pathname, method: j.method, params: j.params || [] });
+        const fault = faults[url.pathname] || {};
+        const failing = (Array.isArray(parsed) ? parsed : [parsed]).find((j) => j && fault[j.method]);
+        if (failing) { r.writeHead(fault[failing.method], cors); r.end('injected transport failure'); return; }
+        const up = new URL(upstreams[url.pathname]);
         const req = httpRequest({ hostname: up.hostname, port: up.port, path: up.pathname, method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, (res) => {
           let out = '';
           res.on('data', (c) => (out += c));
@@ -117,6 +131,7 @@ export function start(port = 8260, opts = {}) {
     r.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', ...cors });
     r.end(readFileSync(file));
   });
+  server.log = log;
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
 }
 
