@@ -109,6 +109,7 @@ try {
   await pg.selectOption('#firmware', 'on');
   const fwOn = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'READY' && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 90000, 500);
   check(!!fwOn, 'FIRMWARE on: the machine rebuilt with OpenROMs pressing 1 from the chain, PINNED, and the state is READY');
+  check(await pg.evaluate(() => /MACHINE.*PINNED · minimal64-2022 · from ethereum, through/.test(document.getElementById('now').textContent)), 'the emulator keeps its own source under the firmware (no "from undefined")');
   check(!!(await until(screenHasReady, 15000, 500)), 'the OpenROMs banner and READY on the screen, no reset needed');
   check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard'), 'the keyboard is the input under the firmware');
   await pg.fill('#search', 'tony');

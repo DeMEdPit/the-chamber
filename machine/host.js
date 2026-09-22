@@ -142,7 +142,7 @@ async function ensureMachine() {
       fw = { roms: site.roms, status: site.status, source: site.source };
       say('the site\'s copies of the firmware matched their pins: PINNED');
     }
-    bytes = { parts: bytes.parts, roms: fw.roms };
+    bytes = { parts: bytes.parts, roms: fw.roms, status: bytes.status, source: bytes.source };   // the emulator's own source stays its own
     firmware = { mode: 'on', name: FIRMWARE_NAME, status: fw.status, source: fw.source };
   }
   const ready = await bootMachine(machine, bytes, { firmware: firmwareMode === 'on', status: firmware.status });
