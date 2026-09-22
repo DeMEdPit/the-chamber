@@ -15,7 +15,7 @@ const els = {
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'),
-  link: $('link'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
+  link: $('link'), linkChain: $('link-chain'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
 
@@ -63,6 +63,9 @@ function veil(text) {
 
 // ------------------------------------------------------------------ the link: an instrument on the node's own state
 const LINK_WORDS = { off: 'OFF', seeking: 'SEEKING', reading: 'READING', held: 'HELD', refused: 'REFUSED', lost: 'LOST' };
+/** The badge names the chain it reads, from the catalogue's chain id, so the word stays true if another chain ever appears. */
+const CHAIN_NAMES = { 1: 'ETHEREUM', 11155111: 'SEPOLIA' };
+const chainName = (id) => CHAIN_NAMES[id] || `CHAIN ${id}`;
 /** The distinctive part of a node's name for the badge (publicnode, llamarpc, drpc, ankr, merkle, 1rpc); the whole name stays in the title and in NOW PLAYING. */
 const shortHost = (h) => { const host = String(h).replace(/^https?:\/\//, '').split('/')[0]; const parts = host.split('.'); return parts.length >= 2 ? parts[parts.length - 2] : h; };
 function renderLink(st) {
@@ -80,7 +83,8 @@ function renderLink(st) {
   if (reading) long.push(reading);
   if (st.setAside) long.push(`${st.setAside} set aside`);
   pair(els.linkBlock, reading || (st.block ? `#${st.block}` : ''), long.join(' · '));
-  els.link.title = st.host ? `${st.host}${st.block ? ` · block ${num(st.block)} · ${st.blockHash}` : ''}` : 'no node yet';
+  const chain = catalogue ? `${chainName(catalogue.chainId)} (chain ${catalogue.chainId})` : 'the chain';
+  els.link.title = st.host ? `${chain} · ${st.host}${st.block ? ` · block ${num(st.block)} · ${st.blockHash}` : ''}` : `${chain} · no node yet`;
   els.linkEndpoints.textContent = '';
   for (const e of st.endpoints) {
     const i = document.createElement('i');
@@ -486,6 +490,7 @@ async function start() {
   }
   allRows = rowsOf(catalogue);
   renderRows('');
+  els.linkChain.textContent = chainName(catalogue.chainId);
   renderLink({ phase: 'off', host: null, block: null, blockHash: null, reads: 0, setAside: 0, endpoints: catalogue.endpoints.map((u) => ({ host: u.replace(/^https?:\/\//, ''), state: 'live', why: null })) });
   say(`catalogue of ${catalogue.generated.slice(0, 10)}: ${allRows.length} programs, ${catalogue.endpoints.length} endpoints`);
   // the machine starts on a program: the one the address names, or the Tony demo, the first token of the series

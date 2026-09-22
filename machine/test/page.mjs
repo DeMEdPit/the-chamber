@@ -93,7 +93,8 @@ try {
   // at 1180 wide the badge sits at the left in its long form; innerText reads the form that is shown
   const linkA = await pg.evaluate(() => ({ phase: document.getElementById('link').dataset.phase, state: document.getElementById('link-state').innerText, node: document.getElementById('link-node').innerText, block: document.getElementById('link-block').innerText, cells: [...document.querySelectorAll('#link-endpoints i')].map((i) => i.dataset.state), left: document.getElementById('link').getBoundingClientRect().left - document.getElementById('frame').getBoundingClientRect().left }));
   check(linkA.phase === 'held' && linkA.state === 'HELD' && linkA.node === '/rpc' && /^block [\d,]+ · [0-9a-f]{12}…$/.test(linkA.block) && linkA.cells.join() === 'held' && linkA.left < 40, `THE CHAIN badge on the desktop, at the left in its long form: ${linkA.state} · ${linkA.node} · ${linkA.block} · cells ${linkA.cells.join()} · ${Math.round(linkA.left)}px from the frame's left`);
-  check(await pg.evaluate(() => /^\/rpc · block [\d,]+ · [0-9a-f]{64}$/.test(document.getElementById('link').title)), 'the badge\'s title carries the whole node name, the block and its full hash');
+  check(await pg.evaluate(() => /^ETHEREUM \(chain 1\) · \/rpc · block [\d,]+ · [0-9a-f]{64}$/.test(document.getElementById('link').title)), 'the badge\'s title carries the chain\'s name, the whole node name, the block and its full hash');
+  check(await pg.evaluate(() => document.getElementById('link-chain').textContent === 'ETHEREUM'), 'the badge names the chain from the catalogue: ETHEREUM for chain 1');
   const readsA = A.log.filter((r) => ['eth_call', 'eth_getCode'].includes(r.method));
   check(readsA.length > 0 && readsA.every((r) => /^0x[0-9a-f]+$/.test(String(r.params[1]))), `every contract read is at a block, none at latest (${readsA.length} reads)`);
   const lastCall = readsA.filter((r) => r.method === 'eth_call').pop();
