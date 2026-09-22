@@ -26,7 +26,9 @@ const audio = createAudio({ onStatus: (t) => say(t) });
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
 let busy = false, pendingAsk = null, pendingFirmware = null;
-let inputMode = 'joystick', inputWhy = 'the programs of the series read port 2';
+let inputMode = 'joystick', inputWhy = 'the programs of the series read port 2';   // 'joystick' is port 2, 'joystick1' port 1, 'keyboard' the matrix
+const joyPort = () => (inputMode === 'joystick1' ? 1 : 2);
+const inputAsk = () => ({ mode: inputMode === 'keyboard' ? 'keyboard' : 'joystick', port: joyPort() });
 let firmwareMode = 'auto';   // the switch: 'auto' decides per program; 'off' bare, as the programs of the series run on chain; 'on' OpenROMs pressing 1, READY first
 let firmwareOn = false;      // the machine as built: with the ROMs, or bare
 let firmwareWhy = 'a program of the chain runs bare, as it does on chain';   // what decided the build, for the words
@@ -352,7 +354,7 @@ async function ensureMachine(d) {
   }
   const ready = await bootMachine(machine, bytes, { firmware: firmwareOn, status: firmware.status });
   machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, observation: bytes.observation || null, firmware };
-  await machine.request('input', { mode: inputMode });
+  await machine.request('input', inputAsk());
   await attachSound();
   veil('');
 }
@@ -391,7 +393,7 @@ async function setFirmware(mode) {
     if (mode === 'on') {
       // the switch shows the firmware: READY, and LOAD runs a program under it
       inputMode = 'keyboard'; inputWhy = 'READY wants typing'; els.input.value = inputMode;
-      await machine.request('input', { mode: inputMode });
+      await machine.request('input', inputAsk());
       setState('idle', 'READY'); say(`${FIRMWARE_NAME} is at READY; LOAD runs a program under it`); renderNow(); markOffered(null, null);
     } else if (was) {
       pendingAsk = was;   // as the program needs, or bare: what was playing runs again
@@ -451,7 +453,7 @@ async function run(ask) {
       if (firmwareOn && f.load !== 0x0801) say(`the firmware starts only a program at $0801: type SYS ${f.load} at READY to start this one`);
     }
     inputMode = d.input; inputWhy = d.inputWhy; els.input.value = inputMode;
-    await machine.request('input', { mode: inputMode });
+    await machine.request('input', inputAsk());
     const buf = program.bytes.slice().buffer;
     const loaded = await machine.request('load', { kind: 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
     playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened, file: ask.file || null };
@@ -570,7 +572,7 @@ function machineRows() {
   return [
     ['EMULATOR', emulator, mf ? '' : 'muted'],
     ['FIRMWARE', firmware, ''],
-    ['INPUT', (inputMode === 'joystick' ? 'joystick in port 2' : 'keyboard · the C64 matrix') + (inputWhy ? ` · ${inputWhy}` : ''), ''],
+    ['INPUT', (inputMode === 'keyboard' ? 'keyboard · the C64 matrix' : `joystick in port ${joyPort()}`) + (inputWhy ? ` · ${inputWhy}` : ''), ''],
     ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
     ['NODE', host || DASH, host ? '' : 'muted'],
   ];
@@ -642,9 +644,9 @@ els.copyLog.addEventListener('click', async () => {
   catch (e) { els.json.hidden = false; els.json.value = text; els.json.select(); els.copied.textContent = 'select and copy'; }
 });
 els.input.addEventListener('change', async () => {
-  inputMode = els.input.value === 'keyboard' ? 'keyboard' : 'joystick';
+  inputMode = ['keyboard', 'joystick1'].includes(els.input.value) ? els.input.value : 'joystick';
   inputWhy = 'by the switch';
-  if (machine && machine.alive) { try { await machine.request('input', { mode: inputMode }); } catch (e) { /* the machine is gone; the next load sets it */ } }
+  if (machine && machine.alive) { try { await machine.request('input', inputAsk()); } catch (e) { /* the machine is gone; the next load sets it */ } }
   if (playing) renderNow();
 });
 els.reset.addEventListener('click', async () => {
@@ -691,7 +693,7 @@ const FOLD = [{ bits: 8, from: -60, to: 60 }, { bits: 2, from: 60, to: 120 }, { 
 const within = (ang, s) => (s.from < s.to ? ang >= s.from && ang < s.to : ang >= s.from || ang < s.to);
 let ways = 4, ringHeld = 0, ringPointer = null;
 const wedgeEls = new Map([...els.ring.querySelectorAll('.d')].map((g) => [Number(g.dataset.bits), g]));
-function joy(bit, down) { if (machine && machine.alive) machine.request('joystick', { bit, down }).catch(() => {}); }
+function joy(bit, down) { if (machine && machine.alive) machine.request('joystick', { bit, down, port: joyPort() }).catch(() => {}); }
 function aim(e) {
   const r = els.ring.getBoundingClientRect();
   const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);

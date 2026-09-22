@@ -47,7 +47,7 @@ The machine sends `hello` as soon as it holds the port:
 ```json
 {"v": 1, "type": "hello", "protocol": 1, "machine": "minimal64-2022",
  "build": "embedded", "phase": "waiting",
- "capabilities": {"loads": ["prg"], "input": ["keyboard", "joystick2"],
+ "capabilities": {"loads": ["prg"], "input": ["keyboard", "joystick2", "joystick1"],
                   "firmware": true, "screenText": true, "peek": true,
                   "poke": true, "audio": true, "snapshots": false},
  "limits": {"prg": 65538, "text": 4096, "machine": 1048576, "peek": 65536}}
@@ -65,8 +65,8 @@ host offers only what it lists.
 | `machine` | `parts`: four `ArrayBuffer`s, the emulator's parts in the manifest's order; `roms`: `{kernal, basic, chargen}` `ArrayBuffer`s (8192, 8192, 4096 bytes), `null` or absent for the bare machine | `ready {emulator, emulatorStatus, firmware, firmwareSha256, ms}` — `emulatorStatus` is `PINNED`: the document verified every part against the pins it carries, and it does not run otherwise (`HASH_UNAVAILABLE` when it cannot hash, `HASH_MISMATCH` when a part differs); `firmwareSha256` is `{kernal, basic, chargen}`, the sha256 of each ROM as received, or `null`. The document holds no pin for the firmware and claims nothing about it: the host compares these hashes with what it pinned before asking, and the host's provenance says PINNED or not |
 | `load` | `kind`: one of `capabilities.loads`; `bytes`: `ArrayBuffer`; `label`: string of at most 80 characters, optional | `loaded {label, load, bytes, intervened}` — `load` is the two-byte load address |
 | `reset` | | `ok` |
-| `input` | `mode`: `keyboard` or `joystick` (what the arrow keys feed) | `ok {input}` |
-| `joystick` | `bit`: integer, 1 up, 2 down, 4 left, 8 right, 16 fire; `down`: boolean; port 2 | `ok` |
+| `input` | `mode`: `keyboard` or `joystick` (what the arrow keys feed); `port`: 1 or 2, optional, the port the keys feed as a joystick (2 until set: the port the programs of the series read; 1 for the games that read it, Boulder Dash among them) | `ok {input, port}` |
+| `joystick` | `bit`: integer, 1 up, 2 down, 4 left, 8 right, 16 fire; `down`: boolean; `port`: 1 or 2, optional, else the port set by `input` | `ok` |
 | `type` | `text`: string, typed through the keyboard matrix with human timing; `\n` is RETURN | `ok {typed}` when done |
 | `screen` | | `screen {text}` — the 25 rows of screen memory as text |
 | `peek` | `addr`: integer 0..65535; `length`: integer 1..65536, optional, default 1 | `value {addr, value, bytes}` — `bytes` an `ArrayBuffer` |

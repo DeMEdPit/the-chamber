@@ -68,7 +68,7 @@ try {
   const h = boot.hello || {}, r = boot.ready || {};
   check(h.protocol === 1 && h.machine === 'minimal64-2022' && h.build === 'embedded', `hello: protocol ${h.protocol}, machine ${h.machine}, build ${h.build}`);
   const c = h.capabilities || {};
-  check(Array.isArray(c.loads) && c.loads.includes('prg') && c.input.includes('keyboard') && c.input.includes('joystick2') &&
+  check(Array.isArray(c.loads) && c.loads.includes('prg') && c.input.includes('keyboard') && c.input.includes('joystick2') && c.input.includes('joystick1') &&
         c.firmware === true && c.screenText === true && c.peek === true && c.poke === true && c.snapshots === false,
         `capabilities as stated: ${JSON.stringify(c)}`);
   check(h.phase === 'waiting', `the embedded document waits for the host (phase ${h.phase})`);
@@ -249,6 +249,27 @@ try {
   check(bareLoad.ok, 'the program loads on the bare machine');
   const bareRan = await until(async () => { const v = await pg.evaluate(() => window.harness.request('peek', { addr: 0x0400 })); return v.ok && v.r.value === 1 ? v.r : null; }, 8000);
   check(!!bareRan, 'the program ran on the bare machine (screen code 1 at $0400)');
+  // 10b. the two joystick ports: a program mirrors $DC01 (port 1) to $0400 and $DC00 (port 2) to $0401; a push on a
+  // port pulls its line low there and nowhere else; the port set by input is the one the joystick message feeds
+  const MIRROR = [0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, 0xa9, 0xff, 0x8d, 0x00, 0xdc, 0xad, 0x01, 0xdc, 0x8d, 0x00, 0x04, 0xad, 0x00, 0xdc, 0x8d, 0x01, 0x04, 0x4c, 0x12, 0x08];
+  const mirrorLoad = await pg.evaluate((p) => window.harness.load(p, 'ports'), MIRROR);
+  const ports = () => pg.evaluate(() => Promise.all([window.harness.request('peek', { addr: 0x0400 }), window.harness.request('peek', { addr: 0x0401 })]).then(([a, b]) => (a.ok && b.ok ? [a.r.value, b.r.value] : null)));
+  const portsAre = (a, b) => until(async () => { const v = await ports(); return v && v[0] === a && v[1] === b ? v : null; }, 8000, 50);
+  check(mirrorLoad.ok && !!(await portsAre(0xff, 0xff)), 'the mirror program runs: both ports idle read $FF');
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 1, down: true, port: 1 }));
+  check(!!(await portsAre(0xfe, 0xff)), 'up on port 1 pulls port 1\'s line low and leaves port 2 alone');
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 1, down: false, port: 1 }));
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 8, down: true }));
+  check(!!(await portsAre(0xff, 0xf7)), 'right with no port named goes to port 2, the default');
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 8, down: false }));
+  const inputOne = await pg.evaluate(() => window.harness.request('input', { mode: 'joystick', port: 1 }));
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 16, down: true }));
+  check(inputOne.ok && inputOne.r.port === 1 && !!(await portsAre(0xef, 0xff)), `input names port 1 and fire with no port named goes there (${inputOne.ok ? 'port ' + inputOne.r.port : inputOne.code})`);
+  await pg.evaluate(() => window.harness.request('joystick', { bit: 16, down: false }));
+  const badPort = await pg.evaluate(() => window.harness.request('input', { mode: 'joystick', port: 3 }));
+  const badPort2 = await pg.evaluate(() => window.harness.request('joystick', { bit: 1, down: true, port: 0 }));
+  const stPort = await pg.evaluate(() => window.harness.request('state'));
+  check(!badPort.ok && badPort.code === 'BAD_MESSAGE' && !badPort2.ok && badPort2.code === 'BAD_MESSAGE' && stPort.ok && stPort.r.port === 1, `a port other than 1 or 2 is refused, and state says the port (${stPort.ok ? stPort.r.port : stPort.code})`);
   await pg.screenshot({ path: join(EVIDENCE, 'embedded-bare.png') });
   await pg.evaluate(() => window.harness.destroy());
 
