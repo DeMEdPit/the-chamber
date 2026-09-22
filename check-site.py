@@ -181,7 +181,7 @@ def check_pages():
 
 
 def check_shared_rules():
-    shared = ["html{scroll-behavior", ".kicker{", ".kicker a", ".site-foot{", "prefers-reduced-motion:no-preference"]
+    shared = ["html{scroll-behavior", "scroll-margin-top", ".kicker{", ".kicker a", ".site-foot{", "prefers-reduced-motion:no-preference"]
     for p in PAGES:
         b = ROOT / p.dir / "build.py" if p.dir else ROOT / "build.py"
         src = b.read_text(encoding="utf-8")

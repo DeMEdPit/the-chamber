@@ -38,18 +38,27 @@ VERBS = [
                                                     ("perception", "revisionIdOf"), ("chamber", "tableRow"), ("chamber", "seedOf")]),
     ("WRITE", "change a work", [("perception", "saveMind"), ("chamber", "mint"), ("chamber", "lock")]),
 ]
-TOC = [("glance", "AT A GLANCE"), ("use", "WHAT ANYONE CAN DO"), ("authority", "WHO CAN CHANGE WHAT"),
-       ("not-exposed", "NOT EXPOSED"), ("perception", "PERCEPTION"), ("chamber", "THE CHAMBER"), ("about", "ABOUT THIS PAGE")]
+# The index at the top: three ways of reading the page, not seven peer links.
+GROUPS = [
+    ("Overview", [("glance", "At a glance"), ("use", "What anyone can do"),
+                  ("authority", "Who can change what"), ("not-exposed", "Not exposed")]),
+    ("Reference", [("perception", "Perception Chamber Canary"), ("chamber", "The Chamber")]),
+    ("Provenance", [("about", "About this page")]),
+]
 
 MONO = "ui-monospace,SFMono-Regular,Menlo,monospace"
 CSS = f"""
 .lede{{margin:0 0 26px;color:var(--muted);font-weight:450;line-height:1.4;font-size:clamp(1.15rem,4.2vw,1.45rem)}}
 .test{{margin:0 0 28px;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);max-width:70ch}}
 .test .lab{{display:block;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 8px}}
-.toc{{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px}}
-.toc li{{margin:0}}
-.toc a{{font:700 .68rem/1.4 {MONO};letter-spacing:.14em;color:var(--accent2);text-decoration:none;border:0}}
-.toc a:hover,.toc a.here{{color:var(--accent)}}
+.onpage{{margin:0 0 30px;padding:16px 18px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}}
+.onpage .lab{{display:block;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 12px}}
+.onpage .groups{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 28px}}
+.onpage .g{{font:700 .62rem/1.6 {MONO};letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}}
+.onpage ul{{list-style:none;margin:0;padding:0}}
+.onpage li{{margin:0}}
+.onpage a{{display:block;padding:7px 0;color:var(--ink);text-decoration:none;border:0;font-size:.95rem;line-height:1.35}}
+.onpage a:hover,.onpage a:focus-visible{{color:var(--accent)}}
 .part{{margin:0}}
 .part > h2 a{{color:inherit;text-decoration:none}}
 .part > .intro{{max-width:70ch;margin:0 0 22px}}
@@ -118,11 +127,9 @@ td.who .txt{{display:block;font-size:.68rem;line-height:1.45;margin-top:4px}}
 .std code{{font-size:.78rem}}
 .about{{font-size:.9rem;color:var(--muted);max-width:70ch}}
 .about code{{color:var(--ink);font-size:.8rem}}
-@media(min-width:1340px){{
-  .toc{{position:fixed;top:96px;left:calc(50% - 450px - 236px);width:196px;flex-direction:column;gap:10px;margin:0}}
-}}
 @media(max-width:900px){{.verbs{{grid-template-columns:repeat(3,1fr)}}}}
 @media(max-width:700px){{
+  .onpage .groups{{grid-template-columns:1fr;gap:14px}}
   .glance{{grid-template-columns:1fr}}
   .verbs{{grid-template-columns:repeat(2,1fr)}}
   .card dl{{grid-template-columns:1fr;gap:2px 0}}
@@ -138,13 +145,6 @@ td.who .txt{{display:block;font-size:.68rem;line-height:1.45;margin-top:4px}}
 @media(max-width:440px){{.verbs{{grid-template-columns:1fr}}}}
 """
 
-SCRIPT = """<script>
-(function(){var as=document.querySelectorAll('.toc a[href^="#"]');if(!as.length||!('IntersectionObserver' in window))return;
-var by={};as.forEach(function(a){var s=document.getElementById(a.getAttribute('href').slice(1));if(s)by[s.id]=a;});
-var cur=null;var o=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){if(cur)cur.classList.remove('here');
-cur=by[e.target.id];if(cur)cur.classList.add('here');}});},{rootMargin:'-15% 0px -70% 0px'});
-Object.keys(by).forEach(function(id){o.observe(document.getElementById(id));});})();
-</script>"""
 
 
 def esc(t):
@@ -286,7 +286,9 @@ def main():
             '<p class="lede">What a stranger can read, run and rely on, without asking us. '
             'First what the two contracts let anyone do; then every public function of both, from the verified ABI.</p>',
             f'<p class="test"><span class="lab">THE TEST</span>{esc(d["test"])}</p>',
-            '<ul class="toc">' + "".join(f'<li><a href="#{pid}">{label}</a></li>' for pid, label in TOC) + "</ul>"]
+            '<nav class="onpage" aria-label="On this page"><span class="lab">ON THIS PAGE</span><div class="groups">'
+            + "".join('<div><p class="g">' + esc(g) + '</p><ul>' + "".join(f'<li><a href="#{pid}">{esc(label)}</a></li>' for pid, label in items) + '</ul></div>' for g, items in GROUPS)
+            + '</div></nav>']
     body.append(part("glance", "At a glance", '<div class="glance">' + "".join(card(w) for w in d["works"]) + "</div>",
                      "Two contracts, one shape: almost everything is a read, and each write says who may send it."))
     recipes = "".join(f'<div class="recipe"><h3>{esc(r["title"])}<span class="tag w">{WORK_TAG[r["work"]]}</span></h3>'
@@ -312,7 +314,7 @@ def main():
                      'The rows are the ABI&rsquo;s. The groups, the verbs, the summaries, the gaps and the recipes are ours, and the build '
                      'is held to the same file, so this page cannot describe a function the contracts do not have. To check it, '
                      'compile the verified source from Etherscan with the toolchain above and compare the ABI.</p>'))
-    doc = render(CURRENT, "".join(body), title=TITLE, description=DESC, css=CSS, script=SCRIPT)
+    doc = render(CURRENT, "".join(body), title=TITLE, description=DESC, css=CSS)
     write(CURRENT, doc)
 
 
