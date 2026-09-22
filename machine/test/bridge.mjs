@@ -22,7 +22,7 @@
 //   node machine/test/bridge.mjs
 // Needs Playwright and Chromium (machine/test/pw.mjs finds them).
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { browser } from './pw.mjs';
@@ -101,6 +101,10 @@ try {
   // 3. READY under the firmware, then a program runs
   const ready = await until(async () => { const s = await pg.evaluate(() => window.harness.request('screen')); return s.ok && /READY\./.test(s.r.text) ? s.r.text : null; }, 15000);
   check(!!ready && /OPEN ROMS C64/.test(ready), 'the firmware boots to READY with the OpenROMs banner');
+  const bootScreen = JSON.parse(await readFile(join(HERE, '..', 'boot-screen.json'), 'utf8'));
+  const readyRows = (ready || '').split('\n');
+  check(readyRows.length === bootScreen.rows.length && bootScreen.rows.every((r, i) => readyRows[i] === r),
+        'the READY screen is row for row what machine/boot-screen.json records, which the share card is drawn from');
   await pg.screenshot({ path: join(EVIDENCE, 'embedded-ready.png') });
   const loaded = await pg.evaluate((p) => window.harness.load(p, 'a test program'), PRG);
   check(loaded.ok && loaded.r.type === 'loaded' && loaded.r.load === 0x0801 && loaded.r.bytes === 20 && loaded.r.intervened === false,

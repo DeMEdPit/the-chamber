@@ -10,6 +10,7 @@ compares it with the committed copy.
     python3 page.py        # build the alias pages the registry declares
 """
 import html as _html
+import re
 import os
 import pathlib
 
@@ -89,6 +90,23 @@ def write(key, doc):
     return target
 
 
+SHARE_META = re.compile(r'<meta (?:property="(?:og:[a-z:_]+)"|name="(?:twitter:[a-z]+|description)") content="[^"]*">')
+
+
+def share_meta_of(p):
+    """The share metadata of a built page, verbatim: its description, its
+    Open Graph and its Twitter lines. An alias carries the page's own, so a
+    link to the old address previews as the page does; the canonical and
+    og:url already name the new address."""
+    built = out_root() / p.dir / "index.html" if p.dir else out_root() / "index.html"
+    if not built.exists():
+        raise SystemExit(f"page.py: {p.key} must be built before its alias pages ({built} is missing)")
+    lines = SHARE_META.findall(built.read_text(encoding="utf-8"))
+    if not lines:
+        raise SystemExit(f"page.py: {p.key} carries no share metadata to give its alias")
+    return "\n".join(lines)
+
+
 def alias_html(p, old_path):
     """A page kept at an old address for ever: it names the new one and goes there."""
     return f"""<!doctype html>
@@ -98,6 +116,7 @@ def alias_html(p, old_path):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{esc(p.label.title())}</title>
 <link rel="canonical" href="{SITE}{p.path}">
+{share_meta_of(p)}
 <meta name="robots" content="noindex">
 <meta http-equiv="refresh" content="0; url={p.path}">
 <style>html,body{{background:#000}}body{{margin:0;color:#f4f4ef;font-family:Inter,ui-sans-serif,system-ui,sans-serif}}

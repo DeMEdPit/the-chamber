@@ -448,7 +448,7 @@ def main():
     doc = render(KEY, f"""<h1>Architecture</h1>
 {BANNER_HTML if BANNER else ""}
 {"".join(parts)}""", title=TITLE, description=DESC, css=page_css,
-                 image='/card.png', image_alt='The Chamber')
+                 image='/architecture/card.png', image_alt='The Chamber — Architecture: the seams')
     write(KEY, doc)
     todos = unwritten()
     print(f"architecture/index.html {len(doc):,} bytes, "

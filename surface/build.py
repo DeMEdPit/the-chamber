@@ -314,7 +314,8 @@ def main():
                      'The rows are the ABI&rsquo;s. The groups, the verbs, the summaries, the gaps and the recipes are ours, and the build '
                      'is held to the same file, so this page cannot describe a function the contracts do not have. To check it, '
                      'compile the verified source from Etherscan with the toolchain above and compare the ABI.</p>'))
-    doc = render(CURRENT, "".join(body), title=TITLE, description=DESC, css=CSS)
+    doc = render(CURRENT, "".join(body), title=TITLE, description=DESC, css=CSS,
+                 image="/surface/card.png", image_alt="The Chamber — What is on chain")
     write(CURRENT, doc)
 
 

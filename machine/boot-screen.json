@@ -1,0 +1,18 @@
+{
+  "what": "The machine's screen at READY under pressing 1's firmware, row by row, as the gate reads it: machine/test/bridge.mjs holds the running machine to these rows. The share card machine/card.png is drawn from these rows and the pressing's own character ROM by machine/build.py, in the site's green on black; the cursor is drawn as the block the machine blinks on the row after READY.",
+  "charset": "uppercase",
+  "rows": [
+    "    OPEN ROMS C64",
+    "",
+    "    38911 BASIC BYTES FREE",
+    "",
+    "",
+    "TAPE LOAD NORMAL",
+    "IEC NORMAL ONLY",
+    "PAL",
+    "",
+    "READY."
+  ],
+  "cursor": [10, 0],
+  "rowsShown": 12
+}

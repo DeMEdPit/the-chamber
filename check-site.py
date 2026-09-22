@@ -34,6 +34,7 @@ import json
 import os
 import pathlib
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -67,6 +68,7 @@ class Doc(html.parser.HTMLParser):
         self._in_title = False
         self.description = None
         self.canonical = None
+        self.og_image = None
         self.fragments, self.links, self.assets = [], [], []
         self.kicker = False
         self.footer_labels = []
@@ -82,6 +84,8 @@ class Doc(html.parser.HTMLParser):
             self._in_title = True
         if tag == "meta" and a.get("name") == "description":
             self.description = a.get("content")
+        if tag == "meta" and a.get("property") == "og:image":
+            self.og_image = a.get("content")
         if tag == "link" and a.get("rel") == "canonical":
             self.canonical = a.get("href")
         if tag == "p" and "kicker" in (a.get("class") or ""):
@@ -191,6 +195,33 @@ def check_pages():
             d = Doc(); d.feed(f.read_text(encoding="utf-8"))
             if d.canonical != SITE + p.path:
                 fail(f"alias {old}: canonical is {d.canonical!r}, wanted {SITE + p.path!r}")
+
+
+def check_cards():
+    """Every page's share image (og:image) is a PNG on this site, of the shape
+    share previews take, and under the megabyte some fetchers give up past."""
+    files = [(page_file(p), p.key) for p in PAGES] + [(f, f"alias {old}") for old, f, _ in alias_files()]
+    for f, name in files:
+        if not f.exists():
+            continue
+        d = Doc()
+        d.feed(f.read_text(encoding="utf-8"))
+        if not d.og_image or not d.og_image.startswith(SITE + "/"):
+            fail(f"{name}: og:image is {d.og_image!r}, wanted an absolute address on the site")
+            continue
+        img = ROOT / d.og_image[len(SITE) + 1:]
+        if not img.exists():
+            fail(f"{name}: the share image {d.og_image} does not exist in the tree")
+            continue
+        b = img.read_bytes()
+        if b[:8] != b"\x89PNG\r\n\x1a\n" or len(b) < 24:
+            fail(f"{name}: the share image {img.relative_to(ROOT)} is not a PNG")
+            continue
+        w, h = struct.unpack(">II", b[16:24])
+        if (w, h) not in ((1200, 630), (2400, 1260)):
+            fail(f"{name}: the share image {img.relative_to(ROOT)} is {w}x{h}, wanted 1200x630 or 2400x1260")
+        if len(b) > 1_000_000:
+            fail(f"{name}: the share image {img.relative_to(ROOT)} is {len(b):,} bytes, over the megabyte share fetchers tolerate")
 
 
 def check_shared_rules():
@@ -321,6 +352,7 @@ def main():
     check_shared_rules()
     check_pages()
     check_machine()
+    check_cards()
     check_reproduces()
     if FAILS:
         print("check-site: FAILED")
@@ -328,7 +360,7 @@ def main():
             print("  - " + m)
         sys.exit(1)
     print(f"check-site: ok ({len(PAGES)} pages, {sum(len(p.aliases) for p in PAGES)} alias, "
-          f"{sum(len(b.generates) for b in BUILDERS) + sum(len(p.generates) for p in PAGES)} generated documents, reproduced byte for byte, every link and anchor resolves, the machine's gate holds)")
+          f"{sum(len(b.generates) for b in BUILDERS) + sum(len(p.generates) for p in PAGES)} generated documents, reproduced byte for byte, every link and anchor resolves, every share card in place, the machine's gate holds)")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,9 @@ import math
 import os
 import pathlib
 import re
+import struct
 import sys
+import zlib
 from urllib.parse import urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -257,6 +259,90 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
 """
 
 
+# ---------------------------------------------------------------- the share card
+CARD = "machine/card.png"
+BOOT_SCREEN = HERE / "boot-screen.json"
+CARD_SIZE = (2400, 1260)          # twice 1200 x 630, the shape share previews take
+CARD_SCALE = 6                    # one screen pixel is six card pixels
+CARD_GREEN = (0x39, 0xFF, 0x88)   # the site's accent, site.css --accent
+
+
+def png_1bit(width, height, rows, palette):
+    """A PNG with a two-colour palette, one bit per pixel, its deflate stream
+    written as stored blocks by this function: no compressor is involved, so
+    the bytes never depend on a zlib version and the site check reproduces
+    the card byte for byte on any machine."""
+    raw = b"".join(b"\x00" + bytes(r) for r in rows)      # filter type 0 before each row
+    z = bytearray(b"\x78\x01")                             # zlib header: deflate, 32K window, no preset
+    for i in range(0, len(raw), 65535):
+        block = raw[i:i + 65535]
+        final = 1 if i + 65535 >= len(raw) else 0
+        z += bytes([final]) + struct.pack("<HH", len(block), len(block) ^ 0xFFFF) + block
+    z += struct.pack(">I", zlib.adler32(raw) & 0xFFFFFFFF)
+
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 1, 3, 0, 0, 0))
+            + chunk(b"PLTE", bytes(palette)) + chunk(b"IDAT", bytes(z)) + chunk(b"IEND", b""))
+
+
+def screen_codes(rows, cursor):
+    """The screen codes of the boot screen's text: the inverse of the machine
+    document's screenText (A to Z are 1 to 26, @ is 0, space and the
+    punctuation of 0x20 to 0x3F are themselves). The cursor cell is a reverse
+    space, the block the machine blinks there."""
+    grid = [[0x20] * 40 for _ in range(25)]
+    for r, line in enumerate(rows):
+        if r >= 25 or len(line) > 40:
+            die("boot-screen.json: a row is outside the 40 by 25 screen")
+        for c, ch in enumerate(line):
+            if ch == "@":
+                code = 0
+            elif "A" <= ch <= "Z":
+                code = ord(ch) - 64
+            elif 0x20 <= ord(ch) <= 0x3F:
+                code = ord(ch)
+            else:
+                die(f"boot-screen.json: {ch!r} is not a character the card can draw")
+            grid[r][c] = code
+    if cursor:
+        grid[cursor[0]][cursor[1]] = 0xA0
+    return grid
+
+
+def card(chargen):
+    """The page's share image: the machine's boot screen, drawn glyph by glyph
+    from the pressing's character ROM (the uppercase set, as the machine
+    boots), in the site's green on black, the used rows of the screen centred
+    on the card."""
+    boot = json.loads(BOOT_SCREEN.read_text(encoding="utf-8"))
+    if boot.get("charset") != "uppercase" or len(chargen) != 4096:
+        die("boot-screen.json or the character ROM is not what the card expects")
+    grid = screen_codes(boot["rows"], boot.get("cursor"))
+    shown = int(boot["rowsShown"])
+    width, height = CARD_SIZE
+    sw, sh = 40 * 8 * CARD_SCALE, shown * 8 * CARD_SCALE
+    if sw > width or sh > height:
+        die("the boot screen does not fit the card")
+    x0, y0 = (width - sw) // 2, (height - sh) // 2
+    rows = [bytearray(width // 8) for _ in range(height)]
+    for r in range(shown):
+        for c in range(40):
+            code = grid[r][c]
+            glyph = chargen[(code & 0x7F) * 8:(code & 0x7F) * 8 + 8]
+            rev = 1 if code & 0x80 else 0
+            for gy in range(8):
+                byte = glyph[gy]
+                for gx in range(8):
+                    if ((byte >> (7 - gx)) & 1) ^ rev:
+                        px, py = x0 + (c * 8 + gx) * CARD_SCALE, y0 + (r * 8 + gy) * CARD_SCALE
+                        for yy in range(py, py + CARD_SCALE):
+                            row = rows[yy]
+                            for xx in range(px, px + CARD_SCALE):
+                                row[xx >> 3] |= 0x80 >> (xx & 7)
+    return png_1bit(width, height, rows, [0, 0, 0, *CARD_GREEN])
+
+
 def ring_svg():
     """The ring of the touch controls: eight wedges of 45 degrees on an annulus,
     centred on the eight directions, each carrying the joystick bits it stands
@@ -363,9 +449,16 @@ def build():
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(docs[b], encoding="utf-8")
         print(f"machine/build.py: {rel} ({len(docs[b].encode('utf-8')) } bytes)")
+    chargen = (MANIFEST.parent / m["firmware"]["chargen"]).read_bytes()   # proven against the manifest by check_parts
+    png = card(chargen)
+    out = out_root() / CARD
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(png)
+    print(f"machine/build.py: {CARD} ({len(png)} bytes, the boot screen from the pressing's character ROM)")
     head = '<link rel="alternate" type="application/json" href="catalogue.json" title="the catalogue">'
     doc = render(KEY, page_body(), title=TITLE, description=DESC, css=PAGE_CSS, csp=policy(), head=head,
-                 script='<script type="module" src="host.js"></script>')
+                 script='<script type="module" src="host.js"></script>',
+                 image="/" + CARD, image_alt="READY 64 at its boot screen: the pressing's banner and READY, in the site's green")
     write(KEY, doc)
 
 

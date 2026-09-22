@@ -21,6 +21,8 @@ its decisions are in the private study; what is public is here, all of it.
 | `bridge-client.js` | the host's side of the bridge: the seven pins in code, request ids, timeouts, a frame destroyed and rebuilt rather than recovered, the site's copies held to the pins before they are handed over | MIT |
 | `parts/` | the site's copies of the emulator's four parts and the three ROMs, with `MANIFEST.json` (bytes, sha256, chain address, licence, source) | GPL-2.0-only / LGPL-3.0-or-later |
 | `catalogue.json` | every program the page can load from the chain, how to fetch each and what it must match; produced by a private exporter, checkable by anyone (`CATALOGUE.md` describes it) | data |
+| `boot-screen.json` | the machine's screen at READY under the pressing's firmware, row by row, as the gate reads it | data |
+| `card.png` | the page's share image: that boot screen drawn from the pressing's character ROM in the site's green, by `build.py`; the site check reproduces it byte for byte | generated |
 | `verify.py` | the public verifier: every line of the catalogue against the site's copies (`--offline`) and against an Ethereum node (`--rpc URL`), standard library only | MIT |
 | `licenses/` | the licence texts | |
 | `PROTOCOL.md` | the bridge protocol, version 1: messages, refusal codes, the trust vocabulary | |

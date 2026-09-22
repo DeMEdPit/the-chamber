@@ -49,7 +49,7 @@ PAGES = (
     Page("arch", "/architecture/", "ARCHITECTURE", "reference", "ARCHITECTURE", "architecture"),
     Page("surface", "/surface/", "WHAT IS ON CHAIN", "reference", "WHAT IS ON CHAIN", "surface"),
     Page("machine", "/machine/", "THE MACHINE", "machine", "THE MACHINE", "machine",
-         generates=("machine/core.html", "machine/standalone.html")),
+         generates=("machine/core.html", "machine/standalone.html", "machine/card.png")),
 )
 BY_KEY = {p.key: p for p in PAGES}
 
