@@ -1,0 +1,33 @@
+{
+  "what": "The share cards composed from each page's words by make-cards.mjs; check-site holds the built pages and the card files to this record.",
+  "cards": {
+    "index.html": {
+      "file": "card.png",
+      "kicker": "THE CHAMBER",
+      "title": "The Chamber",
+      "description": "A series of Commodore 64 works that live on Ethereum, built one capability at a time.",
+      "sha256": "b292a71e0a6c95df41c8b875191dca324b6deeded088079823e41613c3678fcb"
+    },
+    "black-paper-00/index.html": {
+      "file": "black-paper-00/card.png",
+      "kicker": "THE CHAMBER · BLACK PAPER 00",
+      "title": "The Chamber",
+      "description": "Sixty-four rooms, one frozen Commodore 64 program, and a room the chain redraws at every read. The genesis of the Chamber series.",
+      "sha256": "ee7fa46640dcf85b92c0d8888997af9c6225636a7c0546f20f57dd50a7616eb1"
+    },
+    "black-paper-01/index.html": {
+      "file": "black-paper-01/card.png",
+      "kicker": "THE CHAMBER · BLACK PAPER 01",
+      "title": "Perception Chamber",
+      "description": "A human teaches a perceptron inside a Commodore 64 program; Ethereum replays the same lessons and accepts the new mind only if the bytes agree.",
+      "sha256": "37ced32819990ce396cb550b6824fcbe9c0e317fd3694af1127bb1dbbc9defbb"
+    },
+    "surface/index.html": {
+      "file": "surface/card.png",
+      "kicker": "THE CHAMBER · WHAT IS ON CHAIN",
+      "title": "What is on chain",
+      "description": "What a stranger can read, run and rely on in the two deployed contracts, and every public function of both, from the verified ABI.",
+      "sha256": "dfdff830fca611a2f76edabc7a69950483cd037552012789493b8ea259a9a7ef"
+    }
+  }
+}

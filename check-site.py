@@ -29,6 +29,7 @@
 Standard library only. Exit status 1 on any failure, with every failure named.
 """
 import hashlib
+import html
 import html.parser
 import json
 import os
@@ -226,6 +227,44 @@ def check_cards():
             fail(f"{name}: the share image {img.relative_to(ROOT)} is {w}x{h}, wanted 1200x630 or 2400x1260")
         if len(b) > 1_000_000:
             fail(f"{name}: the share image {img.relative_to(ROOT)} is {len(b):,} bytes, over the megabyte share fetchers tolerate")
+    check_composed_cards()
+
+
+def words_of(html_text):
+    """The three things a composed card is made from, read as make-cards.mjs reads them."""
+    text = lambda t: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", t))).strip()
+    kicker = re.search(r'<p class="kicker">([\s\S]*?)</p>', html_text)
+    h1 = re.search(r"<h1[^>]*>([\s\S]*?)</h1>", html_text)
+    desc = re.search(r'<meta name="description" content="([^"]*)">', html_text)
+    return {"kicker": text(kicker.group(1)) if kicker else None, "title": text(h1.group(1)) if h1 else None,
+            "description": html.unescape(desc.group(1)) if desc else None}
+
+
+def check_composed_cards():
+    """cards.json says which words each composed card was made from and what
+    its bytes hash to; the built page must still say those words and the file
+    must still be that card, or the card is stale (run make-cards.mjs, then
+    build-all.py, since the addresses carry the cards' stamps)."""
+    rec = ROOT / "cards.json"
+    if not rec.exists():
+        fail("cards.json: missing (make-cards.mjs writes it)")
+        return
+    try:
+        cards = json.loads(rec.read_text(encoding="utf-8"))["cards"]
+    except Exception as e:  # noqa: BLE001
+        fail(f"cards.json: unreadable ({e})")
+        return
+    for page, c in cards.items():
+        f, img = ROOT / page, ROOT / c["file"]
+        if not f.exists() or not img.exists():
+            fail(f"cards.json: {page} or {c['file']} does not exist")
+            continue
+        now = words_of(f.read_text(encoding="utf-8"))
+        for k in ("kicker", "title", "description"):
+            if now[k] != c.get(k):
+                fail(f"{page}: its {k} is {now[k]!r} but its card was made from {c.get(k)!r} (stale card: node make-cards.mjs, then build-all.py)")
+        if hashlib.sha256(img.read_bytes()).hexdigest() != c.get("sha256"):
+            fail(f"{c['file']}: not the card cards.json records (node make-cards.mjs, then build-all.py)")
 
 
 def check_shared_rules():
