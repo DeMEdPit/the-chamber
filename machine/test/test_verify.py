@@ -52,95 +52,12 @@ def addr(name):
     return "0x" + hashlib.sha256(name.encode()).hexdigest()[:40]
 
 
-# ------------------------------------------------------------------ a synthetic world and its catalogue
-def rows64():
-    rows = []
-    for i in range(1, 65):
-        beh = 7 if i == 64 else (i % 7)
-        rows.append({"id": i, "character": f"C{beh}", "behaviour": beh, "colour": (i * 3) % 16, "wall": [0, 5, 7][i % 3],
-                     "bats": [0, 1, 8][(i // 3) % 3], "candle": i % 2})
-    return rows
-
-
-def tallies(rows):
-    t = {"behaviour": [0] * 8, "wall": {}, "bats": {}, "candle": {}}
-    for r in rows:
-        t["behaviour"][r["behaviour"]] += 1
-        for k in ("wall", "bats", "candle"):
-            t[k][str(r[k])] = t[k].get(str(r[k]), 0) + 1
-    return t
-
-
-def build(faults=None):
-    faults = faults or {}
-    w = World(chain_id=faults.get("chain", 1), block_number=5000)
-    parts = [(addr(f"part{i}"), det(f"part{i}", 300 + i)) for i in range(4)]
-    if "part" in faults:
-        parts[1] = (parts[1][0], parts[1][1][:-1] + b"\xff")
-    roms = {k: (addr(k), det(k, n)) for k, n in (("kernal", 8192), ("basic", 8192), ("chargen", 4096))}
-    fw = {"root": addr("root"), "romset": addr("romset"), "roms": roms}
-    install_machine(w, parts, fw)
-    if "rom" in faults:
-        w.data_contract(roms["basic"][0], det("basic", 8191) + b"\x00")     # the stated hash stays the pin's; the bytes differ
-    base = bytearray(det("base", 3000))
-    base[1000:1008] = b"MURAL02\x00"
-    base = bytes(base)
-    rows = rows64()
-    stamp_faults = {}
-    if "digits" in faults:
-        stamp_faults["digits"] = 12345678
-    if "row" in faults:
-        stamp_faults["row"] = (5, "colour", (rows[4]["colour"] + 1) % 16)
-    if "outside" in faults:
-        stamp_faults["outside"] = 10
-    served_base = base if "base" not in faults else base[:-1] + bytes([base[-1] ^ 1])
-    install_chamber(w, addr("chamber"), addr("chamberbase"), served_base, 1008, rows, stamp_faults)
-    program = bytearray(det("program", 4000))
-    genesis = bytearray(834); genesis[0:8] = b"BRAIN025"
-    program[2000:2834] = genesis
-    program = bytes(program)
-    slots = [det(f"slot{r}", 834) for r in (1, 2)]
-    install_perception(w, addr("perception"), addr("program"), program, 2000, bytes(genesis), {1: slots}, 32,
-                       {"blob": (1, 2)} if "blob" in faults else None)
-    tony = det("tony", 500)
-    ready = det("ready", 300)
-    install_whole(w, addr("tony"), tony if "whole" not in faults else tony[:-1] + b"\x00")
-    install_whole(w, addr("ready64"), ready)
-    cat = {
-        "schema": verify.SCHEMA, "version": verify.VERSION, "generated": "test", "chainId": 1, "endpoints": [],
-        "machine": {
-            "name": "synthetic", "parts": [{"name": f"part {i}", "address": a, "bytes": len(p), "sha256": hashlib.sha256(p).hexdigest()} for i, (a, p) in enumerate([(addr(f"part{i}"), det(f"part{i}", 300 + i)) for i in range(4)])],
-            "firmware": {"root": fw["root"], "romset": fw["romset"],
-                         "roms": {k: {"address": a, "bytes": len(p), "sha256": hashlib.sha256(p).hexdigest()} for k, (a, p) in roms.items()},
-                         "signatures": {"roms": "roms()", "kernal": "kernal()", "basic": "basic()", "chargen": "chargen()",
-                                        "kernalSha": "KERNAL_SHA256()", "basicSha": "BASIC_SHA256()", "chargenSha": "CHARGEN_SHA256()"},
-                         "selectors": {}},
-        },
-        "works": [
-            {"key": "chamber", "address": addr("chamber"), "tokens": {"count": 64},
-             "program": {"kind": "stamped", "bytes": len(base), "base": {"address": addr("chamberbase"), "keccak256": verify.keccak(base).hex(), "sha256": hashlib.sha256(base).hexdigest()},
-                         "stamp": {"offset": 1008, "bytes": 42, "sha256WindowZeroed": hashlib.sha256(verify.zero_window(base, 1008, 42)).hexdigest()}},
-             "rows": rows, "tallies": tallies(rows),
-             "selectors": {s: verify.selector(s) for s in ("prg(uint256)", "tableRow(uint256)", "renderBlock()", "base()", "prg()", "hash()", "blockOffset()", "size()")}},
-            {"key": "perception-canary", "address": addr("perception"), "tokens": {"count": 1}, "maxBatch": 32,
-             "program": {"kind": "slotted", "address": addr("program"), "bytes": len(program), "sha256": hashlib.sha256(program).hexdigest(),
-                         "slot": {"offset": 2000, "bytes": 834, "sha256WindowZeroed": hashlib.sha256(verify.zero_window(program, 2000, 834)).hexdigest()},
-                         "genesis": {"sha256": hashlib.sha256(bytes(genesis)).hexdigest()}},
-             "selectors": {s: verify.selector(s) for s in ("prg()", "prgWithBrain(uint256)", "head(uint256)", "revision(uint256,uint32)", "canonicalHashOf(bytes)", "program()", "hash()", "brainOffset()", "size()", "GENESIS_HASH()", "MAX_BATCH()")}},
-            {"key": "tony", "address": addr("tony"), "tokens": {"count": 1},
-             "program": {"kind": "whole", "keccak256": verify.keccak(tony).hex(), "sha256": hashlib.sha256(tony).hexdigest(), "bytes": len(tony)},
-             "selectors": {s: verify.selector(s) for s in ("prg()", "prgHash()")}},
-            {"key": "ready64", "address": addr("ready64"), "tokens": {"count": 1},
-             "program": {"kind": "whole", "keccak256": verify.keccak(ready).hex()},
-             "selectors": {s: verify.selector(s) for s in ("prg()", "prgHash()")}},
-        ],
-    }
-    cat["machine"]["firmware"]["selectors"] = {k: verify.selector(v) for k, v in cat["machine"]["firmware"]["signatures"].items()}
-    return w, cat
+# ------------------------------------------------------------------ the synthetic world (machine/test/synthetic.py)
+from synthetic import build  # noqa: E402
 
 
 def run(faults=None, tokens=(1, 5, 64)):
-    w, cat = build(faults)
+    w, cat = build([k for k, v in (faults or {}).items() if v])
     s = Server(w)
     url = s.start()
     lines = []

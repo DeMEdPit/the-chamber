@@ -38,6 +38,7 @@ class Page:
     kicker: str       # the breadcrumb's second word; "" on the home page
     dir: str          # the folder that builds it, "" for the root
     aliases: tuple = ()   # old addresses kept alive as redirects, for ever
+    generates: tuple = ()  # other files the page's builder writes, root-relative; check-site reproduces each
 
 
 PAGES = (
@@ -47,6 +48,8 @@ PAGES = (
          aliases=("/black-paper/",)),
     Page("arch", "/architecture/", "ARCHITECTURE", "reference", "ARCHITECTURE", "architecture"),
     Page("surface", "/surface/", "WHAT IS ON CHAIN", "reference", "WHAT IS ON CHAIN", "surface"),
+    Page("machine", "/machine/", "THE MACHINE", "machine", "THE MACHINE", "machine",
+         generates=("machine/core.html", "machine/standalone.html")),
 )
 BY_KEY = {p.key: p for p in PAGES}
 
@@ -60,10 +63,10 @@ class Builder:
 
 
 # build-all runs these after the pages; check-site rebuilds and compares every
-# generated file, so a hand edit to a built document fails the check.
-BUILDERS = (
-    Builder("machine", "machine/build.py", ("machine/core.html", "machine/standalone.html")),
-)
+# generated file, so a hand edit to a built document fails the check. The
+# machine's documents are built by its page's builder (Page.generates), so
+# this is empty until a builder that is not a page exists.
+BUILDERS = ()
 
 
 def page(key):

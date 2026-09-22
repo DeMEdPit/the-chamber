@@ -13,8 +13,9 @@
    failure, external reachability is not this check's business.
 4. No builder carries a private copy of a rule that is the shared
    stylesheet's or the footer's; the JSON inputs of the generated pages parse.
-5. The machine (machine/): the documents the registry's builders generate are
-   reproduced too; the site's copies of the emulator and the ROMs match their
+5. The machine (machine/): the documents its page generates are reproduced
+   too; the page's policy names only itself and the shared endpoints, allows
+   no inline script and frames only itself; the site's copies of the emulator and the ROMs match their
    manifest offline; the source's pins equal the manifest's; the embedded
    document's policy lets it connect to data: URLs alone and its script has
    no network call; the
@@ -140,6 +141,7 @@ def check_reproduces():
         pairs = [(page_file(p), pathlib.Path(tmp) / p.dir / "index.html" if p.dir else pathlib.Path(tmp) / "index.html") for p in PAGES]
         pairs += [(f, pathlib.Path(tmp) / old.strip("/") / "index.html") for old, f, _ in alias_files()]
         pairs += [(ROOT / g, pathlib.Path(tmp) / g) for b in BUILDERS for g in b.generates]
+        pairs += [(ROOT / g, pathlib.Path(tmp) / g) for p in PAGES for g in p.generates]
         for committed, built in pairs:
             rel = committed.relative_to(ROOT)
             if not committed.exists():
@@ -280,6 +282,34 @@ def check_machine():
             fail(f"{f}: names the emulator's licence as GPL-2.0 without -only; one identifier everywhere")
     if "All of it MIT" in (ROOT / "footer.py").read_text(encoding="utf-8"):
         fail("footer.py: still says all of it is MIT")
+    # the page: its policy names only the shared endpoints and itself, allows no inline script, frames only itself
+    from registry import RPCS
+    from urllib.parse import urlsplit
+    host = (mdir / "index.html").read_text(encoding="utf-8") if (mdir / "index.html").exists() else ""
+    pol = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]*)"', host)
+    if not pol:
+        fail("machine/index.html: no Content-Security-Policy")
+    else:
+        d = {}
+        for part in pol.group(1).split(";"):
+            bits = part.strip().split()
+            if bits:
+                d[bits[0]] = bits[1:]
+        origins = sorted({f"{urlsplit(u).scheme}://{urlsplit(u).netloc}" for u in RPCS})
+        if sorted(x for x in d.get("connect-src", []) if x != "'self'") != origins or "'self'" not in d.get("connect-src", []):
+            fail("machine/index.html: connect-src is not 'self' plus exactly the registry's endpoint origins")
+        if d.get("script-src") != ["'self'"]:
+            fail("machine/index.html: script-src must be 'self' alone")
+        if d.get("frame-src") != ["'self'"] or d.get("default-src") != ["'none'"]:
+            fail("machine/index.html: frame-src must be 'self' and default-src 'none'")
+    if re.search(r"<script(?![^>]*\bsrc=)", host):
+        fail("machine/index.html: an inline script; the page's scripts are files under script-src 'self'")
+    try:
+        cat = json.loads((mdir / "catalogue.json").read_text(encoding="utf-8"))
+        if list(cat.get("endpoints", [])) != list(RPCS):
+            fail("machine/catalogue.json: the endpoints are not the registry's list")
+    except Exception:  # noqa: BLE001
+        pass                                          # named by check_inputs
     # the catalogue against itself and the site's copies, by the public verifier, without a network
     r = subprocess.run([sys.executable, str(mdir / "verify.py"), "--offline"], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
@@ -298,7 +328,7 @@ def main():
             print("  - " + m)
         sys.exit(1)
     print(f"check-site: ok ({len(PAGES)} pages, {sum(len(p.aliases) for p in PAGES)} alias, "
-          f"{sum(len(b.generates) for b in BUILDERS)} generated documents, reproduced byte for byte, every link and anchor resolves, the machine's gate holds)")
+          f"{sum(len(b.generates) for b in BUILDERS) + sum(len(p.generates) for p in PAGES)} generated documents, reproduced byte for byte, every link and anchor resolves, the machine's gate holds)")
 
 
 if __name__ == "__main__":

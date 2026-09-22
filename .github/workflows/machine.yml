@@ -51,6 +51,9 @@ jobs:
       - name: The bridge gate
         run: node machine/test/bridge.mjs
 
+      - name: The page's gate, against a synthetic chain
+        run: node machine/test/page.mjs
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

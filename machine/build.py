@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build the two machine documents from one source, and refuse what the pins or the licence gate do not allow.
+"""Build THE MACHINE: the two machine documents from one source, and the page around them.
 
-    python3 machine/build.py                 # writes machine/core.html and machine/standalone.html
+    python3 machine/build.py                 # machine/core.html, machine/standalone.html, machine/index.html
     SITE_OUT=/tmp/site python3 machine/build.py   # elsewhere, for check-site's comparison
 
 One source, `machine/src/core.html`, carries regions marked on their own lines:
@@ -14,7 +14,7 @@ build the reverse; both drop the marker lines. Nothing decides at run time.
 
 Before writing anything the build holds, and stops on the first failure:
   - every file under machine/parts/ has the bytes and the sha256 its
-    MANIFEST.json states (the site's copies are proven, not assumed);
+    MANIFEST.json states (the site's copies match the record);
   - the four emulator pins in the source and the seven pins in the host's
     bridge-client.js equal the manifest's, in order, so the document, the
     client and the copies cannot drift apart;
@@ -24,7 +24,9 @@ Before writing anything the build holds, and stops on the first failure:
     emulator fetches its WebAssembly from a data URL inside its own script, and
     a data URL reaches no network) and no network call of any kind; the
     standalone build carries no policy.
-Standard library only.
+The page is rendered through the site's shell with its own policy: scripts
+only from this site, connections only to this site and the shared endpoints,
+frames only from this site, nothing inline. Standard library only.
 """
 import hashlib
 import json
@@ -32,10 +34,12 @@ import os
 import pathlib
 import re
 import sys
+from urllib.parse import urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from page import out_root  # noqa: E402
+from page import out_root, render, write  # noqa: E402
+from registry import RPCS, CONTRACTS  # noqa: E402
 
 HERE = ROOT / "machine"
 SRC = HERE / "src" / "core.html"
@@ -44,6 +48,11 @@ OUTPUTS = {"EMBEDDED": "machine/core.html", "STANDALONE": "machine/standalone.ht
 MARK = re.compile(r"^\s*(?:<!--@|/\*@)(END-)?(EMBEDDED|STANDALONE)(?:-->|\*/)\s*$")
 NETWORK_TOKENS = ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "import(", "navigator.")
 SPDX = "SPDX-License-Identifier: GPL-2.0-only"
+KEY = "machine"
+TITLE = "The Machine"
+DESC = ("READY 64 in the page: the Commodore 64 emulator nopsta stored on Ethereum in 2022, running any program of "
+        "the series straight from the chain, every byte checked against its pin before it runs.")
+MONO = "ui-monospace,SFMono-Regular,Menlo,monospace"
 
 
 def die(msg):
@@ -166,6 +175,148 @@ def check_outputs(docs):
         die("PROTOCOL.md's first line does not state the protocol version the source carries")
 
 
+# ------------------------------------------------------------------ the page
+def policy():
+    origins = sorted({f"{urlsplit(u).scheme}://{urlsplit(u).netloc}" for u in RPCS})
+    return ("default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; "
+            "connect-src 'self' " + " ".join(origins) + "; frame-src 'self'; child-src 'self'; "
+            "base-uri 'none'; form-action 'none'; object-src 'none'")
+
+
+PAGE_CSS = f"""
+main{{width:min(1180px,calc(100% - 36px))}}
+h1{{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}}
+.lede{{margin:0 0 26px;color:var(--muted);font-weight:450;line-height:1.4;font-size:clamp(1.05rem,3.6vw,1.3rem);max-width:70ch}}
+.lede b{{color:var(--ink);font-weight:600}}
+.machine{{display:grid;grid-template-columns:768px 1fr;gap:22px;align-items:start}}
+.stage{{min-width:0}}
+.frame{{position:relative;width:100%;aspect-ratio:384/272;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}}
+.frame iframe{{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#000}}
+.frame:focus-within{{outline:2px solid var(--accent);outline-offset:2px}}
+.veil{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
+  background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 {MONO};letter-spacing:.16em;pointer-events:none}}
+.veil[hidden]{{display:none}}
+.hint{{margin:10px 0 0;font-size:.85rem;color:var(--muted)}}
+.touch{{display:none;margin:12px 0 0;grid-template-columns:1fr 1fr;gap:12px;align-items:center}}
+.touch .pad{{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;justify-content:start}}
+.touch button{{font:700 .72rem/1 {MONO};letter-spacing:.1em;color:var(--ink);background:var(--panel);border:1px solid #333;border-radius:8px;
+  touch-action:none;user-select:none;-webkit-user-select:none}}
+.touch button:active{{border-color:var(--accent);color:var(--accent)}}
+.touch .fire{{height:112px;font-size:.9rem}}
+.touch .pad .u{{grid-column:2;grid-row:1}}.touch .pad .l{{grid-column:1;grid-row:2}}.touch .pad .r{{grid-column:3;grid-row:2}}.touch .pad .d{{grid-column:2;grid-row:3}}
+@media(pointer:coarse){{.touch{{display:grid}}}}
+.column{{min-width:0;display:flex;flex-direction:column;gap:14px}}
+.panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}}
+.panel .lab{{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 10px}}
+.panel .lab .n{{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none}}
+.search{{width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 10px;font:500 .9rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px}}
+.search:focus{{outline:0;border-color:var(--accent)}}
+.rows{{max-height:330px;overflow:auto;border-top:1px solid var(--line)}}
+.rows .g{{position:sticky;top:0;background:var(--panel);font:700 .6rem/2.2 {MONO};letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}}
+.row{{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #161616}}
+.row .t{{display:flex;flex-direction:column;min-width:0}}
+.row .title{{font-size:.92rem;color:var(--ink)}}
+.row .sub{{font-size:.74rem;color:var(--muted);line-height:1.35}}
+.row.now .title{{color:var(--accent)}}
+.row.offered{{outline:1px dashed var(--accent);outline-offset:2px;border-radius:4px}}
+button.load,button.b{{flex:none;font:700 .66rem/1 {MONO};letter-spacing:.14em;color:var(--accent2);background:transparent;border:1px solid #2c3f36;border-radius:6px;padding:8px 12px;cursor:pointer}}
+button.load:hover,button.b:hover,button.load:focus-visible,button.b:focus-visible{{border-color:var(--accent);color:var(--accent);outline:0}}
+.offered{{margin:0 0 10px;font-size:.85rem;color:var(--accent2)}}
+.state{{font:700 .8rem/1.4 {MONO};letter-spacing:.16em;color:var(--ink);margin:0 0 10px}}
+.state[data-phase="running"]{{color:var(--accent)}}
+.state[data-phase="refused"],.state[data-phase="failed"]{{color:#ff9d9d}}
+.playing{{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}}
+.nl{{display:grid;grid-template-columns:84px 1fr;gap:10px;font-size:.84rem;line-height:1.45}}
+.nl .k{{font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--muted)}}
+.nl .v{{color:var(--ink);overflow-wrap:anywhere}}
+.nl.bad .v{{color:#ff9d9d}}
+.nl.muted .v{{color:var(--muted)}}
+.log{{list-style:none;margin:0 0 10px;padding:8px 0 0;border-top:1px solid var(--line);font:500 .72rem/1.5 {MONO};color:var(--muted);max-height:160px;overflow:auto}}
+.log li{{margin:0;overflow-wrap:anywhere}}
+.tools{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}
+.tools .copied{{font:500 .72rem/1 {MONO};color:var(--muted)}}
+textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;font:500 .7rem/1.4 {MONO};color:var(--muted);background:#050505;border:1px solid #222;border-radius:6px}}
+.keys{{margin:0;font-size:.85rem;color:var(--ink);line-height:1.5}}
+.keys dt{{font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--muted);margin-top:6px}}
+.keys dd{{margin:0}}
+select.mode{{font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}}
+.leave a{{display:inline-block;font:700 .72rem/1.4 {MONO};letter-spacing:.14em;color:var(--accent2);text-decoration:none;border:1px solid #2c3f36;border-radius:6px;padding:10px 14px}}
+.leave a:hover{{border-color:var(--accent);color:var(--accent)}}
+.about{{margin:44px 0 0;max-width:70ch}}
+.about h2{{margin-top:44px}}
+.about p{{font-size:.95rem;color:#deded9}}
+.about code{{font-size:.8rem}}
+@media(max-width:1139px){{.machine{{grid-template-columns:1fr}}.frame{{max-width:768px}}}}
+@media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{max-height:260px}}.nl{{grid-template-columns:1fr;gap:0}}}}
+"""
+
+
+def page_body():
+    chamber, perception = CONTRACTS["chamber"], CONTRACTS["perception"]
+    return f"""<h1>The Machine</h1>
+<p class="lede"><b>READY 64</b>, in this page: minimal64, the Commodore 64 emulator nopsta stored on Ethereum in 2022,
+read off the chain and checked against its pins before it runs. Choose a program of the series below; it is read from
+its contract and checked the same way. Nothing runs until you press LOAD.</p>
+<div class="machine">
+  <div class="stage">
+    <div class="frame" id="frame" aria-label="READY 64, the machine">
+      <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
+    </div>
+    <div class="touch" id="touch" aria-label="joystick">
+      <div class="pad">
+        <button type="button" class="u" data-bit="1" aria-label="up">&#9650;</button>
+        <button type="button" class="l" data-bit="4" aria-label="left">&#9664;</button>
+        <button type="button" class="r" data-bit="8" aria-label="right">&#9654;</button>
+        <button type="button" class="d" data-bit="2" aria-label="down">&#9660;</button>
+      </div>
+      <button type="button" class="fire" data-bit="16">FIRE</button>
+    </div>
+    <p class="hint">Click the machine to give it your keys and to hear it. Escape is RUN/STOP on a Commodore 64 and never leaves this page.</p>
+  </div>
+  <aside class="column">
+    <section class="panel" aria-labelledby="lab-chain">
+      <div class="lab"><span id="lab-chain">FROM THE CHAIN</span><span class="n" id="count"></span></div>
+      <p class="offered" id="offered" hidden></p>
+      <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
+      <div class="rows" id="rows" aria-live="polite"></div>
+    </section>
+    <section class="panel" aria-labelledby="lab-now">
+      <div class="lab"><span id="lab-now">NOW PLAYING</span></div>
+      <p class="state" id="state" aria-live="polite">THE MACHINE IS OFF</p>
+      <div class="playing" id="now"></div>
+      <ul class="log" id="log" aria-label="what the page read and checked"></ul>
+      <div class="tools">
+        <button type="button" class="b" id="copy">COPY PROVENANCE</button>
+        <button type="button" class="b" id="retry" hidden>RETRY</button>
+        <span class="copied" id="copied"></span>
+      </div>
+      <textarea class="json" id="provenance-json" readonly aria-label="the provenance as JSON" hidden></textarea>
+    </section>
+    <section class="panel" aria-labelledby="lab-keys">
+      <div class="lab"><span id="lab-keys">THE KEYS</span></div>
+      <dl class="keys">
+        <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed"><option value="joystick" selected>joystick in port 2</option><option value="keyboard">the keyboard</option></select></dd>
+        <dt>JOYSTICK</dt><dd>arrows move; Z, X or space is FIRE. The programs of the series read port 2.</dd>
+        <dt>KEYBOARD</dt><dd>your keys are the C64's; Escape is RUN/STOP, Home is CLR/HOME, the function keys are F1 to F7.</dd>
+        <dt>FIRMWARE</dt><dd>off: the programs of the series run bare, as they do on chain.</dd>
+        <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button></dd>
+      </dl>
+    </section>
+    <section class="panel leave" aria-labelledby="lab-leave">
+      <div class="lab"><span id="lab-leave">LEAVE THE MACHINE</span></div>
+      <a href="/">BACK TO THE CHAMBER</a>
+    </section>
+  </aside>
+</div>
+<section class="about">
+  <h2>What this page does, and does not</h2>
+  <p>The machine is the emulator nopsta stored on Ethereum in 2022, in four data contracts: <a href="https://etherscan.io/address/0x1Cc49e603B4b205Be0E74f8833971Bea5beccEC9" target="_blank" rel="noopener">the gunzip helper</a> and <a href="https://etherscan.io/address/0xEF13021d5302c3fCe437A3C281A286479ba60008" target="_blank" rel="noopener">three parts of minimal64</a>. The page reads them from the chain first; if no node answers, it uses the site's own copies of the same bytes; either way each part must hash to the pin the page carries, or it does not run, and NOW PLAYING says which source it was.</p>
+  <p>A program is read from its contract the way anyone can read it: <a href="https://etherscan.io/address/{chamber}#readContract" target="_blank" rel="noopener">the Chamber's</a> <code>prg(id)</code>, stamped with the block you load it at, is held to the pinned base outside its 42-byte stamp and to the row and the block inside it; <a href="https://etherscan.io/address/{perception}#readContract" target="_blank" rel="noopener">the Perception Chamber Canary's</a> <code>prgWithBrain(1)</code> is held to the frozen program outside its mind and to the head revision's record inside it; the two older tokens are held to their pinned hashes. The words on the provenance line mean what they say: <b>PINNED</b>, the bytes matched a commitment this page held before it asked; <b>CONTRACT-CONSISTENT</b>, they matched what the same node reported in the same session; <b>NODE-REPORTED</b>, a fact one node stated. One node is asked, and it is named. The pins are in <a href="catalogue.json">the catalogue</a>, which <a href="verify.py">a public script</a> checks against the chain for anyone who runs it (<a href="CATALOGUE.md">how</a>).</p>
+  <p>The machine runs in a frame that cannot reach this page, the network or your storage; the page speaks to it over one port, by <a href="PROTOCOL.md">a written protocol</a>. Nothing on this page reaches into the machine: the mode is PURE, and the provenance would say INTERVENED if anything ever did. A public node sees the address you read from and the contracts you ask for, nothing else; to use a node of your own, open <a href="standalone.html">the standalone machine</a> with <code>?rpc=</code> and your endpoint.</p>
+  <p>The machine document is GPL-2.0-only, nopsta's licence; the page around it is MIT; <a href="LICENSES.md">what is what</a>. Your own files come in the next phase of this page.</p>
+</section>"""
+
+
 def build():
     src = SRC.read_text(encoding="utf-8")
     m = manifest()
@@ -178,7 +329,11 @@ def build():
         out = out_root() / rel
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(docs[b], encoding="utf-8")
-        print(f"machine/build.py: {rel} ({len(docs[b].encode('utf-8'))} bytes)")
+        print(f"machine/build.py: {rel} ({len(docs[b].encode('utf-8')) } bytes)")
+    head = '<link rel="alternate" type="application/json" href="catalogue.json" title="the catalogue">'
+    doc = render(KEY, page_body(), title=TITLE, description=DESC, css=PAGE_CSS, csp=policy(), head=head,
+                 script='<script type="module" src="host.js"></script>')
+    write(KEY, doc)
 
 
 if __name__ == "__main__":

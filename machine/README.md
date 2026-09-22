@@ -13,6 +13,10 @@ its decisions are in the private study; what is public is here, all of it.
 | `core.html` | built: the EMBEDDED machine document, fed every byte by a host over a `MessagePort`; its policy connects to `data:` alone (the emulator's own WebAssembly travels as a data URL; no network), and it has no network code | GPL-2.0-only |
 | `standalone.html` | built: the STANDALONE machine document, which reads the chain itself and boots to READY (`?mode=bare`, `?prg=<hex>`, `?input=joystick`, `?rpc=<url>`). A harness and a copy-and-run surface: no policy, any RPC; the security boundary is the embedded build's alone | GPL-2.0-only |
 | `build.py` | builds both from the source; refuses to build unless the copies match their manifest, the pins agree, and the licence gate holds | MIT |
+| `index.html` | built: the page, THE MACHINE at `/machine/`: the frame, FROM THE CHAIN, NOW PLAYING, the keys, the way out; its policy allows scripts and frames from this site only and connections to this site and the shared endpoints only, nothing inline | MIT |
+| `host.js` | the page's script: the search over the catalogue, the states, the provenance, the controls | MIT |
+| `chain.js` | the page's reads from Ethereum and what each may claim: one node of the session, named; a program as one record with its statuses; a mismatch refused | MIT |
+| `keccak.js` | keccak-256 for the page (a stamp's seed, the older tokens' pins, selectors) | MIT |
 | `bridge-client.js` | the host's side of the bridge: the seven pins in code, request ids, timeouts, a frame destroyed and rebuilt rather than recovered, the site's copies held to the pins before they are handed over | MIT |
 | `parts/` | the site's copies of the emulator's four parts and the three ROMs, with `MANIFEST.json` (bytes, sha256, chain address, licence, source) | GPL-2.0-only / LGPL-3.0-or-later |
 | `catalogue.json` | every program the page can load from the chain, how to fetch each and what it must match; produced by a private exporter, checkable by anyone (`CATALOGUE.md` describes it) | data |

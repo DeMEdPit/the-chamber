@@ -24,16 +24,22 @@ def esc(t):
     return _html.escape(str(t), quote=True)
 
 
-def render(key, body, *, title, description, css="", image=CARD, image_alt=SITE_NAME, og_type=None, script=""):
+def render(key, body, *, title, description, css="", image=CARD, image_alt=SITE_NAME, og_type=None, script="", csp=None, head=""):
+    """csp: a Content-Security-Policy for this page, placed first in the head so it governs everything after it;
+    head: extra tags (an alternate link, say). Both empty on every page that does not need them."""
     p = _page(key)
     og_type = og_type or ("website" if p.kind == "home" else "article")
     kicker = "" if not p.kicker else f'<p class="kicker"><a href="/">THE CHAMBER</a> · {p.kicker}</p>\n'
     tail = f"{script}\n" if script else ""
+    # the policy's quotes are single by the CSP grammar; escape only what an attribute cannot hold
+    policy = f'<meta http-equiv="Content-Security-Policy" content="{csp.replace("&", "&amp;").replace(chr(34), "&quot;").replace("<", "&lt;")}">\n' if csp else ""
+    extra = f"{head}\n" if head else ""
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+{policy}<meta name="viewport" content="width=device-width,initial-scale=1">
+{extra}
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
 <link rel="canonical" href="{SITE}{p.path}">

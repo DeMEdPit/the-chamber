@@ -14,7 +14,7 @@
 //   http://127.0.0.1:<port>/machine/standalone.html?rpc=http://127.0.0.1:<port>/rpc
 //   http://127.0.0.1:<port>/machine/test/harness.html
 
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { createHash } from 'node:crypto';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, extname, normalize } from 'node:path';
@@ -67,11 +67,37 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
   '.json': 'application/json', '.bin': 'application/octet-stream', '.rom': 'application/octet-stream', '.prg': 'application/octet-stream',
   '.png': 'image/png', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
 
-export function start(port = 8260) {
+/**
+ * start(port, { catalogue, rpcUpstream }): with `catalogue`, that file is served at
+ * /machine/catalogue.json instead of the committed one; with `rpcUpstream`, /rpc is
+ * forwarded to that URL (a stand-in node built by machine/test/synthetic.py). Both are
+ * for the page's gate; without them this is the stand-in mainnet built from the copies.
+ */
+export function start(port = 8260, opts = {}) {
   const server = createServer((q, r) => {
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
     if (q.method === 'OPTIONS') { r.writeHead(204, cors); r.end(); return; }
     const url = new URL(q.url, 'http://x');
+    if (url.pathname === '/rpc' && opts.rpcUpstream) {
+      let body = '';
+      q.on('data', (c) => (body += c));
+      q.on('end', () => {
+        const up = new URL(opts.rpcUpstream);
+        const req = httpRequest({ hostname: up.hostname, port: up.port, path: up.pathname, method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, (res) => {
+          let out = '';
+          res.on('data', (c) => (out += c));
+          res.on('end', () => { r.writeHead(200, { 'content-type': 'application/json', ...cors }); r.end(out); });
+        });
+        req.on('error', (e) => { r.writeHead(502, cors); r.end(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'upstream: ' + e.message } })); });
+        req.end(body);
+      });
+      return;
+    }
+    if (url.pathname === '/machine/catalogue.json' && opts.catalogue) {
+      r.writeHead(200, { 'content-type': 'application/json', ...cors });
+      r.end(readFileSync(opts.catalogue));
+      return;
+    }
     if (url.pathname === '/rpc') {
       let body = '';
       q.on('data', (c) => (body += c));
