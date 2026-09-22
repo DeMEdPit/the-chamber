@@ -148,6 +148,7 @@ var CAPABILITIES = {
   screenText: true,
   peek: true,
   poke: true,
+  audio: true,
   snapshots: false
 };
 var LIMITS = { prg: 65538, text: 4096, machine: 1048576, peek: 65536 };
@@ -294,6 +295,7 @@ var audioBufferSize = 0, audioContext = false, gainNode = false, volume = 0.8;
 var audioNextPlayTime = 0, audioBufferDurationSecs = 0, audioSampleFrequency = 0;
 var pushAudioLastTime = 0, pauseCounter = 0;
 function pushAudio() {
+  if (hostAudio) return;
   if (audioContext.currentTime - pushAudioLastTime > (audioBufferSize * 2) / audioSampleFrequency) {
     pushAudioLastTime = audioContext.currentTime; pauseCounter = 10; return;
   }
@@ -328,8 +330,13 @@ function setupAudioNodes() {
   runTimer();
   setInterval(pushAudio, 4);
 }
+/* The host may take the sound instead (protocol: audio, samples): a browser
+   lets sound start only on a gesture in the document that plays it, and a
+   host's buttons are not in this one. While the host has it, this document
+   plays nothing of its own. */
+var hostAudio = false, hostBufferSize = 4096;
 function startAudio() {
-  if (!m64) return;
+  if (!m64 || hostAudio) return;
   var AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   try {
@@ -612,6 +619,8 @@ var SCHEMA = {
   screen: {},
   peek: { addr: 'integer', length: 'integer?' },
   poke: { addr: 'integer', value: 'integer' },
+  audio: { on: 'boolean', sampleRate: 'integer?', bufferSize: 'integer?' },
+  samples: {},
   lab: { on: 'boolean' },
   state: {}
 };
@@ -740,6 +749,28 @@ async function onRequest(m) {
       m64_cpuWrite(m.addr, m.value);
       if (!intervened) { intervened = true; STATE.intervened = true; event('intervened', { addr: m.addr }); }
       reply(m, { type: 'ok', intervened: true }); return;
+    case 'audio': {
+      if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      if (!m.on) { hostAudio = false; reply(m, { type: 'ok', audio: false }); return; }
+      var bs = m.bufferSize === undefined ? 4096 : m.bufferSize;
+      if ([512, 1024, 2048, 4096, 8192].indexOf(bs) < 0) { refuse(m, 'BAD_MESSAGE', 'bufferSize is 512, 1024, 2048, 4096 or 8192'); return; }
+      if (m.sampleRate === undefined || m.sampleRate < 8000 || m.sampleRate > 192000) { refuse(m, 'BAD_MESSAGE', 'sampleRate is 8000 to 192000'); return; }
+      hostAudio = true; hostBufferSize = bs;
+      if (audioContext && audioContext.state === 'running') { try { audioContext.suspend(); } catch (e) {} }
+      m64_audioInit(bs, m.sampleRate);
+      reply(m, { type: 'ok', audio: true, bufferSize: bs, sampleRate: m.sampleRate }); return;
+    }
+    case 'samples': {
+      if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      if (!hostAudio) { refuse(m, 'AUDIO_OFF', 'send audio {on: true, sampleRate} first'); return; }
+      var sp = m64_getAudioBuffer();
+      var samples = new Float32Array(hostBufferSize);
+      samples.set(m64.HEAPF32.subarray(sp >> 2, (sp >> 2) + hostBufferSize));
+      var sres = { v: PROTOCOL, type: 'samples', bytes: samples.buffer, count: hostBufferSize };
+      if (validId(m)) sres.id = m.id;
+      if (port) { try { port.postMessage(sres, [samples.buffer]); } catch (e) {} }
+      return;
+    }
     case 'lab':
       labOn = m.on; STATE.lab = labOn; reply(m, { type: 'ok', lab: labOn }); return;
     case 'state':

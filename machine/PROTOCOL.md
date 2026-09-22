@@ -49,7 +49,7 @@ The machine sends `hello` as soon as it holds the port:
  "build": "embedded", "phase": "waiting",
  "capabilities": {"loads": ["prg"], "input": ["keyboard", "joystick2"],
                   "firmware": true, "screenText": true, "peek": true,
-                  "poke": true, "snapshots": false},
+                  "poke": true, "audio": true, "snapshots": false},
  "limits": {"prg": 65538, "text": 4096, "machine": 1048576, "peek": 65536}}
 ```
 
@@ -72,6 +72,8 @@ host offers only what it lists.
 | `peek` | `addr`: integer 0..65535; `length`: integer 1..65536, optional, default 1 | `value {addr, value, bytes}` — `bytes` an `ArrayBuffer` |
 | `poke` | `addr`: integer 0..65535; `value`: integer 0..255 | `ok {intervened: true}`; refused `LAB_OFF` unless `lab` is on |
 | `lab` | `on`: boolean | `ok {lab}` |
+| `audio` | `on`: boolean; `sampleRate`: integer 8000..192000 (required when on); `bufferSize`: 512, 1024, 2048, 4096 or 8192, default 4096 | `ok {audio, bufferSize, sampleRate}`. On, the host takes the sound: the document plays nothing of its own, and hands its samples over on request. A browser lets sound start only on a gesture in the document that plays it, and a host's controls are not in this one, which is why the host plays |
+| `samples` | | `samples {bytes, count}` — the next `bufferSize` samples as a transferred `ArrayBuffer` of 32-bit floats at the rate given; refused `AUDIO_OFF` until `audio` is on. The host asks once per buffer it schedules, at the pace of its own audio clock, as nopsta's player does |
 | `state` | | `state {phase, build, mode, input, firmware, program, intervened, lab, error}` |
 
 Any request may be answered with `refused {code, text}` instead. The text
@@ -128,6 +130,7 @@ run. The way back is a fresh frame.
 | `PRG_ADDRESS_OVERFLOW` | load address plus payload past 64K |
 | `LAB_OFF` | a write without `lab` on |
 | `BUSY` | `type` while a previous `type` is still being typed |
+| `AUDIO_OFF` | `samples` before `audio {on: true}` |
 | `INTERNAL` | an exception inside a handler |
 
 Reserved for the host page and the catalogue, with the same stability:

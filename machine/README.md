@@ -17,6 +17,7 @@ its decisions are in the private study; what is public is here, all of it.
 | `host.js` | the page's script: the search over the catalogue, the states, the provenance, the controls | MIT |
 | `chain.js` | the page's reads from Ethereum and what each may claim: one node of the session, named; a program as one record with its statuses; a mismatch refused | MIT |
 | `keccak.js` | keccak-256 for the page (a stamp's seed, the older tokens' pins, selectors) | MIT |
+| `audio.js` | the page plays the machine's sound: samples pulled over the port and scheduled on the page's audio clock, paced as nopsta's player paces them | MIT |
 | `bridge-client.js` | the host's side of the bridge: the seven pins in code, request ids, timeouts, a frame destroyed and rebuilt rather than recovered, the site's copies held to the pins before they are handed over | MIT |
 | `parts/` | the site's copies of the emulator's four parts and the three ROMs, with `MANIFEST.json` (bytes, sha256, chain address, licence, source) | GPL-2.0-only / LGPL-3.0-or-later |
 | `catalogue.json` | every program the page can load from the chain, how to fetch each and what it must match; produced by a private exporter, checkable by anyone (`CATALOGUE.md` describes it) | data |

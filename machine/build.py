@@ -197,11 +197,12 @@ h1{{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}}
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 {MONO};letter-spacing:.16em;pointer-events:none}}
 .veil[hidden]{{display:none}}
 .hint{{margin:10px 0 0;font-size:.85rem;color:var(--muted)}}
-.touch{{display:none;margin:12px 0 0;grid-template-columns:1fr 1fr;gap:12px;align-items:center}}
+.touch{{display:none;margin:12px 0 0;grid-template-columns:1fr 1fr;gap:12px;align-items:center;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}}
 .touch .pad{{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;justify-content:start}}
 .touch button{{font:700 .72rem/1 {MONO};letter-spacing:.1em;color:var(--ink);background:var(--panel);border:1px solid #333;border-radius:8px;
   touch-action:none;user-select:none;-webkit-user-select:none}}
-.touch button:active{{border-color:var(--accent);color:var(--accent)}}
+.touch button.down{{border-color:var(--accent);color:var(--accent);background:#0f1a14}}
 .touch .fire{{height:112px;font-size:.9rem}}
 .touch .pad .u{{grid-column:2;grid-row:1}}.touch .pad .l{{grid-column:1;grid-row:2}}.touch .pad .r{{grid-column:3;grid-row:2}}.touch .pad .d{{grid-column:2;grid-row:3}}
 @media(pointer:coarse){{.touch{{display:grid}}}}
@@ -271,7 +272,7 @@ its contract and checked the same way. Nothing runs until you press LOAD.</p>
       </div>
       <button type="button" class="fire" data-bit="16">FIRE</button>
     </div>
-    <p class="hint">Click the machine to give it your keys and to hear it. Escape is RUN/STOP on a Commodore 64 and never leaves this page.</p>
+    <p class="hint">Sound starts with your first tap or key on this page; a phone on silent stays silent. Click the machine to give it your keys. Escape is RUN/STOP on a Commodore 64 and never leaves this page.</p>
   </div>
   <aside class="column">
     <section class="panel" aria-labelledby="lab-chain">
@@ -299,6 +300,7 @@ its contract and checked the same way. Nothing runs until you press LOAD.</p>
         <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed"><option value="joystick" selected>joystick in port 2</option><option value="keyboard">the keyboard</option></select></dd>
         <dt>JOYSTICK</dt><dd>arrows move; Z, X or space is FIRE. The programs of the series read port 2.</dd>
         <dt>KEYBOARD</dt><dd>your keys are the C64's; Escape is RUN/STOP, Home is CLR/HOME, the function keys are F1 to F7.</dd>
+        <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint">the page plays what the machine's sound chip makes</span></dd>
         <dt>FIRMWARE</dt><dd>off: the programs of the series run bare, as they do on chain.</dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button></dd>
       </dl>

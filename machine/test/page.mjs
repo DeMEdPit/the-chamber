@@ -83,6 +83,8 @@ try {
         `the provenance as JSON: ${prov ? JSON.stringify({ program: prov.program.status, stamp: prov.stamp.status, machine: prov.machine.source }) : 'none'}`);
   const ran = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 1)), 10000);
   check(!!ran, 'the program ran on the machine (screen code 1 at $0400)');
+  const sound = await until(() => pg.evaluate(() => { const a = window.machinePage.audio; return a.attached && a.pulled > 3 ? a : null; }), 8000);
+  check(!!sound, `the page plays the machine's sound: attached ${sound ? sound.attached : false}, ${sound ? sound.pulled : 0} buffers pulled`);
   const outside = requests.filter((u) => !u.startsWith(A.base));
   check(outside.length === 0, `no request left the test host (${outside.length})`);
   await pg.screenshot({ path: join(EVIDENCE, 'page-1180.png'), fullPage: true });

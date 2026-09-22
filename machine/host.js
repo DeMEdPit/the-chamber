@@ -6,6 +6,7 @@
 // chain and every claim about it is chain.js's; this file is the page.
 import { createMachine, bootMachine, partsFromSite, STATUS } from './bridge-client.js';
 import { Node, machineFromChain, programFromChain } from './chain.js';
+import { createAudio } from './audio.js';
 
 const PAGE = 'machine/1c';
 const $ = (id) => document.getElementById(id);
@@ -13,7 +14,9 @@ const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), offered: $('offered'), copyLog: $('copy-log'),
+  sound: $('sound'),
 };
+const audio = createAudio({ onStatus: (t) => say(t) });
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
 let inputMode = 'joystick';
@@ -127,7 +130,17 @@ async function ensureMachine() {
   const ready = await bootMachine(machine, bytes, { firmware: false });
   machineFacts = { name: ready.emulator, status: ready.status.emulator, source: bytes.source, firmware: false };
   await machine.request('input', { mode: inputMode });
+  await attachSound();
   veil('');
+}
+/** The page plays the machine's sound once a gesture has unlocked the page's audio; until then the next tap does it. */
+async function attachSound() {
+  if (!machine || !machine.alive || audio.attached) return;
+  if (!audio.ready) { say('sound: waits for your first tap or key on this page'); return; }
+  try { await audio.attach(machine); } catch (e) { say(`sound: the machine did not take the audio request (${e.code || e.message})`); }
+}
+for (const ev of ['pointerup', 'click', 'keydown', 'touchend']) {
+  document.addEventListener(ev, () => { if (audio.unlock() && machine && machine.alive && !audio.attached && state.phase === 'running') attachSound(); }, { capture: true, passive: true });
 }
 
 async function load(work, token) {
@@ -248,12 +261,26 @@ els.reset.addEventListener('click', async () => {
   markOffered(null, null);
 });
 els.retry.addEventListener('click', () => { if (lastAsk) load(lastAsk.work, lastAsk.token); });
+// The touch controls: each button marks itself pressed (a browser lights only one
+// pressed element at a time, and two fingers press two), and the browser's own
+// touch behaviours under a finger (selecting words, zooming on a double tap, a
+// callout on a long press) are switched off over the whole pad.
+for (const ev of ['touchstart', 'touchmove', 'contextmenu', 'dblclick', 'selectstart']) {
+  els.touch.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+}
 for (const b of els.touch.querySelectorAll('button[data-bit]')) {
   const bit = Number(b.dataset.bit);
   const send = (down) => { if (machine && machine.alive) machine.request('joystick', { bit, down }).catch(() => {}); };
-  b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); send(true); });
-  for (const ev of ['pointerup', 'pointercancel']) b.addEventListener(ev, (e) => { e.preventDefault(); send(false); });
+  const press = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) { /* a mouse without capture is fine */ } b.classList.add('down'); send(true); };
+  const release = (e) => { e.preventDefault(); if (!b.classList.contains('down')) return; b.classList.remove('down'); send(false); };
+  b.addEventListener('pointerdown', press);
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, release);
 }
+els.sound.addEventListener('click', () => {
+  audio.setOn(!audio.on);
+  els.sound.textContent = audio.on ? 'SOUND ON' : 'SOUND OFF';
+  if (audio.on && machine && machine.alive && !audio.attached) attachSound();
+});
 
 // ------------------------------------------------------------------ start
 async function start() {
@@ -283,5 +310,5 @@ async function start() {
     els.offered.hidden = false;
   }
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, provenance, report, STATUS };
 start();

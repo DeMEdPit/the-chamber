@@ -165,6 +165,19 @@ try {
   const typed = await pg.evaluate(() => window.harness.request('type', { text: 'X' }));
   check(typed.ok && typed.r.typed === true, 'type resolves when done');
 
+  // 6b. the host takes the sound: samples come over the port, at the buffer size asked, and not before audio is on
+  const early = await pg.evaluate(() => window.harness.request('samples'));
+  check(!early.ok && early.code === 'AUDIO_OFF', `samples before audio: ${early.code}`);
+  const audioOn = await pg.evaluate(() => window.harness.request('audio', { on: true, sampleRate: 44100, bufferSize: 2048 }));
+  check(audioOn.ok && audioOn.r.audio === true && audioOn.r.bufferSize === 2048, `audio on: ${JSON.stringify(audioOn.r || audioOn)}`);
+  const smp = await pg.evaluate(() => window.harness.request('samples'));
+  check(smp.ok && smp.r.type === 'samples' && smp.r.count === 2048 && smp.r.bytes.length === 2048 * 4, `samples: ${smp.ok ? smp.r.count + ' floats, ' + smp.r.bytes.length + ' bytes' : smp.code}`);
+  const badRate = await pg.evaluate(() => window.harness.request('audio', { on: true, sampleRate: 100 }));
+  check(!badRate.ok && badRate.code === 'BAD_MESSAGE', `a sample rate out of range: ${badRate.code}`);
+  const audioOff = await pg.evaluate(() => window.harness.request('audio', { on: false }));
+  check(audioOff.ok && audioOff.r.audio === false, 'audio off');
+  check(h.capabilities.audio === true, 'hello states audio');
+
   // 7. a destroyed frame rejects what is pending; a timed-out request destroys the frame; a fresh one boots
   const gone = await pg.evaluate(() => {
     const p = window.harness.request('type', { text: 'HELLO FROM THE HOST\n' }, { timeout: 20000 });
