@@ -152,7 +152,7 @@ pre code{border:0;background:none;padding:0}
 
 main{width:min(1300px,calc(100% - 36px))}   /* wider than the site's pages: the player stays at twice the C64's picture and the panel beside it gets about 510 */
 h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page: the machine sits in the first screen, as a player page has it */
-.lede{margin:0 0 18px;color:var(--muted);font-weight:450;line-height:1.4;font-size:clamp(.95rem,2.6vw,1.05rem);max-width:768px}   /* a block under the title as wide as the player, wrapping at the gap between the columns, not a band across the page */
+.lede{margin:0 0 18px;color:var(--muted);font-weight:450;line-height:1.4;font-size:clamp(.95rem,2.6vw,1.05rem);max-width:768px;text-wrap:balance}   /* a block under the title as wide as the player, wrapping at the gap between the columns, not a band across the page; its lines evened where the browser can (the owner's eye on the phone's rag) */
 .lede p{margin:0 0 8px;font-size:inherit;color:inherit}
 .lede p:last-child{margin-bottom:0}
 .lede b{color:var(--ink);font-weight:600}
@@ -222,7 +222,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
    taller for the same stage; the label's note gives them the room, and they are shorter there so they clear the log's
    top rule (measured: the row's rule sits 37 pixels under the panel's edge) */
 @media(min-width:1140px){.logbox{position:relative}.logbox .lab .n{display:none}.logbox .tools{position:absolute;top:10px;right:16px;flex-direction:row-reverse}.logbox .tools .b{padding:5px 10px}.logbox .tools #copy{order:1}.logbox .tools #copy-log{order:0}.logbox .tools .copied{order:2}.logbox .log{margin-bottom:0}}   /* read left to right: the note, COPY PROVENANCE, COPY THE LOG */
-.panel{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.panel{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:0}   /* a grid item's minimum is its content's: the firmware switch's longest option made THE KEYS, and so the column and the frame, 6px wider than the phone's page */
 .panel .lab{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;color:var(--accent);margin:0 0 10px}
 .panel .lab>span:first-child{flex:none}
 .panel .lab .n{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none;text-align:right}
@@ -285,9 +285,10 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
 .about h2{margin-top:44px}
 .about p{font-size:.95rem;color:#deded9}
 .about code{font-size:.8rem}
-/* one column: the two wrappers dissolve and the panels take the order the phone has always had; the screen, not only
-   the frame, is capped, so the badge hangs from the frame's corner and not the column's */
-@media(max-width:1139px){.machine{grid-template-columns:1fr;row-gap:14px}.stage,.column{display:contents}.screen{max-width:768px;order:1}.touch{order:2;margin:11px 0}.chain{order:3}.file{order:4}.now{order:5}.logbox{order:6;margin:0}.keys{order:7}.leave{order:8}}
+/* one column: the two wrappers dissolve and the panels take the order the phone has always had; the frame fills the
+   column as the phone's does, the badge hung from its corner (the owner's word, 2026-09-22: the picture is scaled by the
+   width there, whole multiples kept for two columns, where the frame is 768 again) */
+@media(max-width:1139px){.machine{grid-template-columns:1fr;row-gap:14px}.stage,.column{display:contents}.screen{order:1}.touch{order:2;margin:11px 0}.chain{order:3}.file{order:4}.now{order:5}.logbox{order:6;margin:0}.keys{order:7}.leave{order:8}}
 @media(max-width:700px){main{width:calc(100% - 32px)}.rows{height:260px}.nl{grid-template-columns:1fr;gap:0}.playing{min-height:510px}}
 
 
