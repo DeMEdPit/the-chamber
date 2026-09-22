@@ -184,6 +184,12 @@ async function load(work, token) {
 function markOffered(work, token) {
   for (const row of els.rows.querySelectorAll('.row')) row.classList.toggle('now', row.dataset.work === work && row.dataset.token === String(token));
 }
+/** Bring a row into view inside the list only: the page itself must never move, least of all on a phone where the list sits below the machine. */
+function revealRow(row) {
+  if (!row) return;
+  const list = els.rows.getBoundingClientRect(), r = row.getBoundingClientRect();
+  if (r.top < list.top || r.bottom > list.bottom) els.rows.scrollTop += r.top - list.top - 28;
+}
 
 // ------------------------------------------------------------------ NOW PLAYING
 function provenance() {
@@ -310,8 +316,7 @@ async function start() {
   let work = q.get('work'), token = parseInt(q.get('token') || '1', 10);
   if (!(work && allRows.some((r) => r.work === work && r.token === token))) { work = 'tony'; token = 1; }
   if (!allRows.some((r) => r.work === work && r.token === token)) { work = allRows[0].work; token = allRows[0].token; }
-  const row = els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`);
-  if (row) row.scrollIntoView({ block: 'nearest' });
+  revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
 window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, provenance, report, STATUS };

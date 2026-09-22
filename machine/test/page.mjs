@@ -126,8 +126,11 @@ try {
     pw.on('pageerror', (e) => errs.push(String(e)));
     await pw.goto(`${A.base}/machine/`, { waitUntil: 'load' });
     await until(() => pw.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
-    const frame = await pw.evaluate(() => { const f = document.getElementById('frame').getBoundingClientRect(); return { w: Math.round(f.width), h: Math.round(f.height), overflow: document.documentElement.scrollWidth > window.innerWidth }; });
+    const frame = await pw.evaluate(() => { const f = document.getElementById('frame').getBoundingClientRect(); return { w: Math.round(f.width), h: Math.round(f.height), overflow: document.documentElement.scrollWidth > window.innerWidth, scrollY: window.scrollY }; });
     check(frame.w > 200 && !frame.overflow && noiseFree(errs).length === 0, `at ${w} wide: the frame ${frame.w}×${frame.h}, no horizontal overflow, no errors (${noiseFree(errs).length})`);
+    check(frame.scrollY === 0, `at ${w} wide: the page stays at the top on load (scrollY ${frame.scrollY})`);
+    const listShows = await pw.evaluate(() => { const row = document.querySelector('#rows .row[data-work="tony"]'); const l = document.getElementById('rows').getBoundingClientRect(); const r = row.getBoundingClientRect(); return r.top >= l.top - 1 && r.bottom <= l.bottom + 1; });
+    check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }
