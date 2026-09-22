@@ -54,3 +54,12 @@ bytes before writing; the public test (`machine/test/test_verify.py`)
 holds the verifier's every refusal code to synthetic bytes whose truth is
 known. None of that is a substitute for a run against a real node, which
 is the audit's, and the reason this file is public.
+
+## Runs against the chain
+
+| date | node | block | result |
+|---|---|---|---|
+| 2026-09-22 | ethereum-rpc.publicnode.com | 26,030,795 | ok: 209 PINNED, 72 CONTRACT-CONSISTENT, 2 NODE-REPORTED, 0 FAIL (`--all`) |
+
+Anyone can add a row by running it. A run proves that the node asked
+agrees with the catalogue at that block; two nodes are better than one.
