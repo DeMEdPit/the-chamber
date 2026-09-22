@@ -156,6 +156,17 @@ try {
     check(frame.scrollY === 0, `at ${w} wide: the page stays at the top on load (scrollY ${frame.scrollY})`);
     const listShows = await pw.evaluate(() => { const row = document.querySelector('#rows .row[data-work="tony"]'); const l = document.getElementById('rows').getBoundingClientRect(); const r = row.getBoundingClientRect(); return r.top >= l.top - 1 && r.bottom <= l.bottom + 1; });
     check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
+    // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
+    // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
+    const shape0 = await pw.evaluate(() => ({ rows: Math.round(document.getElementById('rows').getBoundingClientRect().height), log: Math.round(document.getElementById('log').getBoundingClientRect().height), now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent) }));
+    await until(() => pw.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+    const shapeRun = await pw.evaluate(() => ({ now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), log: Math.round(document.getElementById('log').getBoundingClientRect().height) }));
+    await pw.click('#reset');
+    await until(() => pw.evaluate(() => document.getElementById('state').textContent === 'RESET'), 5000);
+    const shapeIdle = await pw.evaluate(() => ({ now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent) }));
+    check(shape0.rows >= 250 && shape0.log >= 150 && shape0.log === shapeRun.log, `at ${w} wide: the list (${shape0.rows}) and the log (${shape0.log}) are their full size before anything arrives`);
+    check(shape0.labels.join() === 'PROGRAM,BYTES,CHECK,MACHINE,FIRMWARE,INPUT,MODE,NODE' && shapeIdle.labels.join() === shape0.labels.join() && shapeRun.labels.slice(-5).join() === 'MACHINE,FIRMWARE,INPUT,MODE,NODE', `at ${w} wide: NOW PLAYING keeps its rows (${shapeIdle.labels.length} idle, ${shapeRun.labels.length} running)`);
+    check(Math.abs(shape0.now - shapeRun.now) <= 48 && Math.abs(shapeIdle.now - shapeRun.now) <= 48, `at ${w} wide: NOW PLAYING holds its height, first paint ${shape0.now}, running ${shapeRun.now}, idle ${shapeIdle.now}`);
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }

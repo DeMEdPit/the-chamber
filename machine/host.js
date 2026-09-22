@@ -214,6 +214,7 @@ async function load(work, token) {
     setState('reading', 'READING');
     node = node || new Node(catalogue.endpoints, catalogue.chainId, say);
     await ensureMachine();
+    renderNow();   // the machine's rows fill as soon as it is up, while the program is read
     const program = await programFromChain(node, catalogue, work, token, say);
     setState('checking', 'CHECKING');
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
@@ -275,40 +276,60 @@ function line(k, v, cls) {
   d.append(a, b);
   return d;
 }
+const DASH = '—';
+/** The machine's rows, present from the first paint and filled as the facts arrive, so the panel keeps its shape. */
+function machineRows() {
+  const mf = machineFacts, fw = mf && mf.firmware;
+  let firmware;
+  if (fw && fw.mode === 'on') firmware = `on · ${FIRMWARE_NAME} · ${fw.status} · from ${fw.source} · a program of the series runs the same, it banks the ROMs out as it starts`;
+  else if (!mf && firmwareMode === 'on') firmware = `on · ${FIRMWARE_NAME} boots first when the machine starts`;
+  else firmware = 'off · the program runs bare, as it does on chain';
+  const host = node && node.url ? node.url.replace(/^https?:\/\//, '') : null;
+  return [
+    ['MACHINE', mf ? `${mf.status} · ${mf.name} · from ${mf.source}` : `${DASH} · READY 64 starts with the first LOAD`, mf ? '' : 'muted'],
+    ['FIRMWARE', firmware, ''],
+    ['INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix', ''],
+    ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
+    ['NODE', host || DASH, host ? '' : 'muted'],
+  ];
+}
+/** The program's rows: what is playing, what was refused, or the dashes of nothing yet; always the same shape. */
+function programRows(code, text) {
+  if (playing) {
+    const p = playing.program, f = p.facts;
+    const rows = [['PROGRAM', p.label, '']];
+    if (p.kind === 'stamped') {
+      rows.push(['ROOM', `${f.row.colourName.toLowerCase()} · ${f.row.wallName.toLowerCase()} wall · ${f.row.batsName.toLowerCase()} bats · ${f.row.candleName.toLowerCase()}`, '']);
+      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the stamp equal to the pinned base · sha256 ${SHORT(f.sha256)}`, '']);
+      rows.push(['STAMP', `${p.statuses.stamp} · block ${num(f.stampedAt)} · the row's character and colour, the block's digits and the seed from the node's block hash all agree`, '']);
+    } else if (p.kind === 'slotted') {
+      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`, '']);
+      rows.push(['MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`, '']);
+    } else {
+      rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes`, '']);
+      rows.push(['PIN', `keccak256 ${SHORT(f.keccak256)} equals the pin`, '']);
+    }
+    return rows;
+  }
+  if (code) {
+    const noNode = code === 'RPC_UNAVAILABLE';
+    return [
+      ['PROGRAM', noNode ? 'NO NODE ANSWERED' : `REFUSED · ${code}`, 'bad'],
+      ['BYTES', text, 'bad'],
+      ['CHECK', noNode ? 'RETRY, or read the contract on Etherscan' : 'the bytes did not match what the catalogue pinned, so they did not run', 'muted'],
+    ];
+  }
+  const atReady = state.phase === 'idle' && machineFacts && machineFacts.firmware.mode === 'on';
+  return [
+    ['PROGRAM', atReady ? `READY · ${FIRMWARE_NAME} is at its prompt · type at it, or LOAD a program` : `${DASH} · choose a program; nothing runs until you press LOAD`, 'muted'],
+    ['BYTES', DASH, 'muted'],
+    ['CHECK', DASH, 'muted'],
+  ];
+}
 function renderNow(code, text) {
   els.now.textContent = '';
-  if (!playing) {
-    if (code) {
-      els.now.appendChild(line(code === 'RPC_UNAVAILABLE' ? 'NO NODE' : 'REFUSED', text, 'bad'));
-      if (code !== 'RPC_UNAVAILABLE') els.now.appendChild(line('WHAT THAT MEANS', 'the bytes did not match what the catalogue pinned, so they did not run', 'muted'));
-    } else if (state.phase === 'idle' && machineFacts && machineFacts.firmware.mode === 'on') {
-      els.now.appendChild(line('READY', `${FIRMWARE_NAME} is up at its prompt · type at it, or LOAD a program`, 'muted'));
-      els.now.appendChild(line('FIRMWARE', `on · ${FIRMWARE_NAME} · ${machineFacts.firmware.status} · from ${machineFacts.firmware.source}`));
-      els.now.appendChild(line('INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix'));
-    } else {
-      els.now.appendChild(line('NOTHING', 'choose a program; nothing runs until you press LOAD', 'muted'));
-    }
-    els.json.value = '';
-    return;
-  }
-  const p = playing.program, f = p.facts;
-  els.now.appendChild(line('PROGRAM', p.label));
-  if (p.kind === 'stamped') {
-    els.now.appendChild(line('ROOM', `${f.row.colourName.toLowerCase()} · ${f.row.wallName.toLowerCase()} wall · ${f.row.batsName.toLowerCase()} bats · ${f.row.candleName.toLowerCase()}`));
-    els.now.appendChild(line('BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the stamp equal to the pinned base · sha256 ${SHORT(f.sha256)}`));
-    els.now.appendChild(line('STAMP', `${p.statuses.stamp} · block ${num(f.stampedAt)} · the row's character and colour, the block's digits and the seed from the node's block hash all agree`));
-  } else if (p.kind === 'slotted') {
-    els.now.appendChild(line('BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · outside the mind equal to the frozen program · sha256 ${SHORT(f.sha256)}`));
-    els.now.appendChild(line('MIND', `${p.statuses.mind} · revision ${f.head} (${p.statuses.head}) · hash ${SHORT(f.canonicalHash)} equals the record's`));
-  } else {
-    els.now.appendChild(line('BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes · keccak256 ${SHORT(f.keccak256)} equals the pin`));
-  }
-  els.now.appendChild(line('MACHINE', `${machineFacts.status} · ${machineFacts.name} · from ${machineFacts.source}`));
-  els.now.appendChild(line('FIRMWARE', machineFacts.firmware.mode === 'on' ? `on · ${FIRMWARE_NAME} · ${machineFacts.firmware.status} · from ${machineFacts.firmware.source} · the program runs the same, it banks the ROMs out as it starts` : 'off · the program runs bare, as it does on chain'));
-  els.now.appendChild(line('INPUT', inputMode === 'joystick' ? 'joystick in port 2 · arrows, Z, X or space' : 'keyboard · the C64 matrix'));
-  els.now.appendChild(line('MODE', playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine'));
-  els.now.appendChild(line('NODE', f.node || '—'));
-  els.json.value = JSON.stringify(provenance(), null, 1);
+  for (const [k, v, cls] of programRows(code, text).concat(machineRows())) els.now.appendChild(line(k, v, cls));
+  els.json.value = playing ? JSON.stringify(provenance(), null, 1) : '';
 }
 
 // ------------------------------------------------------------------ controls

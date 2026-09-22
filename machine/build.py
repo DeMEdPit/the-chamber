@@ -221,7 +221,7 @@ h1{{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}}
 .panel .lab .n{{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none}}
 .search{{width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 10px;font:500 .9rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px}}
 .search:focus{{outline:0;border-color:var(--accent)}}
-.rows{{max-height:330px;overflow:auto;border-top:1px solid var(--line)}}
+.rows{{height:330px;box-sizing:border-box;overflow:auto;border-top:1px solid var(--line)}}
 .rows .g{{position:sticky;top:0;background:var(--panel);font:700 .6rem/2.2 {MONO};letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}}
 .row{{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #161616}}
 .row .t{{display:flex;flex-direction:column;min-width:0}}
@@ -233,7 +233,7 @@ button.load:hover,button.b:hover,button.load:focus-visible,button.b:focus-visibl
 .state{{font:700 .8rem/1.4 {MONO};letter-spacing:.16em;color:var(--ink);margin:0 0 10px}}
 .state[data-phase="running"]{{color:var(--accent)}}
 .state[data-phase="refused"],.state[data-phase="failed"]{{color:#ff9d9d}}
-.playing{{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}}
+.playing{{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;min-height:404px}}   /* the height of a Chamber room's rows, measured: the panel keeps its size from the first paint */
 .nl{{display:grid;grid-template-columns:84px 1fr;gap:10px;font-size:.84rem;line-height:1.45}}
 .nl .k{{font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--muted)}}
 .nl .v{{color:var(--ink);overflow-wrap:anywhere}}
@@ -255,7 +255,7 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
 .about p{{font-size:.95rem;color:#deded9}}
 .about code{{font-size:.8rem}}
 @media(max-width:1139px){{.machine{{grid-template-columns:1fr}}.frame{{max-width:768px}}}}
-@media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{max-height:260px}}.nl{{grid-template-columns:1fr;gap:0}}}}
+@media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{height:260px}}.nl{{grid-template-columns:1fr;gap:0}}.playing{{min-height:510px}}}}
 """
 
 
