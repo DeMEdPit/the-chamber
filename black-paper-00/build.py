@@ -14,7 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from md import convert  # noqa: E402
 from gallery import gallery, CSS as GAL_CSS  # noqa: E402
-from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
+from page import render, write  # noqa: E402
 from stats import CSS as STAT_CSS, stats, CHAMBER  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
@@ -27,11 +27,11 @@ DESC = ("Sixty-four rooms, one frozen Commodore 64 program, and a room the "
 
 
 CURRENT = "bp00"
+KEY = CURRENT
 
 
 def main():
     md = (HERE / "paper.md").read_text(encoding="utf-8")
-    css = (ROOT / "black-paper" / "paper.css").read_text(encoding="utf-8")
     body = convert(md)
 
     banner = (
@@ -64,34 +64,7 @@ def main():
     assert anchor in body, "gallery anchor missing from paper.md"
     body = body.replace(anchor, gallery() + "\n" + anchor, 1)
 
-    doc = f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{_html.escape(TITLE)}</title>
-<meta name="description" content="{_html.escape(DESC)}">
-<link rel="canonical" href="{SITE}/black-paper-00/">
-
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="The Chamber">
-<meta property="og:url" content="{SITE}/black-paper-00/">
-<meta property="og:title" content="{_html.escape(TITLE)}">
-<meta property="og:description" content="{_html.escape(DESC)}">
-<meta property="og:image" content="{SITE}/black-paper-00/card.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Chamber — Black Paper 00">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{_html.escape(TITLE)}">
-<meta name="twitter:description" content="{_html.escape(DESC)}">
-<meta name="twitter:image" content="{SITE}/black-paper-00/card.png">
-
-<meta name="theme-color" content="#39ff88">
-<style>
-{css}
-h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word;margin-bottom:0}}
+    page_css = f"""h1{{font-size:clamp(1.6rem,8vw,4.8rem);max-width:100%;overflow-wrap:break-word;margin-bottom:0}}
 hr+h2{{border-top:0;padding-top:0;margin-top:30px}}
 pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}
@@ -102,21 +75,10 @@ code{{overflow-wrap:anywhere;word-break:break-word}}
   font-size:clamp(1.15rem,4.2vw,1.45rem)}}
 .room-banner img{{width:100%;height:auto;display:block;border:1px solid var(--line);
   border-radius:10px;background:#000;image-rendering:pixelated}}
-{GAL_CSS}
-{FOOT_CSS}
-</style>
-</head>
-<body>
-<main>
-<p class="kicker"><a href="../">THE CHAMBER</a> · BLACK PAPER 00</p>
-{body}
-{footer(CURRENT)}
-</main>
-</body>
-</html>
-"""
-    (HERE / "index.html").write_text(doc, encoding="utf-8")
-    print(f"index.html {len(doc):,} bytes")
+{GAL_CSS}"""
+    doc = render(KEY, f"""{body}""", title=TITLE, description=DESC, css=page_css,
+                 image='/black-paper-00/card.png', image_alt='The Chamber — Black Paper 00')
+    write(KEY, doc)
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
+from page import render, write  # noqa: E402
 from stats import CSS as STATS_CSS, stats  # noqa: E402
 import prose  # noqa: E402
 
@@ -25,6 +25,7 @@ TITLE = "The Chamber — Architecture"
 DESC = ("What we learned building Commodore 64 works that live on Ethereum: "
         "findings, each with the source that backs it.")
 CURRENT = "arch"
+KEY = CURRENT
 
 # --------------------------------------------------------------- switches
 # Each is one self-contained block of CSS, defined next to its own
@@ -355,7 +356,6 @@ def unwritten():
 
 def main():
     data = json.loads((HERE / "findings.json").read_text(encoding="utf-8"))
-    css = (ROOT / "black-paper" / "paper.css").read_text(encoding="utf-8")
 
     # FIVE ACTS. The object, the map, the seams, what is not a seam, the
     # apparatus. The reader learns, in order: what is this thing, what is a
@@ -444,49 +444,13 @@ def main():
         f'transcribed by hand — if a claim and its source ever disagree, the '
         f'source wins.</p>')
 
-    doc = f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{_html.escape(TITLE)}</title>
-<meta name="description" content="{_html.escape(DESC)}">
-<link rel="canonical" href="{SITE}/architecture/">
-
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="The Chamber">
-<meta property="og:url" content="{SITE}/architecture/">
-<meta property="og:title" content="{_html.escape(TITLE)}">
-<meta property="og:description" content="{_html.escape(DESC)}">
-<meta property="og:image" content="{SITE}/card.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{_html.escape(TITLE)}">
-<meta name="twitter:description" content="{_html.escape(DESC)}">
-<meta name="twitter:image" content="{SITE}/card.png">
-
-<meta name="theme-color" content="#39ff88">
-<style>
-{css}
-h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
-{CSS}{STATS_CSS if STATS else ""}{BANNER_CSS if BANNER else ""}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}
-{FOOT_CSS}
-</style>
-</head>
-<body>
-<main>
-<p class="kicker"><a href="../">THE CHAMBER</a> · ARCHITECTURE</p>
-<h1>Architecture</h1>
+    page_css = f"""h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
+{CSS}{STATS_CSS if STATS else ""}{BANNER_CSS if BANNER else ""}{A11Y_CSS if SCROLL_A11Y else ""}{EDGE_CSS if SCROLL_EDGE else ""}"""
+    doc = render(KEY, f"""<h1>Architecture</h1>
 {BANNER_HTML if BANNER else ""}
-{"".join(parts)}
-{footer(CURRENT)}
-</main>
-</body>
-</html>
-"""
-    (HERE / "index.html").write_text(doc, encoding="utf-8")
+{"".join(parts)}""", title=TITLE, description=DESC, css=page_css,
+                 image='/card.png', image_alt='The Chamber')
+    write(KEY, doc)
     todos = unwritten()
     print(f"architecture/index.html {len(doc):,} bytes, "
           f"{data['counts']['public']} findings, {len(data['seams'])} seams"

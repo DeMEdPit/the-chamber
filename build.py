@@ -14,7 +14,7 @@ import pathlib
 import re
 
 from md import convert
-from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
+from page import render, write  # noqa: E402
 from papers import (ARCH_CSS, CSS as PAPER_CSS, arch_block,  # noqa: E402
                     papers)
 
@@ -32,6 +32,7 @@ ETHERSCAN = "https://etherscan.io/address/"
 
 
 CURRENT = "home"
+KEY = CURRENT
 
 
 def main():
@@ -39,7 +40,6 @@ def main():
     # a github-only block: the links back to this site belong on the repo
     # page, not on the site they point at, where the footer already has them
     md = re.sub(r"<!-- github-only -->.*?<!-- /github-only -->\s*", "", md, flags=re.S)
-    css = (HERE / "black-paper" / "paper.css").read_text(encoding="utf-8")
 
     # the first heading and the two paragraphs under it become the hero;
     # the rest of the README is the body
@@ -65,34 +65,7 @@ def main():
         + (arch_block() if ARCH_BLOCK else "")
     )
 
-    doc = f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{_html.escape(TITLE)}</title>
-<meta name="description" content="{_html.escape(DESC)}">
-<link rel="canonical" href="{SITE}/">
-
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="The Chamber">
-<meta property="og:url" content="{SITE}/">
-<meta property="og:title" content="{_html.escape(TITLE)}">
-<meta property="og:description" content="{_html.escape(DESC)}">
-<meta property="og:image" content="{SITE}/card.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Chamber">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{_html.escape(TITLE)}">
-<meta name="twitter:description" content="{_html.escape(DESC)}">
-<meta name="twitter:image" content="{SITE}/card.png">
-
-<meta name="theme-color" content="#39ff88">
-<style>
-{css}
-h1{{font-size:clamp(2.2rem,11vw,5.6rem);margin-bottom:18px}}
+    page_css = f"""h1{{font-size:clamp(2.2rem,11vw,5.6rem);margin-bottom:18px}}
 .lead{{font-size:1.3rem;line-height:1.5;color:var(--ink);max-width:46ch;margin:0 0 30px}}
 h3{{font-size:1.28rem;margin-top:40px}}
 .addr{{border:0}}
@@ -102,22 +75,12 @@ blockquote{{font-size:1.06rem}}
 @media(max-width:700px){{
   .lead{{font-size:1.06rem;max-width:none}}
 }}
-{PAPER_CSS}{ARCH_CSS if ARCH_BLOCK else ''}
-{FOOT_CSS}
-</style>
-</head>
-<body>
-<main>
-{hero}
+{PAPER_CSS}{ARCH_CSS if ARCH_BLOCK else ''}"""
+    doc = render(KEY, f"""{hero}
 <hr>
-{body}
-{footer(CURRENT)}
-</main>
-</body>
-</html>
-"""
-    (HERE / "index.html").write_text(doc, encoding="utf-8")
-    print(f"index.html {len(doc):,} bytes")
+{body}""", title=TITLE, description=DESC, css=page_css,
+                 image='/card.png', image_alt='The Chamber', og_type="website")
+    write(KEY, doc)
 
 
 if __name__ == "__main__":

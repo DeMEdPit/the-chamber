@@ -45,11 +45,11 @@ OPENSEA = "https://opensea.io/assets/ethereum/"
 
 PAPERS = [
     {
-        "n": "01", "title": "Perception Chamber", "href": "black-paper/",
-        "img": "black-paper/mindprint-square.svg",
+        "n": "01", "title": "Perception Chamber", "href": "black-paper-01/",
+        "img": "black-paper-01/mindprint-square.svg",
         "alt": "A mindprint: a field of cells, each one a learned weight of the "
                "canary's perceptron",
-        "line": lede("black-paper"),
+        "line": lede("black-paper-01"),
         "stats": PERCEPTION,
         "addr": "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127", "token": "1",
     },

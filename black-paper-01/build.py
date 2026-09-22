@@ -6,7 +6,7 @@ index.html. The first version of this document drifted from its source in
 five places, including a missing attribution, which is the whole reason
 this script exists.
 
-    python3 black-paper/build.py
+    python3 black-paper-01/build.py
 
 Standard library only.
 """
@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from md import convert, inline  # noqa: E402
 from token_embed import embed  # noqa: E402
-from footer import CSS as FOOT_CSS, footer, SITE  # noqa: E402
+from page import render, write  # noqa: E402
 from stats import CSS as STAT_CSS, stats, PERCEPTION  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
@@ -29,11 +29,11 @@ DESC = ("A human teaches a perceptron inside a Commodore 64 program; Ethereum "
 
 
 CURRENT = "bp01"
+KEY = CURRENT
 
 
 def main():
     md = (HERE / "paper.md").read_text(encoding="utf-8")
-    css = (HERE / "paper.css").read_text(encoding="utf-8")
     # the cross-runtime tree ships as the designed figure instead of a <pre>
     def fence(n, _text):
         if n == 1:
@@ -90,34 +90,7 @@ def main():
             + '<p class="lede">' + re.sub(r"</?strong>", "", m.group(1)) + "</p>"
             + body[m.end():])
 
-    doc = f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{_html.escape(TITLE)}</title>
-<meta name="description" content="{_html.escape(DESC)}">
-<link rel="canonical" href="{SITE}/black-paper/">
-
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="The Chamber">
-<meta property="og:url" content="{SITE}/black-paper/">
-<meta property="og:title" content="{_html.escape(TITLE)}">
-<meta property="og:description" content="{_html.escape(DESC)}">
-<meta property="og:image" content="{SITE}/black-paper/card.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Perception Chamber — Black Paper 01">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{_html.escape(TITLE)}">
-<meta name="twitter:description" content="{_html.escape(DESC)}">
-<meta name="twitter:image" content="{SITE}/black-paper/card.png">
-
-<meta name="theme-color" content="#39ff88">
-<style>
-{css}
-.mindprint-banner{{margin:26px 0 44px;padding:0}}
+    page_css = f""".mindprint-banner{{margin:26px 0 44px;padding:0}}
 {STAT_CSS}
 .lede{{margin:0 0 34px;color:var(--muted);font-weight:450;line-height:1.4;
   font-size:clamp(1.15rem,4.2vw,1.45rem)}}
@@ -226,21 +199,10 @@ pre{{max-width:100%;overflow-x:auto}}
 pre code{{display:inline-block;min-width:0;overflow-wrap:normal;word-break:normal}}
 code{{overflow-wrap:anywhere;word-break:break-word}}
 .mindprint-banner img{{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px;background:#0a0a0a}}
-.mindprint-banner figcaption{{margin-top:12px;color:var(--muted);font-size:.86rem}}
-{FOOT_CSS}
-</style>
-</head>
-<body>
-<main>
-<p class="kicker"><a href="../">THE CHAMBER</a> · BLACK PAPER 01</p>
-{body}
-{footer(CURRENT)}
-</main>
-</body>
-</html>
-"""
-    (HERE / "index.html").write_text(doc, encoding="utf-8")
-    print(f"index.html {len(doc):,} bytes")
+.mindprint-banner figcaption{{margin-top:12px;color:var(--muted);font-size:.86rem}}"""
+    doc = render(KEY, f"""{body}""", title=TITLE, description=DESC, css=page_css,
+                 image='/black-paper-01/card.png', image_alt='Perception Chamber — Black Paper 01')
+    write(KEY, doc)
 
 
 if __name__ == "__main__":

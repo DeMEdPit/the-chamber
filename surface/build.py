@@ -19,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
-from footer import footer, CSS as FOOT_CSS  # noqa: E402
+from page import render, write  # noqa: E402
 
 TITLE = "What is on chain"
 DESC = ("What a stranger can read, run and rely on in the two deployed contracts, "
@@ -257,7 +257,6 @@ def part(pid, title, inner, intro=""):
 
 def main():
     d = json.loads((HERE / "surface.json").read_text(encoding="utf-8"))
-    css = (ROOT / "black-paper" / "paper.css").read_text(encoding="utf-8")
     by_key = {w["key"]: rows_of(w) for w in d["works"]}
     ids = [rid(w["key"], r) for w in d["works"] for r in rows_of(w).values()]
     if len(ids) != len(set(ids)):
@@ -293,31 +292,8 @@ def main():
                      'The rows are the ABI&rsquo;s. The groups, the verbs, the summaries, the gaps and the recipes are ours, and the build '
                      'is held to the same file, so this page cannot describe a function the contracts do not have. To check it, '
                      'compile the verified source from Etherscan with the toolchain above and compare the ABI.</p>'))
-    doc = f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{esc(TITLE)}</title>
-<meta name="description" content="{esc(DESC)}">
-<style>
-{css}
-{CSS}
-{FOOT_CSS}
-</style>
-</head>
-<body>
-<main>
-<p class="kicker"><a href="../">THE CHAMBER</a> · WHAT IS ON CHAIN</p>
-{"".join(body)}
-{footer(CURRENT)}
-</main>
-{SCRIPT}
-</body>
-</html>
-"""
-    (HERE / "index.html").write_text(doc, encoding="utf-8")
-    print(f"surface/index.html {len(doc):,} bytes")
+    doc = render(CURRENT, "".join(body), title=TITLE, description=DESC, css=CSS, script=SCRIPT)
+    write(CURRENT, doc)
 
 
 if __name__ == "__main__":
