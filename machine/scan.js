@@ -124,6 +124,12 @@ export function inputOf(scan, firmware) {
 }
 
 /** The scan as one line for NOW PLAYING. */
+/** Whether a program asks the KERNAL to load more (SETLFS, SETNAM and LOAD, or OPEN after SETLFS): a multi-load program, which
+ *  stops where it asks the drive on a machine that has none. Byte patterns, like the rest of the scan. */
+export function loadsMore(scan) {
+  const n = scan.kernal.names;
+  return n.includes('LOAD') || (n.includes('SETLFS') && (n.includes('OPEN') || n.includes('CHKIN')));
+}
 export function scanWords(scan) {
   const parts = [`loads at ${hex4(scan.load)} to ${hex4(scan.end)}`];
   if (scan.entry) parts.push(`SYS ${scan.entry} in its stub`);

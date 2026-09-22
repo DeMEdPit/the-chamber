@@ -7,7 +7,7 @@
 import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
 import { Node, machineFromChain, firmwareFromChain, programFromChain, zeroWindow } from './chain.js';
 import { keccakHex } from './keccak.js';
-import { scanProgram, needsOf, inputOf, scanWords, hex4 } from './scan.js';
+import { scanProgram, needsOf, inputOf, scanWords, loadsMore, hex4 } from './scan.js';
 import { parseD64, readFile as readDiskFile, D64_SIZES } from './d64.js';
 import { createAudio } from './audio.js';
 
@@ -194,6 +194,18 @@ async function openDisk(file) {
     const dir = parseD64(image);
     const programs = dir.entries.filter((e) => e.typeName === 'PRG');
     if (!programs.length) refuse('D64_EMPTY', `${name}${dir.name ? ` ("${dir.name}")` : ''}: no program in its directory (${dir.entries.length} ${dir.entries.length === 1 ? 'entry' : 'entries'}, none PRG)`);
+    // each program read and scanned now, so its row says what would stop it on this machine before LOAD is pressed
+    for (const e of programs) {
+      try {
+        const bytes = readDiskFile(image, e, FILE_LIMIT);
+        if (bytes.length < 3) { e.note = 'too short to be a program'; continue; }
+        const scan = scanProgram(bytes);
+        const notes = [];
+        if (loadsMore(scan)) notes.push('loads more from the disk: stops at the drive here');
+        if (scan.kernal.internal && scan.kernal.table) notes.push(`${scan.kernal.internal} call${scan.kernal.internal === 1 ? '' : 's'} into the KERNAL's internals, which OpenROMs need not match`);
+        e.note = notes.join(' · ');
+      } catch (err) { e.note = `unreadable: ${err.message}`; e.unreadable = true; }
+    }
     disk = { file: fileFacts(file), image, dir, summary: `${name} · ${dir.name || 'unnamed'} · ${programs.length} program${programs.length === 1 ? '' : 's'} · pick one below` };
     renderDisk();
     door('ok', disk.summary);
@@ -217,8 +229,8 @@ function renderDisk() {
     const prg = e.typeName === 'PRG';
     row.innerHTML = `<div class="t"><span class="title"></span><span class="sub"></span></div>`;
     row.querySelector('.title').textContent = e.name || `(entry ${e.index + 1})`;
-    row.querySelector('.sub').textContent = `${e.typeName} · ${e.blocks} block${e.blocks === 1 ? '' : 's'}${e.locked ? ' · locked' : ''}${prg ? '' : ' · not a program'}`;
-    if (prg) {
+    row.querySelector('.sub').textContent = `${e.typeName} · ${e.blocks} block${e.blocks === 1 ? '' : 's'}${e.locked ? ' · locked' : ''}${prg ? '' : ' · not a program'}${e.note ? ' · ' + e.note : ''}`;
+    if (prg && !e.unreadable) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'load'; b.textContent = 'LOAD';
       b.addEventListener('click', () => run({ disk, entry: e }));
       row.appendChild(b);
@@ -432,7 +444,7 @@ async function run(ask) {
     for (const [k, v] of Object.entries(program.statuses)) say(`${k}: ${v}`);
     if (fromFile) {
       const f = program.facts;
-      say(`your ${f.source === 'paste' ? 'paste' : f.source === 'disk' ? 'disk\'s program' : 'file'} ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim${f.source === 'disk' ? '; the machine has no drive, so what it loads from the disk stops there' : ''}`);
+      say(`your ${f.source === 'paste' ? 'paste' : f.source === 'disk' ? 'disk\'s program' : 'file'} ${program.label}: ${num(program.bytes.length)} bytes, sha256 ${SHORT(f.sha256)}; read in this browser, sent nowhere, no chain claim${loadsMore(f.scan) ? '; it loads more from a disk, and the machine has no drive: it will stop where it asks' : f.source === 'disk' ? '; the machine has no drive, so what it loads from the disk stops there' : ''}`);
       say(`the scan: ${scanWords(f.scan)}`);
       if (f.known) say(`recognised: ${f.known.words}`);
       say(`firmware ${firmwareOn ? 'on' : 'off'} (${firmwareMode === 'auto' ? 'AUTO: ' + d.why : d.why}); input ${d.input} (${d.inputWhy})`);
@@ -449,7 +461,7 @@ async function run(ask) {
     renderNow();
     markOffered(fromFile ? null : ask.work, fromFile ? null : ask.token);
     markDiskRow(ask.entry ? ask.entry.index : null);
-    if (fromFile) told(ask, 'ok', `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim`); else { doorRest(); els.pasteNote.textContent = ''; }
+    if (fromFile) told(ask, 'ok', `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim${loadsMore(program.facts.scan) ? ' · loads more from a disk: stops at the drive' : ''}`); else { doorRest(); els.pasteNote.textContent = ''; }
   } catch (e) {
     const code = e.code || 'FAILED';
     if (fromFile) told(ask, 'refused', `${code} · ${e.message}`);
@@ -582,7 +594,8 @@ function programRows(code, text) {
       rows.push(['SCAN', scanWords(f.scan), '']);
       if (f.known) rows.push(['KNOWN', f.known.words, '']);
       const start = firmwareOn && f.load !== 0x0801 ? ` · the firmware starts only a program at $0801: type SYS ${f.load} at READY` : !firmwareOn && !f.scan.entry ? ' · a bare machine starts nothing without a SYS in a BASIC stub: switch FIRMWARE on' : '';
-      const drive = f.source === 'disk' ? ' · the machine has no drive: a program that loads more from the disk stops there' : '';
+      const drive = loadsMore(f.scan) ? ' · the machine has no drive, and this program loads more from a disk: it stops where it asks the drive'
+        : f.source === 'disk' ? ' · the machine has no drive: a program that loads more from the disk stops there' : '';
       rows.push(['CHECK', 'no chain claim · read in this browser and sent nowhere · its shape checked: a load address and a size within 64K' + start + drive, '']);
     } else {
       rows.push(['BYTES', `${p.statuses.program} · ${num(p.bytes.length)} bytes`, '']);
