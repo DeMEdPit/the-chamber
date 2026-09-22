@@ -224,7 +224,7 @@ try {
 
   // widths
   // the tiers the stylesheet sets by the window's height on a wide screen: the log gives up height first, then the machine gives up size
-  const tier = (w, h) => w < 1140 ? { frame: null, log: 160, sticky: false } : h >= 870 ? { frame: 768, log: 160, sticky: true } : h >= 810 ? { frame: 768, log: 100, sticky: true } : h >= 765 ? { frame: 768, log: 60, sticky: true } : h >= 670 ? { frame: 576, log: 100, sticky: true } : h >= 630 ? { frame: 576, log: 60, sticky: true } : { frame: 768, log: 160, sticky: false };
+  const tier = (w, h) => w < 1140 ? { frame: null, log: 160, sticky: false } : h >= 870 ? { frame: 768, log: 160, sticky: true } : h >= 810 ? { frame: 768, log: 144, sticky: true } : h >= 765 ? { frame: 768, log: 104, sticky: true } : h >= 670 ? { frame: 576, log: 144, sticky: true } : h >= 630 ? { frame: 576, log: 104, sticky: true } : { frame: 768, log: 160, sticky: false };
   for (const [w, h] of [[390, 844], [1000, 900], [1440, 900], [1440, 800], [1440, 680]]) {   // a phone; one column wider than the frame; two columns on a tall window; a shorter one, where the log gives up height; a short one, where the machine gives up size and the stage still stays whole
     const pw = await b.newPage({ viewport: { width: w, height: h } });
     const t = tier(w, h), logWant = t.log;
@@ -277,6 +277,8 @@ try {
       check(scrolled.frame > 8 && scrolled.frame < 24 && scrolled.now < scrolled.before - 400, `at ${w}x${h}: scrolled 700px, the machine stays at the top (${Math.round(scrolled.frame)}px) while the column moves (${Math.round(scrolled.before)} to ${Math.round(scrolled.now)})`);
       const together = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const f = document.getElementById('frame').getBoundingClientRect(), l = document.querySelector('.logbox').getBoundingClientRect(); const out = { logTop: l.top, logBottom: l.bottom, frameBottom: f.bottom }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
       check(together.logTop > together.frameBottom + 40 && together.logBottom <= h + 1, `at ${w}x${h}: scrolled, the log stays with the machine (its top ${Math.round(together.logTop)} below the frame's bottom ${Math.round(together.frameBottom)}) and fits the window (its bottom ${Math.round(together.logBottom)} of ${h})`);
+      const buttons = await pw.evaluate(() => { const lab = document.querySelector('.logbox .lab').getBoundingClientRect(), t = document.getElementById('copy-log').getBoundingClientRect(), box = document.querySelector('.logbox').getBoundingClientRect(); return { inLabel: t.top >= lab.top - 4 && t.bottom <= lab.bottom + 30 && t.right <= box.right, noteHidden: getComputedStyle(document.querySelector('.logbox .lab .n')).display === 'none' }; });
+      check(buttons.inLabel && buttons.noteHidden, `at ${w}x${h}: the COPY buttons sit in the log's label row, inside the panel`);
     }
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
