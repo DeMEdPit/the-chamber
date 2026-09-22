@@ -15,18 +15,23 @@ its decisions are in the private study; what is public is here, all of it.
 | `build.py` | builds both from the source; refuses to build unless the copies match their manifest, the pins agree, and the licence gate holds | MIT |
 | `bridge-client.js` | the host's side of the bridge: the seven pins in code, request ids, timeouts, a frame destroyed and rebuilt rather than recovered, the site's copies held to the pins before they are handed over | MIT |
 | `parts/` | the site's copies of the emulator's four parts and the three ROMs, with `MANIFEST.json` (bytes, sha256, chain address, licence, source) | GPL-2.0-only / LGPL-3.0-or-later |
+| `catalogue.json` | every program the page can load from the chain, how to fetch each and what it must match; produced by a private exporter, checkable by anyone (`CATALOGUE.md` describes it) | data |
+| `verify.py` | the public verifier: every line of the catalogue against the site's copies (`--offline`) and against an Ethereum node (`--rpc URL`), standard library only | MIT |
 | `licenses/` | the licence texts | |
 | `PROTOCOL.md` | the bridge protocol, version 1: messages, refusal codes, the trust vocabulary | |
 | `LICENSES.md` | what is under which licence, and where the corresponding source is | |
-| `test/` | the headless gate (`bridge.mjs`), its server with a stand-in mainnet built from the copies (`serve.mjs`), the harness page | MIT |
+| `test/` | the headless gate (`bridge.mjs`), its server with a stand-in mainnet built from the copies (`serve.mjs`), the harness page; the verifier's gate (`test_verify.py`) and its stand-in node (`mocknode.py`) | MIT |
 
 ## Build and check
 
 ```sh
-python3 machine/build.py        # the two documents
-python3 build-all.py            # the whole site, this included
-python3 check-site.py           # the site check: reproduces everything and holds the licence gate
-node machine/test/bridge.mjs    # the bridge gate in headless Chromium (needs Playwright)
+python3 machine/build.py           # the two documents
+python3 build-all.py               # the whole site, this included
+python3 check-site.py              # the site check: reproduces everything, holds the licence gate, runs the verifier offline
+python3 machine/verify.py --offline            # the catalogue against itself and the site's copies
+python3 machine/verify.py --rpc https://ethereum-rpc.publicnode.com   # the catalogue against mainnet (a sample of tokens; --all for every one)
+python3 machine/test/test_verify.py            # the verifier's refusals against synthetic bytes
+node machine/test/bridge.mjs       # the bridge gate in headless Chromium (needs Playwright)
 ```
 
 The gate: `npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium`.

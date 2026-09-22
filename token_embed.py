@@ -11,6 +11,8 @@ bandwidth, CPU or battery. The press path stays exactly as it was - auto mode
 fires the same run() - so the failure state, the retry and the Etherscan
 fallback are unchanged, and turning it off is one argument.
 """
+import json
+from registry import RPCS
 
 
 TEMPLATE = """<figure class="token-live" id="token-live">
@@ -30,9 +32,7 @@ TEMPLATE = """<figure class="token-live" id="token-live">
   var TOKEN = "{ADDRESS}";
   var SELECTOR = "0xc87b56dd";                        // tokenURI(uint256)
   var ARG = "{TOKEN_ID_HEX}";                     // the token id, 32 bytes
-  var RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com",
-              "https://eth.drpc.org", "https://rpc.ankr.com/eth",
-              "https://eth.merkle.io", "https://1rpc.io/eth"];
+  var RPCS = {RPCS};
 
   var stage = document.getElementById("token-stage");
   var btn = document.getElementById("token-load");
@@ -149,6 +149,7 @@ def embed(address, token_id, frame_title, note, blurb, foot, auto=False):
     """
     return (TEMPLATE
             .replace("{AUTO}", "true" if auto else "false")
+            .replace("{RPCS}", json.dumps(list(RPCS)))
             .replace("{LOAD_ATTRS}", " disabled" if auto else "")
             .replace("{LOAD_LABEL}",
                      "READING THE CHAIN\u2026" if auto else "LOAD THE TOKEN")

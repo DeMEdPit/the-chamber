@@ -1,0 +1,1127 @@
+{
+ "schema": "chamber-machine-catalogue",
+ "version": 1,
+ "generated": "2026-09-22T04:42:11Z",
+ "what": "Every program THE MACHINE can load from Ethereum, how to fetch each one and what it must match. Produced by a private exporter from the deployment records and the frozen bytes; checked, line by line, by machine/verify.py against the chain, which is what makes it trustworthy. machine/CATALOGUE.md describes the fields.",
+ "chainId": 1,
+ "endpoints": [
+  "https://ethereum-rpc.publicnode.com",
+  "https://eth.llamarpc.com",
+  "https://eth.drpc.org",
+  "https://rpc.ankr.com/eth",
+  "https://eth.merkle.io",
+  "https://1rpc.io/eth"
+ ],
+ "machine": {
+  "name": "minimal64-2022",
+  "what": "the Commodore 64 emulator nopsta stored on Ethereum in 2022, in four data contracts",
+  "licence": "GPL-2.0-only",
+  "parts": [
+   {
+    "name": "gunzip helper",
+    "address": "0x1Cc49e603B4b205Be0E74f8833971Bea5beccEC9",
+    "bytes": 6531,
+    "sha256": "ac9c3eaaa9bbb413b9e6826e12cfc685e69819811147c09e6bd9ec749443edae"
+   },
+   {
+    "name": "minimal64 part 0",
+    "address": "0xEF13021d5302c3fCe437A3C281A286479ba60008",
+    "bytes": 20468,
+    "sha256": "6124c18b000acfc4e986754f58c7ce4d212d220693e0f981ad4492a6afa5fc8d"
+   },
+   {
+    "name": "minimal64 part 1",
+    "address": "0x9A463234988C0F77ca1252Fc974DfD6b50AAA6Ba",
+    "bytes": 20480,
+    "sha256": "94250fe97b8c4cc957e36b7527cd19f60a17d5af6024692cb4de60ba8b75047f"
+   },
+   {
+    "name": "minimal64 part 2",
+    "address": "0xf6Fb8cefFff7239d9689acDF1FBF5376C9996dA5",
+    "bytes": 8057,
+    "sha256": "31f2789c39cbec739bf3cb5c911498ec8097f1623bc2c052f81b36a807ff6ad2"
+   }
+  ],
+  "firmware": {
+   "name": "OpenROMs pressing 1",
+   "licence": "LGPL-3.0-or-later",
+   "root": "0xE0a71d57FB514C8f5793e26937559935350b3406",
+   "romset": "0x3d5891c9a4a53ce8c0fcc2246ba3a666bc2c1259",
+   "roms": {
+    "kernal": {
+     "address": "0x15c7d51a1a409bf5511935a1a099ae70c2a4337f",
+     "bytes": 8192,
+     "sha256": "0f760a0a2da85fdcbf7327e52d89a9687ab62a0ab29bc9b2d764db444eaf80bf",
+     "note": "the ROM set's creation nonce 1; ROMSet.kernal() states it, ROMSet.KERNAL_SHA256() states the hash"
+    },
+    "basic": {
+     "address": "0x5f92f10ba954eecd12981efcf07623006ceaecaa",
+     "bytes": 8192,
+     "sha256": "5965d0d937bb4a7013a79f541382a8a77cabded869cb8a68145b977b68e5323e",
+     "note": "the ROM set's creation nonce 2; ROMSet.basic() states it, ROMSet.BASIC_SHA256() states the hash"
+    },
+    "chargen": {
+     "address": "0xa99571c3afdd229b056b9965772a27d08e4d1348",
+     "bytes": 4096,
+     "sha256": "5e3451466841b93df7e01e4b635b07b8d8633351bae483b1961d96b3131186e7",
+     "note": "the ROM set's creation nonce 3; ROMSet.chargen() states it, ROMSet.CHARGEN_SHA256() states the hash"
+    }
+   },
+   "signatures": {
+    "roms": "roms()",
+    "kernal": "kernal()",
+    "basic": "basic()",
+    "chargen": "chargen()",
+    "kernalSha": "KERNAL_SHA256()",
+    "basicSha": "BASIC_SHA256()",
+    "chargenSha": "CHARGEN_SHA256()"
+   },
+   "selectors": {
+    "roms": "0x9670b2c4",
+    "kernal": "0xc9d4a352",
+    "basic": "0x15e8b345",
+    "chargen": "0x57e0538e",
+    "kernalSha": "0x0aa0f7b1",
+    "basicSha": "0xa4e3a60f",
+    "chargenSha": "0x4730b6ac"
+   }
+  }
+ },
+ "works": [
+  {
+   "key": "chamber",
+   "name": "The Chamber",
+   "contract": "Chamber",
+   "address": "0x75FD5A9c4440c38561A0099B216F825b7C6db924",
+   "deployed": "2026-09-08",
+   "deployCommit": "4124590",
+   "etherscan": "https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924",
+   "tokens": {
+    "count": 64,
+    "ids": "1 to 64"
+   },
+   "program": {
+    "kind": "stamped",
+    "file": "tony-chamber.prg",
+    "bytes": 46877,
+    "base": {
+     "address": "0x5f3756729aE7CE68777BC318941B99190a4590c4",
+     "keccak256": "7677e3e91210588a9ecf781e493646836fbcde6e218173a304eb8253eeadb1ab",
+     "sha256": "67dc97bc1e3067151c8a1d24fe4bf18beabf83624c69cdb65182a34aa914ad61",
+     "note": "ChamberBase.prg() is the unstamped base; ChamberBase.hash() states its keccak256"
+    },
+    "stamp": {
+     "offset": 20169,
+     "bytes": 42,
+     "layout": "seed 32 (keccak256 of the previous block's hash and the token id, with the room's wall, candle and bats forced into bytes 31, 30 and 27; the Glitch's is not forced), the low eight decimal digits of the previous block's number most significant first (8), behaviour (1), colour (1)",
+     "sha256WindowZeroed": "36099d180771d6de6adc034f123598d8c05e727113382e9c9dd5584d86450957",
+     "note": "prg(id) equals the base everywhere but these 42 bytes; sha256 of a fetched program with the window zeroed must equal sha256WindowZeroed"
+    }
+   },
+   "recipe": {
+    "function": "prg(uint256)",
+    "args": [
+     "tokenId"
+    ],
+    "returns": "bytes, the program stamped at the block you read it",
+    "verify": "outside the window: PINNED against sha256WindowZeroed; the window: CONTRACT-CONSISTENT against tableRow(id) and the block hash the same node reports for the previous block"
+   },
+   "rows": [
+    {
+     "id": 1,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 2,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 3,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 4,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 5,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 6,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 7,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 8,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 9,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 10,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 11,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 12,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 13,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 14,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 15,
+     "character": "The Dancer",
+     "behaviour": 1,
+     "colour": 3,
+     "colourName": "Cyan",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 16,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 17,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 18,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 19,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 20,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 21,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 22,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 23,
+     "character": "The Dancer",
+     "behaviour": 1,
+     "colour": 3,
+     "colourName": "Cyan",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 24,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 25,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 26,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 27,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 28,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 29,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 30,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 31,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 32,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 33,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 34,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 35,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 36,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 37,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 38,
+     "character": "The Dancer",
+     "behaviour": 1,
+     "colour": 3,
+     "colourName": "Cyan",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 39,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 40,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 41,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 42,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 43,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 44,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 45,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 46,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 47,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 48,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 49,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 50,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 51,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 52,
+     "character": "The Shadow",
+     "behaviour": 0,
+     "colour": 6,
+     "colourName": "Blue",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 53,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 54,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 0,
+     "candleName": "Dim"
+    },
+    {
+     "id": 55,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 56,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 57,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 58,
+     "character": "The Wanderer",
+     "behaviour": 4,
+     "colour": 5,
+     "colourName": "Green",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 1,
+     "batsName": "One",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 59,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 60,
+     "character": "The Shy",
+     "behaviour": 5,
+     "colour": 10,
+     "colourName": "Light red",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 61,
+     "character": "The Echo",
+     "behaviour": 2,
+     "colour": 7,
+     "colourName": "Yellow",
+     "wall": 0,
+     "wallName": "Sparse",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 62,
+     "character": "The Sleeper",
+     "behaviour": 6,
+     "colour": 4,
+     "colourName": "Purple",
+     "wall": 5,
+     "wallName": "Half",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 63,
+     "character": "The Mirror",
+     "behaviour": 3,
+     "colour": 14,
+     "colourName": "Light blue",
+     "wall": 7,
+     "wallName": "Dense",
+     "bats": 8,
+     "batsName": "Two",
+     "candle": 1,
+     "candleName": "Lit"
+    },
+    {
+     "id": 64,
+     "character": "The Glitch",
+     "behaviour": 7,
+     "colour": 1,
+     "colourName": "Cycling",
+     "wall": 0,
+     "wallName": "Blackout",
+     "bats": 0,
+     "batsName": "None",
+     "candle": 0,
+     "candleName": "Blackout"
+    }
+   ],
+   "tallies": {
+    "behaviour": [
+     12,
+     3,
+     8,
+     8,
+     12,
+     8,
+     12,
+     1
+    ],
+    "wall": {
+     "0": 35,
+     "5": 20,
+     "7": 9
+    },
+    "bats": {
+     "8": 40,
+     "1": 17,
+     "0": 7
+    },
+    "candle": {
+     "1": 52,
+     "0": 12
+    }
+   },
+   "selectors": {
+    "prg(uint256)": "0x3165ccdc",
+    "tableRow(uint256)": "0xf3c9924b",
+    "renderBlock()": "0x8e8c5b85",
+    "seedOf(uint256)": "0x82829f74",
+    "base()": "0x5001f3b5",
+    "prg()": "0xf2907c07",
+    "hash()": "0x09bd5a60",
+    "blockOffset()": "0x46bf6a55",
+    "size()": "0x949d225d"
+   }
+  },
+  {
+   "key": "perception-canary",
+   "name": "Perception Chamber Canary",
+   "contract": "PerceptionChamber",
+   "address": "0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127",
+   "deployed": "2026-09-17",
+   "deployCommit": "74e9963",
+   "etherscan": "https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127",
+   "tokens": {
+    "count": 1,
+    "ids": "1"
+   },
+   "maxBatch": 32,
+   "program": {
+    "kind": "slotted",
+    "file": "tony-b025-a-vis4.prg",
+    "bytes": 52104,
+    "sha256": "355645a687dc244257a6e53be2a652b19a9f81a8ad9d6abc4e042a9e5ca4ea62",
+    "address": "0xD172ecA1eBF93BC2bF656196cA68BD81ed86FcA0",
+    "slot": {
+     "offset": 27905,
+     "bytes": 834,
+     "marker": "BRAIN025",
+     "sha256WindowZeroed": "4621204b5f0d9421782e9b875c05be6ca3587548ef27f856c487e24ab92fa72c",
+     "note": "prgWithBrain(id) equals prg() everywhere but the 834-byte slot, which holds the head brain; a revision r's brain is the blob revision(id, r).brain, STOP then 834 bytes, spliced at the offset"
+    },
+    "genesis": {
+     "sha256": "b522c1e5af90799f7876c1d0f8268fa3e6fc6091e9899e66f228cbeab71cff05",
+     "note": "revision 0 of every token; the blank slot the program ships"
+    }
+   },
+   "recipes": {
+    "frozen": {
+     "function": "prg()",
+     "verify": "PINNED against sha256"
+    },
+    "head": {
+     "function": "prgWithBrain(uint256)",
+     "args": [
+      "tokenId"
+     ],
+     "verify": "outside the slot: PINNED against sha256WindowZeroed; the slot: CONTRACT-CONSISTENT against revision(id, head(id)).canonicalHash"
+    },
+    "revision": {
+     "function": "revision(uint256,uint32)",
+     "args": [
+      "tokenId",
+      "r"
+     ],
+     "then": "eth_getCode on .brain, drop the STOP byte, splice at slot.offset",
+     "verify": "the 834 bytes: CONTRACT-CONSISTENT against .canonicalHash; revision 0: PINNED against genesis.sha256"
+    }
+   },
+   "selectors": {
+    "prg()": "0xf2907c07",
+    "prgWithBrain(uint256)": "0x0836f9ad",
+    "brain(uint256)": "0x8bb35b70",
+    "head(uint256)": "0x0826e37b",
+    "revision(uint256,uint32)": "0xa36f5bb4",
+    "canonicalHashOf(bytes)": "0xcd2febf4",
+    "education(uint256,uint32)": "0xd13ab97e",
+    "program()": "0xc860ebc6",
+    "hash()": "0x09bd5a60",
+    "brainOffset()": "0xdf2d3546",
+    "size()": "0x949d225d",
+    "GENESIS_HASH()": "0xf087392e",
+    "MAX_BATCH()": "0x950bff9f"
+   }
+  },
+  {
+   "key": "tony",
+   "name": "Tony: Born for Adventure (C64 demo)",
+   "contract": "PoC721",
+   "address": "0xeBa8B68d17cAEaC99044aC9b8C9D44C0bBC8376C",
+   "deployed": "2026-08-28",
+   "etherscan": "https://etherscan.io/address/0xeBa8B68d17cAEaC99044aC9b8C9D44C0bBC8376C",
+   "tokens": {
+    "count": 1,
+    "ids": "1"
+   },
+   "program": {
+    "kind": "whole",
+    "keccak256": "5bcd208f63ac255ffc391c4abeb7b8f701061ac896008607ef414c24c880f34d",
+    "note": "prgHash() states keccak256 of prg(); the pin here is the deployment record's",
+    "bytes": 56361,
+    "sha256": "65fdeca7f1f3310d7ddda6a0b9a20fff9dbe716a3e61383db652ef6c8cc6d70c",
+    "file": "tony-token-edition.prg"
+   },
+   "recipe": {
+    "function": "prg()",
+    "verify": "PINNED against keccak256; prgHash() CONTRACT-CONSISTENT"
+   },
+   "selectors": {
+    "prg()": "0xf2907c07",
+    "prgHash()": "0x438b01ab"
+   }
+  },
+  {
+   "key": "ready64",
+   "name": "READY 64",
+   "contract": "PoC721",
+   "address": "0x0444C08150D830b3056926119DBEaB791669fF53",
+   "deployed": "2026-08-30",
+   "etherscan": "https://etherscan.io/address/0x0444C08150D830b3056926119DBEaB791669fF53",
+   "tokens": {
+    "count": 1,
+    "ids": "1"
+   },
+   "program": {
+    "kind": "whole",
+    "keccak256": "3d3c9e2988de9107d6c73b03ab0ab1c6bec21cc4810b09d7ab77e3c5707a554a",
+    "note": "prgHash() states keccak256 of prg(); the pin here is the deployment record's",
+    "bytes": 4462,
+    "sha256": "4bd58e5bdb30f75e544665053e68e2597c433a7f0761f70c90028d1022f7592f",
+    "file": "console-boot.prg"
+   },
+   "recipe": {
+    "function": "prg()",
+    "verify": "PINNED against keccak256; prgHash() CONTRACT-CONSISTENT"
+   },
+   "selectors": {
+    "prg()": "0xf2907c07",
+    "prgHash()": "0x438b01ab"
+   }
+  }
+ ]
+}

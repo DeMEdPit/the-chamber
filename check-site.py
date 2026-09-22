@@ -19,7 +19,9 @@
    document's policy lets it connect to data: URLs alone and its script has
    no network call; the
    licence gate holds (GPL and LGPL marks and texts present, LICENSES.md names
-   the sources, README, LICENSE and the footer no longer say all of it is MIT).
+   the sources, README, LICENSE and the footer no longer say all of it is MIT);
+   the catalogue parses and the public verifier's offline check passes
+   against it and the copies.
 
     python3 check-site.py
 
@@ -205,7 +207,7 @@ def check_shared_rules():
 
 
 def check_inputs():
-    for f in ("surface/surface.json", "architecture/findings.json", "machine/parts/MANIFEST.json"):
+    for f in ("surface/surface.json", "architecture/findings.json", "machine/parts/MANIFEST.json", "machine/catalogue.json"):
         try:
             json.loads((ROOT / f).read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
@@ -278,6 +280,10 @@ def check_machine():
             fail(f"{f}: names the emulator's licence as GPL-2.0 without -only; one identifier everywhere")
     if "All of it MIT" in (ROOT / "footer.py").read_text(encoding="utf-8"):
         fail("footer.py: still says all of it is MIT")
+    # the catalogue against itself and the site's copies, by the public verifier, without a network
+    r = subprocess.run([sys.executable, str(mdir / "verify.py"), "--offline"], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        fail("machine/verify.py --offline failed:\n" + "\n".join("      " + l for l in (r.stdout + r.stderr).strip().split("\n")[-12:]))
 
 
 def main():

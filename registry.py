@@ -15,6 +15,13 @@ REPO = "https://github.com/DeMEdPit/the-chamber"
 ETHERSCAN = "https://etherscan.io/address"
 CARD = "/card.png"
 
+# The one shared list of public Ethereum endpoints, in the order a page tries
+# them. Every reader on the site (the paper's live token, the machine page,
+# the catalogue) takes it from here.
+RPCS = ("https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com",
+        "https://eth.drpc.org", "https://rpc.ankr.com/eth",
+        "https://eth.merkle.io", "https://1rpc.io/eth")
+
 # The two deployed, source-verified contracts.
 CONTRACTS = {
     "chamber": "0x75FD5A9c4440c38561A0099B216F825b7C6db924",
