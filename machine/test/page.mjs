@@ -175,7 +175,7 @@ try {
   check(keys.groups === 'PLAY|MACHINE', `THE KEYS is grouped: ${keys.groups.replace('|', ', ')}`);
   check(!keys.open && keys.summary === 'HOW AUTO DECIDES' && keys.target === '#about-controls' && keys.targetExists, 'the firmware\'s decision stays visible and the reasoning sits behind HOW AUTO DECIDES, closed, linking to the account below');
   check(keys.diag === 'none' && keys.silent === 'none' && keys.hints, 'on a fine pointer DIAGONALS and the phone note are not shown; every control has at most one line under it');
-  check(/Load a program from Ethereum or bring a \.prg of your own\./.test(keys.lede), 'the lede says what you can do here');
+  check(/^\s*The Machine is the Commodore 64 emulator nopsta stored on Ethereum in 2022\. Rather than serving the machine and its programs from a server of its own, this page reads them from Ethereum, checks their cryptographic fingerprints against the ones it carries, and runs them in your browser\.\s*$/.test(keys.lede), 'the lede is the owner\'s paragraph, word for word');
   check(keys.subheads === 'about-machine,about-programs,about-words,about-controls', `the prose is under four subheads (${keys.subheads})`);
   const stub = (...code) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, ...code]);
   await pg.setInputFiles('#file', { name: 'kernal.prg', mimeType: 'application/octet-stream', buffer: stub(0xa9, 0x93, 0x20, 0xd2, 0xff, 0xa9, 0x43, 0x20, 0xd2, 0xff, 0x60) });   // LDA #147 ; JSR CHROUT ; LDA #'C' ; JSR CHROUT ; RTS

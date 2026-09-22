@@ -445,13 +445,12 @@ def page_body():
     chamber, perception = CONTRACTS["chamber"], CONTRACTS["perception"]
     return f"""<h1>The Machine</h1>
 <div class="lede">
-  <p><b>READY 64</b>: the Commodore 64 emulator nopsta stored on Ethereum in 2022, read off the chain and held to its pins before it runs.</p>
-  <p>Load a program from Ethereum or bring a .prg of your own.</p>
+  <p>The Machine is the Commodore 64 emulator nopsta stored on Ethereum in 2022. Rather than serving the machine and its programs from a server of its own, this page reads them from Ethereum, checks their cryptographic fingerprints against the ones it carries, and runs them in your browser.</p>
 </div>
 <div class="machine">
   <div class="stage">
     <div class="screen">
-      <div class="frame" id="frame" aria-label="READY 64, the machine">
+      <div class="frame" id="frame" aria-label="the machine">
         <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
       </div>
       <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain" title="no node yet">

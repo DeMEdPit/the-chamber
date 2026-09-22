@@ -450,7 +450,7 @@ function machineRows() {
   // the emulator's four contracts and, when the firmware is on, the pressing's contract and repository: where the bytes live, for anyone to compare
   const parts = catalogue && catalogue.machine && catalogue.machine.parts ? catalogue.machine.parts : [];
   const partLinks = ex ? joined(parts.map((pt) => link(pt.name.replace(/^minimal64 /, ''), `${ex}/address/${pt.address}`))) : [];
-  const emulator = mf ? [`${mf.status} · ${mf.name}`, ...(partLinks.length ? [' (', ...partLinks, ')'] : []), ` · from ${mf.source}`] : `${DASH} · READY 64 starts with the first LOAD`;
+  const emulator = mf ? [`${mf.status} · ${mf.name}`, ...(partLinks.length ? [' (', ...partLinks, ')'] : []), ` · from ${mf.source}`] : `${DASH} · the machine starts with the first LOAD`;
   const root = catalogue && catalogue.machine && catalogue.machine.firmware && catalogue.machine.firmware.root;
   const pressing = [FIRMWARE_NAME, ...(ex && root ? [' (', link('contract', `${ex}/address/${root}`), ' · ', link('repository', PRESSING_REPO), ')'] : [])];
   let firmware;
