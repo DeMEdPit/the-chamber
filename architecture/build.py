@@ -131,7 +131,6 @@ CSS = """
 /* Arriving from a shared link should not park the heading against the top
    edge of the window. */
 .find,.act,.seam{scroll-margin-top:28px}
-@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 /* :is(h3,h4) because a finding's heading level depends on where it sits -
    h4 inside a seam, h3 under the method or the series. These rules were
    scoped to h3 alone, so every finding inside a seam lost its ID spacing
@@ -478,6 +477,7 @@ h1{{font-size:clamp(1.9rem,8vw,3.4rem);margin-bottom:16px}}
 </head>
 <body>
 <main>
+<p class="kicker"><a href="../">THE CHAMBER</a> · ARCHITECTURE</p>
 <h1>Architecture</h1>
 {BANNER_HTML if BANNER else ""}
 {"".join(parts)}
