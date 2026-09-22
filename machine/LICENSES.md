@@ -20,12 +20,17 @@ The text is `licenses/GPL-2.0.txt`. nopsta's LICENSE file is the GPL-2.0
 text with no statement of his own about later versions, so the derived work
 is marked `GPL-2.0-only`, the conservative reading.
 
-Corresponding source: the emulator's source is
-<https://github.com/nopsta/minimal64>. The bytes on chain are his 2022 build
-of it (Emscripten to WebAssembly and JavaScript, gzipped, base64 in a data
-URI for the gunzip helper). We did not build them and do not alter them; we
-read them in place. The machine document's own source is `src/core.html`
-in this repository.
+Corresponding source: <https://github.com/nopsta/minimal64> at commit
+`5cd156bb1eb303db5ebde63ba48e7a780bd05152` (2022-11-06). The bytes on chain
+are, after line-ending normalisation, byte for byte the build artifact
+committed there as `build/m64-singlefile.js` (sha256
+`0a12023be7b5970faa9520f95cec664878448d0f71f2b7a650ada39452e8faac`), his
+2022 build: Emscripten to WebAssembly and JavaScript, gzipped and carried
+as base64 for the gunzip helper. The source tree at that commit and its
+build script (`build.bat`) export exactly the functions the chain build
+exports. We did not build the bytes and do not alter them; we read them in
+place and redistribute them unchanged. The machine document's own source
+is `src/core.html` in this repository, with its change notice in the file.
 
 ## LGPL-3.0-or-later: the firmware
 

@@ -1,6 +1,6 @@
 {
  "version": 1,
- "what": "The site's own copies of the bytes the machine document needs, each proven equal to the chain's by the hash here. They are the fallback when no Ethereum node answers; the machine page reads the chain first.",
+ "what": "The site's own copies of the bytes the machine document needs. Each hash here was recorded from the chain when the copy was made; the same hashes are pinned in code (machine/src/core.html for the emulator, machine/bridge-client.js for the emulator and the firmware), and the build and the site check hold the files, this record and those pins to one another offline. Re-checking this record against Ethereum is the standalone document's boot and the public verifier's job. The machine page reads the chain first and uses these when no node answers.",
  "chainId": 1,
  "emulator": [
   "gzip.bin",
@@ -23,9 +23,9 @@
     "address": "0x1Cc49e603B4b205Be0E74f8833971Bea5beccEC9",
     "read": "eth_getCode, the payload after the STOP byte"
    },
-   "licence": "GPL-2.0",
+   "licence": "GPL-2.0-only",
    "author": "nopsta (minimal64, stored on Ethereum in 2022)",
-   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+   "source": "github.com/nopsta/minimal64 at commit 5cd156bb1eb303db5ebde63ba48e7a780bd05152 (2022-11-06): the bytes on chain equal, after line-ending normalisation, its committed build artifact build/m64-singlefile.js (sha256 0a12023be7b5970faa9520f95cec664878448d0f71f2b7a650ada39452e8faac); read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
   },
   {
    "name": "minimal64 part 0",
@@ -36,9 +36,9 @@
     "address": "0xEF13021d5302c3fCe437A3C281A286479ba60008",
     "read": "eth_getCode, the payload after the STOP byte"
    },
-   "licence": "GPL-2.0",
+   "licence": "GPL-2.0-only",
    "author": "nopsta (minimal64, stored on Ethereum in 2022)",
-   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+   "source": "github.com/nopsta/minimal64 at commit 5cd156bb1eb303db5ebde63ba48e7a780bd05152 (2022-11-06): the bytes on chain equal, after line-ending normalisation, its committed build artifact build/m64-singlefile.js (sha256 0a12023be7b5970faa9520f95cec664878448d0f71f2b7a650ada39452e8faac); read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
   },
   {
    "name": "minimal64 part 1",
@@ -49,9 +49,9 @@
     "address": "0x9A463234988C0F77ca1252Fc974DfD6b50AAA6Ba",
     "read": "eth_getCode, the payload after the STOP byte"
    },
-   "licence": "GPL-2.0",
+   "licence": "GPL-2.0-only",
    "author": "nopsta (minimal64, stored on Ethereum in 2022)",
-   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+   "source": "github.com/nopsta/minimal64 at commit 5cd156bb1eb303db5ebde63ba48e7a780bd05152 (2022-11-06): the bytes on chain equal, after line-ending normalisation, its committed build artifact build/m64-singlefile.js (sha256 0a12023be7b5970faa9520f95cec664878448d0f71f2b7a650ada39452e8faac); read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
   },
   {
    "name": "minimal64 part 2",
@@ -62,9 +62,9 @@
     "address": "0xf6Fb8cefFff7239d9689acDF1FBF5376C9996dA5",
     "read": "eth_getCode, the payload after the STOP byte"
    },
-   "licence": "GPL-2.0",
+   "licence": "GPL-2.0-only",
    "author": "nopsta (minimal64, stored on Ethereum in 2022)",
-   "source": "github.com/nopsta/minimal64; the 2022 build nopsta stored on Ethereum, read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
+   "source": "github.com/nopsta/minimal64 at commit 5cd156bb1eb303db5ebde63ba48e7a780bd05152 (2022-11-06): the bytes on chain equal, after line-ending normalisation, its committed build artifact build/m64-singlefile.js (sha256 0a12023be7b5970faa9520f95cec664878448d0f71f2b7a650ada39452e8faac); read from the contract named here and redistributed unchanged (the payload after the STOP byte)"
   },
   {
    "name": "OpenROMs KERNAL",

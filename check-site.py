@@ -237,6 +237,12 @@ def check_machine():
     want = [by_file[f]["sha256"] for f in man.get("emulator", []) if f in by_file]
     if pins != want:
         fail("machine/src/core.html: the emulator pins differ from machine/parts/MANIFEST.json")
+    client = (mdir / "bridge-client.js").read_text(encoding="utf-8")
+    cpins = re.findall(r"sha256: '([0-9a-f]{64})'", client)
+    fw = man.get("firmware", {})
+    cwant = want + [by_file[fw[k]]["sha256"] for k in ("kernal", "basic", "chargen") if fw.get(k) in by_file]
+    if cpins != cwant:
+        fail("machine/bridge-client.js: the pins in code differ from machine/parts/MANIFEST.json (the commitment lives in code; the manifest must agree)")
     for f in ("core.html", "standalone.html", "src/core.html"):
         if "SPDX-License-Identifier: GPL-2.0-only" not in (mdir / f).read_text(encoding="utf-8"):
             fail(f"machine/{f}: not marked GPL-2.0-only")
@@ -265,8 +271,11 @@ def check_machine():
     if "machine/LICENSES.md" not in (ROOT / "README.md").read_text(encoding="utf-8"):
         fail("README.md: does not point at machine/LICENSES.md")
     lic_root = (ROOT / "LICENSE").read_text(encoding="utf-8")
-    if "GPL-2.0" not in lic_root or "machine/" not in lic_root:
+    if "GPL-2.0-only" not in lic_root or "machine/" not in lic_root:
         fail("LICENSE: does not say that machine/ is not under it")
+    for f, words in (("LICENSE", lic_root), ("README.md", (ROOT / "README.md").read_text(encoding="utf-8")), ("footer.py", (ROOT / "footer.py").read_text(encoding="utf-8"))):
+        if re.search(r"GPL-2\.0(?!-only)(?!\.txt)", words):
+            fail(f"{f}: names the emulator's licence as GPL-2.0 without -only; one identifier everywhere")
     if "All of it MIT" in (ROOT / "footer.py").read_text(encoding="utf-8"):
         fail("footer.py: still says all of it is MIT")
 

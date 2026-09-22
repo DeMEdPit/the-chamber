@@ -27,7 +27,7 @@ def esc(t):
 def render(key, body, *, title, description, css="", image=CARD, image_alt=SITE_NAME, og_type=None, script=""):
     p = _page(key)
     og_type = og_type or ("website" if p.kind == "home" else "article")
-    kicker = "" if not p.kicker else f'<p class="kicker"><a href="../">THE CHAMBER</a> · {p.kicker}</p>\n'
+    kicker = "" if not p.kicker else f'<p class="kicker"><a href="/">THE CHAMBER</a> · {p.kicker}</p>\n'
     tail = f"{script}\n" if script else ""
     return f"""<!doctype html>
 <html lang="en">

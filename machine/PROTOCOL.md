@@ -27,9 +27,18 @@ from assumptions.
    transferred, never interpolated into markup or script.
 
 Every message is a plain object with `v: 1` and a string `type`. A request
-from the host carries an integer `id`; the machine answers it with exactly
-one reply carrying the same `id`. Messages from the machine without an `id`
-are events.
+from the host carries a non-negative integer `id`; the machine answers it
+with exactly one reply carrying the same `id`. A request whose `id` is not
+a non-negative integer gets a refusal that carries no `id` (the host cannot
+correlate it, and should not have sent it). Every field of a request is in
+its schema in the table below: an unknown field, a missing required one or
+a field of the wrong type is refused `BAD_MESSAGE` before anything else is
+looked at. Messages from the machine without an `id` are events.
+
+**The standalone build is not this boundary.** `standalone.html` reads
+whatever RPC it is pointed at and carries no policy; it is a harness and a
+copy-and-run surface, and nothing said here of the embedded document is a
+claim about it.
 
 ## The handshake
 
@@ -53,15 +62,15 @@ host offers only what it lists.
 
 | request | fields | reply |
 |---|---|---|
-| `machine` | `parts`: four `ArrayBuffer`s, the emulator's parts in the manifest's order; `roms`: `{kernal, basic, chargen}` `ArrayBuffer`s (8192, 8192, 4096 bytes) or `null` for the bare machine | `ready {emulator, hashes, firmware, ms}` — `hashes` is `checked` when the document verified every part against its own pins, `unchecked` when it had no `crypto.subtle` |
-| `load` | `kind`: one of `capabilities.loads`; `bytes`: `ArrayBuffer`; `label`: string | `loaded {label, load, bytes, intervened}` — `load` is the two-byte load address |
+| `machine` | `parts`: four `ArrayBuffer`s, the emulator's parts in the manifest's order; `roms`: `{kernal, basic, chargen}` `ArrayBuffer`s (8192, 8192, 4096 bytes), `null` or absent for the bare machine | `ready {emulator, emulatorStatus, firmware, firmwareSha256, ms}` — `emulatorStatus` is `PINNED`: the document verified every part against the pins it carries, and it does not run otherwise (`HASH_UNAVAILABLE` when it cannot hash, `HASH_MISMATCH` when a part differs); `firmwareSha256` is `{kernal, basic, chargen}`, the sha256 of each ROM as received, or `null`. The document holds no pin for the firmware and claims nothing about it: the host compares these hashes with what it pinned before asking, and the host's provenance says PINNED or not |
+| `load` | `kind`: one of `capabilities.loads`; `bytes`: `ArrayBuffer`; `label`: string of at most 80 characters, optional | `loaded {label, load, bytes, intervened}` — `load` is the two-byte load address |
 | `reset` | | `ok` |
 | `input` | `mode`: `keyboard` or `joystick` (what the arrow keys feed) | `ok {input}` |
-| `joystick` | `bit`: 1 up, 2 down, 4 left, 8 right, 16 fire; `down`: boolean; port 2 | `ok` |
+| `joystick` | `bit`: integer, 1 up, 2 down, 4 left, 8 right, 16 fire; `down`: boolean; port 2 | `ok` |
 | `type` | `text`: string, typed through the keyboard matrix with human timing; `\n` is RETURN | `ok {typed}` when done |
 | `screen` | | `screen {text}` — the 25 rows of screen memory as text |
-| `peek` | `addr`: 0..65535; `length`: 1..65536, default 1 | `value {addr, value, bytes}` — `bytes` an `ArrayBuffer` |
-| `poke` | `addr`, `value` | `ok {intervened: true}`; refused `LAB_OFF` unless `lab` is on |
+| `peek` | `addr`: integer 0..65535; `length`: integer 1..65536, optional, default 1 | `value {addr, value, bytes}` — `bytes` an `ArrayBuffer` |
+| `poke` | `addr`: integer 0..65535; `value`: integer 0..255 | `ok {intervened: true}`; refused `LAB_OFF` unless `lab` is on |
 | `lab` | `on`: boolean | `ok {lab}` |
 | `state` | | `state {phase, build, mode, input, firmware, program, intervened, lab, error}` |
 
@@ -75,7 +84,23 @@ may improve; the code is stable and is what tests and hosts read.
 | `hello` | the port is held |
 | `status {text}` | a line of progress, as the standalone shows at its foot |
 | `intervened {addr}` | once, on the first write that lands through `poke` |
-| `error {text, phase}` | an uncaught error in the document, a WASM fault included; the host should destroy the frame and rebuild it, never recover it |
+| `error {text, phase}` | an uncaught error in the document, a WASM fault included; the host destroys the frame and rebuilds it, never recovers it |
+
+## Fail closed
+
+The document does not run an emulator it could not check: without SHA-256
+it refuses `HASH_UNAVAILABLE`, on a pin mismatch `HASH_MISMATCH`, and a
+start that aborts is refused `START_FAILED` rather than left hanging. The
+host's client (`bridge-client.js`) destroys the frame, and rejects
+everything pending with `FRAME_GONE`, when the document does not say hello
+in time (`NO_HELLO`), when any request goes unanswered within its timeout
+(`TIMEOUT`; a `type` request's default timeout scales with its text), when
+the document reports an `error` event (`MACHINE_ERROR`), and on
+`destroy()`. A hung or crashed machine is never recovered. The client also
+refuses to hand over bytes that do not match the pins in its own code, and
+destroys a machine whose reported firmware hashes differ from them
+(`HASH_MISMATCH`) or whose emulator is reported as anything but `PINNED`
+(`UNPINNED_EMULATOR`).
 
 ## Reads, writes and INTERVENED
 
@@ -94,6 +119,7 @@ run. The way back is a fresh frame.
 | `UNKNOWN_MESSAGE` | a `type` this version does not have |
 | `NOT_READY` | a request that needs a running machine before there is one |
 | `ALREADY_STARTED` | a second `machine` |
+| `HASH_UNAVAILABLE` | the document cannot compute SHA-256; the machine does not run |
 | `HASH_MISMATCH` | a part whose sha256 is not its pin; the machine does not run |
 | `START_FAILED` | the parts did not run as an emulator |
 | `KIND_UNSUPPORTED` | a `load` whose `kind` is not in `capabilities.loads` |
@@ -108,13 +134,19 @@ Reserved for the host page and the catalogue, with the same stability:
 `CRT_8K_NORMAL_UNSUPPORTED`, `CRT_TYPE_UNSUPPORTED`, `DISK_MULTILOAD_UNAVAILABLE`,
 `DISK_CHAIN_INVALID`, `RPC_UNAVAILABLE`, `STAMP_INCONSISTENT`,
 `ROM_INTERNAL_CALL_UNPINNED`. The host's bridge client adds `TIMEOUT`,
-`FRAME_GONE`, `NO_HELLO`, `POST_FAILED`, `SITE_COPY_MISSING`,
-`MANIFEST_VERSION`, `MANIFEST_INCOMPLETE`.
+`FRAME_GONE`, `NO_HELLO`, `MACHINE_ERROR`, `DESTROYED`, `POST_FAILED`,
+`SITE_COPY_MISSING`, `MANIFEST_VERSION`, `MANIFEST_DRIFT`,
+`UNPINNED_EMULATOR`.
 
 ## The trust vocabulary
 
 Every program and every byte a host runs or shows carries exactly one
-status, held as constants in `bridge-client.js`:
+status, held as constants in `bridge-client.js`. A commitment counts as
+"known before the page asked" only when it is in the page's code (the
+machine document's pins for the emulator; the client's pins for the
+emulator and the firmware): a manifest or a catalogue fetched during the
+session is a record that must agree with those pins, never the commitment
+itself.
 
 | status | meaning |
 |---|---|

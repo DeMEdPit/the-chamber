@@ -25,7 +25,7 @@ SOFTWARE.
 Third-party components are under their own licences and are not covered by the
 grant above:
 
-  minimal64 (C64 emulator, nopsta)          GPL-2.0
+  minimal64 (C64 emulator, nopsta)          GPL-2.0-only
   OpenROMs character ROM (MEGA65)           LGPL-3.0-or-later
   Tony: Born for Adventure (art and music)  MIT
 

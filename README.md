@@ -174,7 +174,7 @@ infrastructure he left for others to use.
 **Tony: Born for Adventure** — game code Maciej Małecki, graphics Rafał Dudek,
 music Sami Juntunen. MIT. <https://github.com/maciejmalecki/tony-demo>
 
-**minimal64** — the C64 emulator, by nopsta. GPL-2.0.
+**minimal64** — the C64 emulator, by nopsta. GPL-2.0-only.
 <https://github.com/nopsta/minimal64>
 
 **Character set** — the OpenROMs character ROM, LGPL-3.0-or-later.
@@ -183,7 +183,7 @@ music Sami Juntunen. MIT. <https://github.com/maciejmalecki/tony-demo>
 The Chamber series, its learner, its contracts and its pages are by CypherDAO,
 2026, and are released under the MIT licence. See [LICENSE](LICENSE). Two
 things in this repository are not: the machine document under `machine/`,
-which carries nopsta's GPL-2.0 player glue and is GPL-2.0-only, and the
+which carries nopsta's player glue and is GPL-2.0-only, and the
 OpenROMs firmware it loads, LGPL-3.0-or-later. What is under which licence,
 and where the corresponding source is, is in
 [machine/LICENSES.md](machine/LICENSES.md).

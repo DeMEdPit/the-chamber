@@ -34,6 +34,21 @@
   on, and the first one that lands is reported as INTERVENED for the life
   of this document.
 
+  Changed by CypherDAO, 2026-09-22 (the notice GPLv2 section 2(a) asks a
+  modified file to carry): derived from the READY 64 launcher core, itself
+  from nopsta's example player (minimal64/example/, 2022). The changes: the
+  EMBEDDED and STANDALONE regions and the build that selects one; the
+  bridge (protocol 1) with its schema, ids and refusal codes; the
+  start-from-parts path that refuses to run without SHA-256 or on a pin
+  mismatch and reports the firmware's hashes; the emulator's abort hook;
+  the LAB gate and the INTERVENED mark. Later changes are in this file's
+  history in the public repository.
+
+  The STANDALONE build is a harness and a copy-and-run surface: it reads
+  whatever RPC it is pointed at and carries no policy. The boundary
+  described above is the EMBEDDED build's alone; nothing said of the
+  embedded document is a claim about standalone.html.
+
   Licence: GPL-2.0-only. The player glue derives from nopsta's own GPL
   example player (minimal64/example/) by way of the READY 64 launcher core,
   so it carries the same licence. The emulator arriving from the chain is
@@ -135,6 +150,11 @@ var CAPABILITIES = {
   snapshots: false
 };
 var LIMITS = { prg: 65538, text: 4096, machine: 1048576, peek: 65536 };
+/* The one word of the trust vocabulary this document ever uses of itself:
+   the emulator it runs matched the pins above, known before it was asked.
+   It holds no pin for the firmware and says nothing about it but its
+   measured hashes; that claim is the host's to make. */
+var STATUS_PINNED = 'PINNED';
 
 /* ------------------------------------------------------------ mode
    Defaults; the standalone build reads its address for these, the embedded
@@ -259,7 +279,10 @@ async function fetchMachine() {
       if (rh !== want[names[k]]) throw refusal('HASH_MISMATCH', names[k] + ' ROM does not match the hash the ROM set states');
       roms[names[k]] = rb;
     }
-    STATE.firmware = { romset: romset, addresses: addrs, sha256: want };
+    /* The hashes came from the ROM set contract and the bytes from the
+       blobs it names, both through the one node asked: CONTRACT-CONSISTENT,
+       never PINNED, which would need a commitment held before asking. */
+    STATE.firmware = { romset: romset, addresses: addrs, sha256: want, status: 'CONTRACT-CONSISTENT' };
   }
   STATE.ms = Math.round(performance.now() - t0);
   return { parts: parts, roms: roms };
@@ -612,15 +635,18 @@ async function startFromParts(parts, roms) {
   started = true;
   STATE.phase = 'loading';
   var t0 = performance.now();
-  var checked = 'unchecked';
   if (parts.length !== CONFIG.emulator.length) throw refusal('BAD_MESSAGE', 'the machine is ' + CONFIG.emulator.length + ' parts');
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    say('checking the machine against its pins');
-    for (var i = 0; i < parts.length; i++) {
-      var h = await sha256Hex(parts[i]);
-      if (h !== CONFIG.emulator[i].sha256) throw refusal('HASH_MISMATCH', CONFIG.emulator[i].name + ' does not match its pinned hash');
-    }
-    checked = 'checked';
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    throw refusal('HASH_UNAVAILABLE', 'this browser cannot compute SHA-256, so the machine cannot be checked against its pins and will not run');
+  }
+  say('checking the machine against its pins');
+  for (var i = 0; i < parts.length; i++) {
+    var h = await sha256Hex(parts[i]);
+    if (h !== CONFIG.emulator[i].sha256) throw refusal('HASH_MISMATCH', CONFIG.emulator[i].name + ' does not match its pinned hash');
+  }
+  var firmwareSha256 = null;
+  if (roms) {
+    firmwareSha256 = { kernal: await sha256Hex(roms.kernal), basic: await sha256Hex(roms.basic), chargen: await sha256Hex(roms.chargen) };
   }
   say('starting the machine');
   await runEmulatorParts(parts);
@@ -641,20 +667,69 @@ async function startFromParts(parts, roms) {
   STATE.phase = 'running';
   STATE.mode = MODE = roms ? 'firmware' : 'bare';
   STATE.ms = Math.round(performance.now() - t0);
+  STATE.emulatorStatus = STATUS_PINNED;
   requestAnimationFrame(frame);
   say('', true);
-  return checked;
+  return { emulatorStatus: STATUS_PINNED, firmwareSha256: firmwareSha256 };
 }
 
 /* ------------------------------------------------------------ bridge
    Protocol 1. A host posts {v: 1, type: 'port'} to this window with one
    MessagePort transferred; from then on everything runs on that port. A
-   message with an id gets exactly one reply carrying the same id (ok,
-   ready, loaded, refused, screen, value, state). Messages without an id
+   request is {v: 1, type, id?, ...fields}: id, when present, is a
+   non-negative integer and is echoed on exactly one reply (ok, ready,
+   loaded, refused, screen, value, state); a request whose id is not one
+   gets a refusal that carries no id. Every field of a request is in its
+   schema below; an unknown field, a missing one or a wrong type is
+   BAD_MESSAGE before anything else is looked at. Messages without an id
    from this side are events (hello, status, intervened, error). Reads are
    always allowed; a write is refused until the host turns lab on, and the
    first write that lands makes this document INTERVENED for good. */
 var port = null, labOn = false, intervened = false;
+var SCHEMA = {
+  machine: { parts: 'array', roms: 'object?' },
+  load: { kind: 'string', bytes: 'buffer', label: 'string?' },
+  reset: {},
+  input: { mode: 'string' },
+  joystick: { bit: 'integer', down: 'boolean' },
+  type: { text: 'string' },
+  screen: {},
+  peek: { addr: 'integer', length: 'integer?' },
+  poke: { addr: 'integer', value: 'integer' },
+  lab: { on: 'boolean' },
+  state: {}
+};
+function typeOk(v, t) {
+  switch (t) {
+    case 'string': return typeof v === 'string';
+    case 'boolean': return typeof v === 'boolean';
+    case 'integer': return Number.isInteger(v);
+    case 'array': return Array.isArray(v);
+    case 'buffer': return v instanceof ArrayBuffer;
+    case 'object': return v === null || (typeof v === 'object' && !Array.isArray(v) && !(v instanceof ArrayBuffer));
+  }
+  return false;
+}
+function validId(m) { return m && Number.isInteger(m.id) && m.id >= 0; }
+/* The text of the first fault, or null when the request is well formed. */
+function validate(m) {
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return 'a request is an object {v: 1, type, id?, ...}';
+  if (m.v !== PROTOCOL) return 'v must be ' + PROTOCOL;
+  if (typeof m.type !== 'string') return 'type must be a string';
+  if (m.id !== undefined && !validId(m)) return 'id must be a non-negative integer';
+  var schema = SCHEMA[m.type];
+  if (!schema) return null;                          /* UNKNOWN_MESSAGE, below */
+  for (var k in m) {
+    if (k === 'v' || k === 'type' || k === 'id') continue;
+    if (!Object.prototype.hasOwnProperty.call(schema, k)) return 'no field ' + k + ' in ' + m.type;
+  }
+  for (var f in schema) {
+    var spec = schema[f], optional = spec.charAt(spec.length - 1) === '?', t = optional ? spec.slice(0, -1) : spec;
+    if (m[f] === undefined) { if (!optional) return m.type + ' needs ' + f; continue; }
+    if (!typeOk(m[f], t)) return f + ' must be ' + (t === 'buffer' ? 'an ArrayBuffer' : t === 'integer' ? 'an integer' : t === 'object' ? 'an object or null' : 'a ' + t);
+  }
+  return null;
+}
 function send(msg) { if (port) { try { port.postMessage(msg); } catch (e) {} } }
 function event(type, body) {
   var m = { v: PROTOCOL, type: type };
@@ -664,36 +739,36 @@ function event(type, body) {
 function reply(req, body) {
   var m = { v: PROTOCOL };
   for (var k in body) m[k] = body[k];
-  if (req && req.id !== undefined) m.id = req.id;
+  if (validId(req)) m.id = req.id;
   send(m);
 }
 function refuse(req, code, text) { reply(req, { type: 'refused', code: code, text: text || code }); }
-function isBuffer(b) { return b instanceof ArrayBuffer; }
 function stateReport() {
   return { type: 'state', phase: STATE.phase, build: BUILD, mode: MODE, input: INPUT, firmware: !!ROMS,
            program: STATE.program, intervened: intervened, lab: labOn, error: STATE.error };
 }
 async function onRequest(m) {
-  if (!m || typeof m !== 'object' || m.v !== PROTOCOL || typeof m.type !== 'string') {
-    refuse(m, 'BAD_MESSAGE', 'a request is {v: 1, type, id?, ...}'); return;
-  }
+  var bad = validate(m);
+  if (bad) { refuse(m, 'BAD_MESSAGE', bad); return; }
   switch (m.type) {
     case 'machine': {
       if (started) { refuse(m, 'ALREADY_STARTED', 'the machine has already been started'); return; }
-      var parts = m.parts, roms = m.roms || null, total = 0;
-      if (!Array.isArray(parts) || parts.length !== CONFIG.emulator.length) { refuse(m, 'BAD_MESSAGE', 'parts must be ' + CONFIG.emulator.length + ' ArrayBuffers'); return; }
-      for (var i = 0; i < parts.length; i++) { if (!isBuffer(parts[i])) { refuse(m, 'BAD_MESSAGE', 'part ' + i + ' is not an ArrayBuffer'); return; } total += parts[i].byteLength; }
+      var parts = m.parts, roms = m.roms === undefined ? null : m.roms, total = 0;
+      if (parts.length !== CONFIG.emulator.length) { refuse(m, 'BAD_MESSAGE', 'parts must be ' + CONFIG.emulator.length + ' ArrayBuffers'); return; }
+      for (var i = 0; i < parts.length; i++) { if (!(parts[i] instanceof ArrayBuffer)) { refuse(m, 'BAD_MESSAGE', 'part ' + i + ' is not an ArrayBuffer'); return; } total += parts[i].byteLength; }
       if (total > LIMITS.machine) { refuse(m, 'FILE_TOO_LARGE', 'the parts are ' + total + ' bytes; at most ' + LIMITS.machine); return; }
       var romBytes = null;
       if (roms !== null) {
-        if (typeof roms !== 'object' || !isBuffer(roms.kernal) || !isBuffer(roms.basic) || !isBuffer(roms.chargen)) { refuse(m, 'BAD_MESSAGE', 'roms must be null or {kernal, basic, chargen} ArrayBuffers'); return; }
+        for (var rk in roms) { if (rk !== 'kernal' && rk !== 'basic' && rk !== 'chargen') { refuse(m, 'BAD_MESSAGE', 'no field ' + rk + ' in roms'); return; } }
+        if (!(roms.kernal instanceof ArrayBuffer) || !(roms.basic instanceof ArrayBuffer) || !(roms.chargen instanceof ArrayBuffer)) { refuse(m, 'BAD_MESSAGE', 'roms must be null or {kernal, basic, chargen} ArrayBuffers'); return; }
         if (roms.kernal.byteLength !== 8192 || roms.basic.byteLength !== 8192 || roms.chargen.byteLength !== 4096) { refuse(m, 'BAD_MESSAGE', 'roms must be 8192, 8192 and 4096 bytes'); return; }
         romBytes = { kernal: new Uint8Array(roms.kernal), basic: new Uint8Array(roms.basic), chargen: new Uint8Array(roms.chargen) };
       }
       MODE = romBytes ? 'firmware' : 'bare';
       try {
-        var checked = await startFromParts(parts.map(function (b) { return new Uint8Array(b); }), romBytes);
-        reply(m, { type: 'ready', emulator: MACHINE, hashes: checked, firmware: !!romBytes, ms: STATE.ms });
+        var got = await startFromParts(parts.map(function (b) { return new Uint8Array(b); }), romBytes);
+        reply(m, { type: 'ready', emulator: MACHINE, emulatorStatus: got.emulatorStatus, firmware: !!romBytes,
+                   firmwareSha256: got.firmwareSha256, ms: STATE.ms });
       } catch (e) {
         STATE.phase = 'failed'; STATE.error = String(e && e.message || e);
         say('failed: ' + STATE.error);
@@ -704,9 +779,9 @@ async function onRequest(m) {
     case 'load': {
       if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
       if (CAPABILITIES.loads.indexOf(m.kind) < 0) { refuse(m, 'KIND_UNSUPPORTED', 'this machine loads: ' + CAPABILITIES.loads.join(', ')); return; }
-      if (!isBuffer(m.bytes)) { refuse(m, 'BAD_MESSAGE', 'bytes must be an ArrayBuffer'); return; }
+      if (m.label !== undefined && m.label.length > 80) { refuse(m, 'BAD_MESSAGE', 'label is at most 80 characters'); return; }
       if (m.bytes.byteLength > LIMITS.prg) { refuse(m, 'FILE_TOO_LARGE', 'not loaded: ' + m.bytes.byteLength + ' bytes; a PRG is at most ' + LIMITS.prg); return; }
-      var r = loadPRG(new Uint8Array(m.bytes), typeof m.label === 'string' ? m.label.slice(0, 80) : 'program');
+      var r = loadPRG(new Uint8Array(m.bytes), m.label === undefined ? 'program' : m.label);
       if (r.ok) reply(m, { type: 'loaded', label: r.label, load: r.load, bytes: r.bytes, intervened: intervened });
       else refuse(m, r.code, r.text);
       return;
@@ -719,11 +794,11 @@ async function onRequest(m) {
       releaseAll(); INPUT = m.mode; STATE.input = INPUT; reply(m, { type: 'ok', input: INPUT }); return;
     case 'joystick':
       if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
-      if ([1, 2, 4, 8, 16].indexOf(m.bit) < 0 || typeof m.down !== 'boolean') { refuse(m, 'BAD_MESSAGE', 'bit is 1, 2, 4, 8 or 16 and down is a boolean'); return; }
+      if ([1, 2, 4, 8, 16].indexOf(m.bit) < 0) { refuse(m, 'BAD_MESSAGE', 'bit is 1, 2, 4, 8 or 16'); return; }
       (m.down ? m64_joystickPush : m64_joystickRelease)(1, m.bit); reply(m, { type: 'ok' }); return;
     case 'type': {
       if (STATE.phase !== 'running') { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
-      if (typeof m.text !== 'string' || m.text.length > LIMITS.text) { refuse(m, 'BAD_MESSAGE', 'text is a string of at most ' + LIMITS.text); return; }
+      if (m.text.length > LIMITS.text) { refuse(m, 'BAD_MESSAGE', 'text is at most ' + LIMITS.text + ' characters'); return; }
       if (typing) { refuse(m, 'BUSY', 'still typing'); return; }
       var typed = await typeText(m.text);
       reply(m, { type: 'ok', typed: typed }); return;
@@ -734,23 +809,22 @@ async function onRequest(m) {
     case 'peek': {
       if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
       var a = m.addr, n = m.length === undefined ? 1 : m.length;
-      if (!Number.isInteger(a) || a < 0 || a > 0xffff || !Number.isInteger(n) || n < 1 || n > LIMITS.peek || a + n > 0x10000) { refuse(m, 'BAD_MESSAGE', 'addr is 0..65535 and addr + length stays within 64K'); return; }
+      if (a < 0 || a > 0xffff || n < 1 || n > LIMITS.peek || a + n > 0x10000) { refuse(m, 'BAD_MESSAGE', 'addr is 0..65535 and addr + length stays within 64K'); return; }
       var out = new Uint8Array(n);
       for (var j = 0; j < n; j++) out[j] = m64_cpuRead(a + j) & 0xff;
       var res = { v: PROTOCOL, type: 'value', addr: a, value: out[0], bytes: out.buffer };
-      if (m.id !== undefined) res.id = m.id;
+      if (validId(m)) res.id = m.id;
       if (port) { try { port.postMessage(res, [out.buffer]); } catch (e) {} }
       return;
     }
     case 'poke':
       if (!m64) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
       if (!labOn) { refuse(m, 'LAB_OFF', 'a write to the machine needs lab on; a run that takes one is INTERVENED'); return; }
-      if (!Number.isInteger(m.addr) || m.addr < 0 || m.addr > 0xffff || !Number.isInteger(m.value) || m.value < 0 || m.value > 0xff) { refuse(m, 'BAD_MESSAGE', 'addr is 0..65535 and value is 0..255'); return; }
+      if (m.addr < 0 || m.addr > 0xffff || m.value < 0 || m.value > 0xff) { refuse(m, 'BAD_MESSAGE', 'addr is 0..65535 and value is 0..255'); return; }
       m64_cpuWrite(m.addr, m.value);
       if (!intervened) { intervened = true; STATE.intervened = true; event('intervened', { addr: m.addr }); }
       reply(m, { type: 'ok', intervened: true }); return;
     case 'lab':
-      if (typeof m.on !== 'boolean') { refuse(m, 'BAD_MESSAGE', 'on is a boolean'); return; }
       labOn = m.on; STATE.lab = labOn; reply(m, { type: 'ok', lab: labOn }); return;
     case 'state':
       reply(m, stateReport()); return;

@@ -15,8 +15,9 @@ build the reverse; both drop the marker lines. Nothing decides at run time.
 Before writing anything the build holds, and stops on the first failure:
   - every file under machine/parts/ has the bytes and the sha256 its
     MANIFEST.json states (the site's copies are proven, not assumed);
-  - the four emulator pins in the source equal the manifest's, in order, so
-    the document and the copies cannot drift apart;
+  - the four emulator pins in the source and the seven pins in the host's
+    bridge-client.js equal the manifest's, in order, so the document, the
+    client and the copies cannot drift apart;
   - the source is marked GPL-2.0-only, the licence texts and machine/LICENSES.md
     are present, and every part in the manifest names its licence and source;
   - the embedded build carries a policy whose connect-src is data: alone (the
@@ -84,9 +85,19 @@ def check_parts(m):
 def check_pins(src, m, by_file):
     pins = re.findall(r"sha256: '([0-9a-f]{64})'", src)
     want = [by_file[f]["sha256"] for f in m["emulator"]]
-    if pins[: len(want)] != want or len(pins) != len(want):
+    if pins != want:
         die("the source's emulator pins do not equal the manifest's, in order:\n  source   " +
             " ".join(p[:12] for p in pins) + "\n  manifest " + " ".join(p[:12] for p in want))
+    client = (HERE / "bridge-client.js").read_text(encoding="utf-8")
+    cpins = re.findall(r"sha256: '([0-9a-f]{64})'", client)
+    cwant = want + [by_file[m["firmware"][k]]["sha256"] for k in ("kernal", "basic", "chargen")]
+    if cpins != cwant:
+        die("bridge-client.js's pins do not equal the manifest's (four emulator parts, then kernal, basic, chargen):\n  client   " +
+            " ".join(p[:12] for p in cpins) + "\n  manifest " + " ".join(p[:12] for p in cwant))
+    caddr = [a.lower() for a in re.findall(r"address: '(0x[0-9a-fA-F]{40})'", client)]
+    maddr = [by_file[f]["chain"]["address"].lower() for f in m["emulator"]] + [by_file[m["firmware"][k]]["chain"]["address"].lower() for k in ("kernal", "basic", "chargen")]
+    if caddr != maddr:
+        die("bridge-client.js's addresses do not equal the manifest's")
 
 
 def check_licence(src, m):

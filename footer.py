@@ -39,5 +39,5 @@ def footer(current):
         f'<a href="{ETHERSCAN}/{CHAMBER}#code" target="_blank" rel="noopener">the Chamber</a> · '
         f'<a href="{ETHERSCAN}/{CANARY}#code" target="_blank" rel="noopener">Perception Chamber</a> — '
         f'and the pages and these papers are open on <a href="{REPO}" target="_blank" rel="noopener">'
-        "GitHub</a>. MIT, except the machine document (GPL-2.0) and the firmware it loads (LGPL-3.0-or-later).</p></footer>"
+        "GitHub</a>. MIT, except the machine document (GPL-2.0-only) and the firmware it loads (LGPL-3.0-or-later).</p></footer>"
     )
