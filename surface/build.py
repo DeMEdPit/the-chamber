@@ -157,7 +157,8 @@ def prose(t):
 
 
 def rid(wkey, r):
-    return f"{wkey}-{r['name']}"
+    """A row's id: the work and the function name; an overload carries its signature's parameter types."""
+    return f"{wkey}-{r['name']}" + (f"-{r['_n']}" if r.get("_n") else "")
 
 
 def access(r):
@@ -178,8 +179,25 @@ def row(wkey, r):
             f'<td class="what{own}" data-l="WHAT">{prose(what)}</td><td class="who" data-l="ACCESS">{access(r)}</td></tr>')
 
 
+def all_rows(w):
+    return [r for g in w["groups"] for r in g["rows"]] + list(w["ungrouped"])
+
+
 def rows_of(w):
-    return {r["name"]: r for g in w["groups"] for r in g["rows"]} | {r["name"]: r for r in w["ungrouped"]}
+    """By name, for the overview's links; an overloaded name links to its first row."""
+    out = {}
+    for r in all_rows(w):
+        out.setdefault(r["name"], r)
+    return out
+
+
+def number_overloads(w):
+    """The second and later rows of an overloaded name get an ordinal, so ids stay unique."""
+    seen = {}
+    for r in all_rows(w):
+        seen[r["name"]] = seen.get(r["name"], 0) + 1
+        if seen[r["name"]] > 1:
+            r["_n"] = seen[r["name"]]
 
 
 def card(w):
@@ -257,8 +275,10 @@ def part(pid, title, inner, intro=""):
 
 def main():
     d = json.loads((HERE / "surface.json").read_text(encoding="utf-8"))
+    for w in d["works"]:
+        number_overloads(w)
     by_key = {w["key"]: rows_of(w) for w in d["works"]}
-    ids = [rid(w["key"], r) for w in d["works"] for r in rows_of(w).values()]
+    ids = [rid(w["key"], r) for w in d["works"] for r in all_rows(w)]
     if len(ids) != len(set(ids)):
         raise SystemExit("a row id repeats; the overview's links would be ambiguous")
     g = d["generated"]
