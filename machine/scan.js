@@ -85,6 +85,16 @@ export function scanProgram(file) {
 export function needsOf(scan) {
   const reasons = [];
   let firmware = false;
+  // a program that banks the ROMs out itself and sets the raw interrupt vectors, with a stub to start it and no call
+  // into the KERNAL's jump table, drives the chips itself; candidate calls into ROM internals in such a program are
+  // read as data, which is what a demo's graphics and music are
+  const bareMetal = scan.banks > 0 && scan.vectors.raw > 0 && scan.vectors.kernal === 0 && scan.kernal.table === 0 && !scan.basicProgram && !!scan.entry;
+  if (bareMetal) {
+    reasons.push('no call into the KERNAL\'s jump table', 'banks the ROMs out itself', 'sets the raw interrupt vectors');
+    const data = scan.kernal.internal + scan.basic.calls;
+    if (data) reasons.push(`its ${data} candidate call${data === 1 ? '' : 's'} into ROM internals read as data`);
+    return { firmware: false, why: reasons.join(', ') };
+  }
   if (scan.basicProgram) { firmware = true; reasons.push(`a BASIC program of ${scan.basicProgram} line${scan.basicProgram === 1 ? '' : 's'}`); }
   if (scan.kernal.calls) {
     firmware = true;

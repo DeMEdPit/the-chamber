@@ -155,6 +155,7 @@ try {
   /** NOW PLAYING's text once the page says RUNNING and the panel names the program; null until then. */
   const playingNamed = (name) => pg.evaluate((n) => (document.getElementById('state').dataset.phase === 'running' && new RegExp(n).test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null), name);
   check(await pg.evaluate(() => document.getElementById('firmware').value === 'auto') && /^AUTO · bare · no call into a ROM$/.test(await whyText()), `the switch reads auto and its line says why the machine is bare for the file playing (${await whyText()})`);
+  check(await pg.evaluate(() => /a phone on silent stays silent/.test(document.getElementById('sound').parentElement.textContent) && /click the machine to give it your keys/.test(document.querySelector('.keys').textContent)), 'THE KEYS carries the sound and keyboard facts the sentence used to');
   const stub = (...code) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, ...code]);
   await pg.setInputFiles('#file', { name: 'kernal.prg', mimeType: 'application/octet-stream', buffer: stub(0xa9, 0x93, 0x20, 0xd2, 0xff, 0xa9, 0x43, 0x20, 0xd2, 0xff, 0x60) });   // LDA #147 ; JSR CHROUT ; LDA #'C' ; JSR CHROUT ; RTS
   const autoOn = await until(async () => { const t = await playingNamed('kernal\\.prg'); return t && /FIRMWARE.*on · OpenROMs pressing 1 · PINNED · from ethereum.*AUTO: calls the KERNAL 2 times \(CHROUT\)/.test(t) ? t : null; }, 90000, 500);
@@ -236,8 +237,6 @@ try {
     check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
     check(await pw.evaluate(() => document.getElementById('file').type === 'file' && document.getElementById('door').getBoundingClientRect().height > 30), `at ${w} wide: the file door is there`);
     check(await pw.evaluate(() => document.getElementById('firmware').value === 'auto' && document.getElementById('firmware').options.length === 3), `at ${w} wide: the firmware switch reads auto, three positions`);
-    // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
-    // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
     const shape0 = await pw.evaluate(() => ({ rows: Math.round(document.getElementById('rows').getBoundingClientRect().height), log: Math.round(document.getElementById('log').getBoundingClientRect().height), now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), badge: document.getElementById('link').getBoundingClientRect().width }));
     await until(() => pw.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
     const shapeRun = await pw.evaluate(() => ({ now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent), log: Math.round(document.getElementById('log').getBoundingClientRect().height) }));
@@ -251,6 +250,24 @@ try {
     check(w < 1140 ? (badge.right >= 0 && badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left >= 0 && badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge hangs from the frame's own corner, ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block}; ${Math.round(w < 1140 ? badge.right : badge.left)}px in from the frame's edge)`);
     const badgeNow = await pw.evaluate(() => document.getElementById('link').getBoundingClientRect().width);
     check(Math.abs(badgeNow - shape0.badge) <= 1, `at ${w} wide: the badge keeps one width from first paint to a held read, in its ${w < 1140 ? 'short' : 'long'} form (${Math.round(shape0.badge)} then ${Math.round(badgeNow)})`);
+    // the layout: on a wide screen the log sits under the machine and the column beside them, the stage sticky on a tall
+    // window; in one column the panels keep the phone's order, the log after NOW PLAYING
+    const lay = await pw.evaluate(() => {
+      const r = (id) => document.getElementById(id).getBoundingClientRect();
+      const frame = r('frame'), log = document.querySelector('.logbox').getBoundingClientRect(), now = r('now'), rows = r('rows'), door = r('door'), fw = r('firmware'), leave = document.querySelector('.leave a').getBoundingClientRect();
+      return { frame: { left: frame.left, right: frame.right, bottom: frame.bottom }, log: { left: log.left, top: log.top }, now: { left: now.left, top: now.top }, rows: rows.top, door: door.top, fw: fw.top, leave: leave.top,
+               sticky: getComputedStyle(document.querySelector('.stage')).position, hint: !!document.querySelector('.stage p.hint') };
+    });
+    if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w} wide: the log under the machine, NOW PLAYING beside it, the stage sticky (${lay.sticky})`);
+    else check(lay.rows < lay.door && lay.door < lay.now.top && lay.now.top < lay.log.top && lay.log.top < lay.fw && lay.fw < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: the chain, a file, NOW PLAYING, the log, the keys, the way out`);
+    check(!lay.hint, `at ${w} wide: no sentence under the machine; its facts are in THE KEYS`);
+    if (w >= 1140) {
+      // the site scrolls smoothly, so the test scrolls instantly and reads settled positions
+      const scrolled = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); const before = document.getElementById('lab-now').getBoundingClientRect().top; window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const out = { frame: document.getElementById('frame').getBoundingClientRect().top, now: document.getElementById('lab-now').getBoundingClientRect().top, before }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
+      check(scrolled.frame > 8 && scrolled.frame < 24 && scrolled.now < scrolled.before - 400, `at ${w} wide: scrolled 700px, the machine stays at the top (${Math.round(scrolled.frame)}px) while the column moves (${Math.round(scrolled.before)} to ${Math.round(scrolled.now)})`);
+    }
+    // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
+    // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }

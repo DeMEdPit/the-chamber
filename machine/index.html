@@ -163,7 +163,7 @@ h1{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;pointer-events:none}
 .veil[hidden]{display:none}
 .hint{margin:10px 0 0;font-size:.85rem;color:var(--muted)}
-.screen{position:relative}
+.screen{position:relative;margin-bottom:40px}   /* the badge hangs 40px below the frame; what follows clears it */
 .link{position:absolute;top:100%;right:10px;margin-top:-1px;display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto;column-gap:9px;row-gap:0;
   align-items:center;padding:4px 9px 5px;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;background:var(--panel);
   font:600 .58rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);max-width:calc(100% - 20px);white-space:nowrap}
@@ -188,7 +188,6 @@ h1{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}
 .link .ln,.link .lb{overflow:hidden;text-overflow:ellipsis}
 @media(max-width:1139px){.link{grid-template-columns:11ch 9.5ch auto}}
 @media(min-width:1140px){.link{left:10px;right:auto;grid-template-columns:29ch 34.5ch auto}.link .s{display:none}.link .l{display:inline}}   /* fixed columns: the longest endpoint name, and a block with its short hash; the box never grows */
-p.hint{margin-top:52px}
 .touch{display:none;margin:14px 0 0;grid-template-columns:auto auto;justify-content:space-between;gap:16px;align-items:center;touch-action:none;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .touch .ring{width:184px;height:184px;display:block;touch-action:none}
@@ -202,12 +201,18 @@ p.hint{margin-top:52px}
   touch-action:none;user-select:none;-webkit-user-select:none}
 .touch button.down{border-color:var(--accent);color:var(--accent);background:#0f1a14}
 .touch .fire{width:120px;height:120px;border-radius:50%;font-size:.9rem;margin-right:8px}
-@media(pointer:coarse){.touch{display:grid}p.hint{margin-top:10px}}
+@media(pointer:coarse){.touch{display:grid}.screen{margin-bottom:0}}   /* on a touch screen the badge sits over the pad's empty corner, as designed */
 @media(max-width:360px){.touch .ring{width:160px;height:160px}.touch .fire{width:104px;height:104px}}
 .column{min-width:0;display:flex;flex-direction:column;gap:14px}
+.logbox{margin-top:52px}   /* collapses with the screen's 40: the log's panel clears the badge with the air the old sentence had */
+/* a tall window: the machine and its log stay while the column scrolls past them; a shorter one scrolls whole, and the
+   log gives up some height first so the stage still fits */
+@media(min-width:1140px) and (min-height:820px){.stage{position:sticky;top:14px}}
+@media(min-width:1140px) and (min-height:820px) and (max-height:899px){.log{height:100px}}
 .panel{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
 .panel .lab{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;color:var(--accent);margin:0 0 10px}
-.panel .lab .n{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none}
+.panel .lab>span:first-child{flex:none}
+.panel .lab .n{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none;text-align:right}
 .search{width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 10px;font:500 .9rem/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px}
 .search:focus{outline:0;border-color:var(--accent)}
 .rows{height:330px;box-sizing:border-box;overflow:auto;border-top:1px solid var(--line)}
@@ -229,7 +234,7 @@ button.load:hover,button.b:hover,button.load:focus-visible,button.b:focus-visibl
 .state{font:700 .8rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--ink);margin:0 0 10px}
 .state[data-phase="running"]{color:var(--accent)}
 .state[data-phase="refused"],.state[data-phase="failed"]{color:#ff9d9d}
-.playing{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;min-height:404px}   /* the height of a Chamber room's rows, measured: the panel keeps its size from the first paint */
+.playing{display:flex;flex-direction:column;gap:6px;margin:0;min-height:404px}   /* the height of a Chamber room's rows, measured: the panel keeps its size from the first paint */
 .nl{display:grid;grid-template-columns:84px 1fr;gap:10px;font-size:.84rem;line-height:1.45}
 .nl .k{font:700 .6rem/1.9 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--muted)}
 .nl .v{color:var(--ink);overflow-wrap:anywhere}
@@ -251,7 +256,9 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
 .about h2{margin-top:44px}
 .about p{font-size:.95rem;color:#deded9}
 .about code{font-size:.8rem}
-@media(max-width:1139px){.machine{grid-template-columns:1fr}.screen{max-width:768px}}   /* one column: the screen, not only the frame, is capped, so the badge hangs from the frame's corner and not the column's */
+/* one column: the two wrappers dissolve and the panels take the order the phone has always had; the screen, not only
+   the frame, is capped, so the badge hangs from the frame's corner and not the column's */
+@media(max-width:1139px){.machine{grid-template-columns:1fr;row-gap:14px}.stage,.column{display:contents}.screen{max-width:768px;order:1}.touch{order:2;margin:0}.chain{order:3}.file{order:4}.now{order:5}.logbox{order:6;margin:0}.keys{order:7}.leave{order:8}}
 @media(max-width:700px){main{width:calc(100% - 32px)}.rows{height:260px}.nl{grid-template-columns:1fr;gap:0}.playing{min-height:510px}}
 
 
@@ -293,40 +300,42 @@ checked the same way; choose any other program below.</p>
       <svg class="ring" id="ring" viewBox="-100 -100 200 200" aria-label="the direction ring"><g class="d card" data-bits="1"><path class="w" d="M-36.74 -88.69A96 96 0 0 1 36.74 -88.69L15.31 -36.96A40 40 0 0 0 -15.31 -36.96Z"/><path class="g" d="M0 -75L6 -64L-6 -64Z" transform="rotate(0)"/></g><g class="d diag" data-bits="9"><path class="w" d="M36.74 -88.69A96 96 0 0 1 88.69 -36.74L36.96 -15.31A40 40 0 0 0 15.31 -36.96Z"/><path class="g" d="M0 -73L4.5 -65L-4.5 -65Z" transform="rotate(45)"/></g><g class="d card" data-bits="8"><path class="w" d="M88.69 -36.74A96 96 0 0 1 88.69 36.74L36.96 15.31A40 40 0 0 0 36.96 -15.31Z"/><path class="g" d="M0 -75L6 -64L-6 -64Z" transform="rotate(90)"/></g><g class="d diag" data-bits="10"><path class="w" d="M88.69 36.74A96 96 0 0 1 36.74 88.69L15.31 36.96A40 40 0 0 0 36.96 15.31Z"/><path class="g" d="M0 -73L4.5 -65L-4.5 -65Z" transform="rotate(135)"/></g><g class="d card" data-bits="2"><path class="w" d="M36.74 88.69A96 96 0 0 1 -36.74 88.69L-15.31 36.96A40 40 0 0 0 15.31 36.96Z"/><path class="g" d="M0 -75L6 -64L-6 -64Z" transform="rotate(180)"/></g><g class="d diag" data-bits="6"><path class="w" d="M-36.74 88.69A96 96 0 0 1 -88.69 36.74L-36.96 15.31A40 40 0 0 0 -15.31 36.96Z"/><path class="g" d="M0 -73L4.5 -65L-4.5 -65Z" transform="rotate(225)"/></g><g class="d card" data-bits="4"><path class="w" d="M-88.69 36.74A96 96 0 0 1 -88.69 -36.74L-36.96 -15.31A40 40 0 0 0 -36.96 15.31Z"/><path class="g" d="M0 -75L6 -64L-6 -64Z" transform="rotate(270)"/></g><g class="d diag" data-bits="5"><path class="w" d="M-88.69 -36.74A96 96 0 0 1 -36.74 -88.69L-15.31 -36.96A40 40 0 0 0 -36.96 -15.31Z"/><path class="g" d="M0 -73L4.5 -65L-4.5 -65Z" transform="rotate(315)"/></g></svg>
       <button type="button" class="fire" data-bit="16">FIRE</button>
     </div>
-    <p class="hint">Sound starts with your first tap or key on this page; a phone on silent stays silent. Click the machine to give it your keys. Escape is RUN/STOP on a Commodore 64 and never leaves this page.</p>
-  </div>
-  <aside class="column">
-    <section class="panel" aria-labelledby="lab-chain">
-      <div class="lab"><span id="lab-chain">FROM THE CHAIN</span><span class="n" id="count"></span></div>
-      <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
-      <div class="rows" id="rows" aria-live="polite"></div>
-    </section>
-    <section class="panel" aria-labelledby="lab-file">
-      <div class="lab"><span id="lab-file">FROM A FILE</span><span class="n">a .prg of yours</span></div>
-      <label class="door" id="door" data-state="idle"><input type="file" id="file" aria-label="choose a program file"><span id="door-text">drop a .prg here, or choose one</span></label>
-      <p class="fine">It stays in this browser and is sent nowhere. The page checks its shape, a load address and a size that fits, reads it for what it needs (the KERNAL, BASIC, the joystick, the keyboard, the SID) and claims nothing else about it: NOW PLAYING says YOUR FILE, and FIRMWARE on AUTO gives it the on-chain OpenROMs when it needs them. A program of the series dropped here is recognised by its pins and runs as it does on chain. The disk and cartridge doors come in later phases.</p>
-    </section>
-    <section class="panel" aria-labelledby="lab-now">
-      <div class="lab"><span id="lab-now">NOW PLAYING</span></div>
-      <p class="state" id="state" aria-live="polite">THE MACHINE IS OFF</p>
-      <div class="playing" id="now"></div>
+    <section class="panel logbox" aria-labelledby="lab-log">
+      <div class="lab"><span id="lab-log">THE LOG</span><span class="n">what the page read and checked</span></div>
       <ul class="log" id="log" aria-label="what the page read and checked; the last lines, the whole log copies"></ul>
       <div class="tools">
         <button type="button" class="b" id="copy">COPY PROVENANCE</button>
         <button type="button" class="b" id="copy-log">COPY THE LOG</button>
-        <button type="button" class="b" id="retry" hidden>RETRY</button>
         <span class="copied" id="copied"></span>
       </div>
       <textarea class="json" id="provenance-json" readonly aria-label="the provenance as JSON" hidden></textarea>
     </section>
-    <section class="panel" aria-labelledby="lab-keys">
+  </div>
+  <aside class="column">
+    <section class="panel chain" aria-labelledby="lab-chain">
+      <div class="lab"><span id="lab-chain">FROM THE CHAIN</span><span class="n" id="count"></span></div>
+      <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
+      <div class="rows" id="rows" aria-live="polite"></div>
+    </section>
+    <section class="panel file" aria-labelledby="lab-file">
+      <div class="lab"><span id="lab-file">FROM A FILE</span><span class="n">a .prg of yours</span></div>
+      <label class="door" id="door" data-state="idle"><input type="file" id="file" aria-label="choose a program file"><span id="door-text">drop a .prg here, or choose one</span></label>
+      <p class="fine">It stays in this browser and is sent nowhere. The page checks its shape, a load address and a size that fits, reads it for what it needs (the KERNAL, BASIC, the joystick, the keyboard, the SID) and claims nothing else about it: NOW PLAYING says YOUR FILE, and FIRMWARE on AUTO gives it the on-chain OpenROMs when it needs them. A program of the series dropped here is recognised by its pins and runs as it does on chain. The disk and cartridge doors come in later phases.</p>
+    </section>
+    <section class="panel now" aria-labelledby="lab-now">
+      <div class="lab"><span id="lab-now">NOW PLAYING</span><span class="n">copies under the machine</span></div>
+      <p class="state" id="state" aria-live="polite">THE MACHINE IS OFF</p>
+      <button type="button" class="b" id="retry" hidden>RETRY</button>
+      <div class="playing" id="now"></div>
+    </section>
+    <section class="panel keys" aria-labelledby="lab-keys">
       <div class="lab"><span id="lab-keys">THE KEYS</span></div>
       <dl class="keys">
         <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed" autocomplete="off"><option value="joystick" selected>joystick in port 2</option><option value="keyboard">the keyboard</option></select></dd>
         <dt>JOYSTICK</dt><dd>arrows move; Z, X or space is FIRE. The programs of the series read port 2.</dd>
         <dt>DIAGONALS</dt><dd><select class="mode" id="ways" aria-label="how the ring reads a diagonal" autocomplete="off"><option value="4" selected>one direction</option><option value="8">both directions, eight ways</option></select> <span class="hint">on a touch screen the ring is read by angle, and the hole is rest. The programs of the series stand still when two directions are pressed together, so a diagonal is read as one direction, left or right first, until you say otherwise.</span></dd>
-        <dt>KEYBOARD</dt><dd>your keys are the C64's; Escape is RUN/STOP, Home is CLR/HOME, the function keys are F1 to F7.</dd>
-        <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint">the page plays what the machine's sound chip makes</span></dd>
+        <dt>KEYBOARD</dt><dd>click the machine to give it your keys; they are the C64's. Escape is RUN/STOP and never leaves this page, Home is CLR/HOME, the function keys are F1 to F7.</dd>
+        <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint">the page plays what the machine's sound chip makes; it starts with your first tap or key on this page, and a phone on silent stays silent</span></dd>
         <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span> <span class="hint">the programs of the series run bare, as they do on chain, and run the same with the firmware present, because they bank it out as they start. AUTO reads a file of yours for what it needs: a program that calls the KERNAL or BASIC, hooks the KERNAL's interrupt vectors, is BASIC itself or has no stub a bare machine can start it by gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns, and a program can hide a dependency from it, so the switch stays yours: on boots to READY and RESET brings the prompt back; off is bare.</span></dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button></dd>
       </dl>

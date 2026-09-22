@@ -35,7 +35,7 @@ s = scanProgram(prg(0x20, 0xe4, 0xff, 0x60)); n = needsOf(s); i = inputOf(s, n.f
 check(s.kernal.names.join() === 'GETIN' && i.input === 'keyboard' && i.why === 'the file asks the KERNAL for keys', 'GETIN: the keyboard');
 // the SID, the banking register, the vectors
 s = scanProgram(prg(0x8d, 0x04, 0xd4, 0x9d, 0x18, 0xd4, 0x8d, 0x40, 0xd4, 0xa5, 0x01, 0x29, 0xf8, 0x09, 0x05, 0x85, 0x01, 0x8d, 0xfe, 0xff, 0x60)); n = needsOf(s);
-check(s.sid === 2 && s.banks === 1 && s.vectors.raw === 1 && !n.firmware && n.why === 'no call into a ROM, banks the ROMs out itself, sets the raw interrupt vectors', `the SID twice (a mirror not counted), $01 written, a raw vector: bare (${n.why})`);
+check(s.sid === 2 && s.banks === 1 && s.vectors.raw === 1 && !n.firmware && n.why === 'no call into the KERNAL\'s jump table, banks the ROMs out itself, sets the raw interrupt vectors', `the SID twice (a mirror not counted), $01 written, a raw vector: bare by the demo rule (${n.why})`);
 s = scanProgram(prg(0x8d, 0x14, 0x03, 0x60)); n = needsOf(s);
 check(s.vectors.kernal === 1 && n.firmware && n.why === 'hooks the KERNAL\'s interrupt vectors', 'a write to $0314: the firmware');
 // a program living under the KERNAL: calls into that window are its own code, not counted
@@ -52,6 +52,13 @@ check(scanWords(s) === 'loads at $0801 to $0813 · SYS 2061 in its stub · no ca
 // the shape of a false positive, said in the module's own words: an operand byte that reads as JSR followed by a ROM address
 s = scanProgram(prg(0x8d, 0x20, 0xd4, 0xa5, 0x01, 0x60)); n = needsOf(s);
 check(s.basic.calls === 1 && n.firmware, `a write to $D420 followed by LDA $01 reads as JSR $A5D4: a candidate, counted, as the scanner warns (${n.why})`);
+
+// a demo: banks the ROMs out, raw vectors, a stub, no jump-table call, and data that reads as calls into ROM internals: bare, said so
+s = scanProgram(prg(0xa5, 0x01, 0x29, 0xf8, 0x09, 0x05, 0x85, 0x01, 0x8d, 0xfe, 0xff, 0x20, 0x44, 0xe5, 0x20, 0x10, 0xa0, 0x8d, 0x04, 0xd4, 0x60)); n = needsOf(s);
+check(s.kernal.internal === 1 && s.basic.calls === 1 && !n.firmware && n.why === 'no call into the KERNAL\'s jump table, banks the ROMs out itself, sets the raw interrupt vectors, its 2 candidate calls into ROM internals read as data', `a demo's shape: bare (${n.why})`);
+// the same without the banking: the candidates count, and the firmware comes
+s = scanProgram(prg(0x8d, 0xfe, 0xff, 0x20, 0x44, 0xe5, 0x60)); n = needsOf(s);
+check(n.firmware && /internals/.test(n.why), `without the banking the candidate counts (${n.why})`);
 
 console.log(failures ? `${failures} FAILED` : 'all checks passed');
 process.exit(failures ? 1 : 0);
