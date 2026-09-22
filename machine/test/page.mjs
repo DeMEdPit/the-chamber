@@ -223,17 +223,19 @@ try {
   await pa.close();
 
   // widths
-  for (const [w, h] of [[390, 844], [1000, 900], [1440, 900], [1440, 760], [1440, 680]]) {   // a phone; one column wider than the frame; two columns on a tall window; on a shorter one, where the log gives up height so the stage still sticks; on a short one, where the machine alone stays and the log passes beneath it
+  // the tiers the stylesheet sets by the window's height on a wide screen: the log gives up height first, then the machine gives up size
+  const tier = (w, h) => w < 1140 ? { frame: null, log: 160, sticky: false } : h >= 870 ? { frame: 768, log: 160, sticky: true } : h >= 810 ? { frame: 768, log: 100, sticky: true } : h >= 765 ? { frame: 768, log: 60, sticky: true } : h >= 670 ? { frame: 576, log: 100, sticky: true } : h >= 630 ? { frame: 576, log: 60, sticky: true } : { frame: 768, log: 160, sticky: false };
+  for (const [w, h] of [[390, 844], [1000, 900], [1440, 900], [1440, 800], [1440, 680]]) {   // a phone; one column wider than the frame; two columns on a tall window; a shorter one, where the log gives up height; a short one, where the machine gives up size and the stage still stays whole
     const pw = await b.newPage({ viewport: { width: w, height: h } });
-    const logWant = w >= 1140 && h >= 730 && h < 810 ? 60 : w >= 1140 && h >= 810 && h < 900 ? 100 : 160;
-    const stickyEl = h >= 730 ? '.stage' : '.screen';   // what stays on a wide screen at this height
+    const t = tier(w, h), logWant = t.log;
+    const stickyEl = '.stage';
     const errs = [];
     pw.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
     pw.on('pageerror', (e) => errs.push(String(e)));
     await pw.goto(`${A.base}/machine/`, { waitUntil: 'load' });
     await until(() => pw.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
     const frame = await pw.evaluate(() => { const f = document.getElementById('frame').getBoundingClientRect(); return { w: Math.round(f.width), h: Math.round(f.height), overflow: document.documentElement.scrollWidth > window.innerWidth, scrollY: window.scrollY }; });
-    check(frame.w > 200 && !frame.overflow && noiseFree(errs).length === 0, `at ${w} wide: the frame ${frame.w}×${frame.h}, no horizontal overflow, no errors (${noiseFree(errs).length})`);
+    check(frame.w > 200 && (t.frame === null || frame.w === t.frame) && !frame.overflow && noiseFree(errs).length === 0, `at ${w}x${h}: the frame ${frame.w}×${frame.h}${t.frame ? ` (${t.frame} wanted at this height)` : ''}, no horizontal overflow, no errors (${noiseFree(errs).length})`);
     check(frame.scrollY === 0, `at ${w} wide: the page stays at the top on load (scrollY ${frame.scrollY})`);
     const listShows = await pw.evaluate(() => { const row = document.querySelector('#rows .row[data-work="tony"]'); const l = document.getElementById('rows').getBoundingClientRect(); const r = row.getBoundingClientRect(); return r.top >= l.top - 1 && r.bottom <= l.bottom + 1; });
     check(listShows, `at ${w} wide: the list shows the loaded row inside itself`);
@@ -264,7 +266,7 @@ try {
       return { frame: { left: frame.left, right: frame.right, bottom: frame.bottom }, log: { left: log.left, top: log.top }, now: { left: now.left, top: now.top }, rows: rows.top, door: door.top, fw: fw.top, leave: leave.top,
                sticky: getComputedStyle(document.querySelector(sel)).position, hint: !!document.querySelector('.stage p.hint') };
     }, stickyEl);
-    if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w}x${h}: the log under the machine, NOW PLAYING beside it, ${stickyEl === '.stage' ? 'the stage' : 'the machine alone'} sticky (${lay.sticky})`);
+    if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w}x${h}: the log under the machine, NOW PLAYING beside it, the stage sticky (${lay.sticky})`);
     else check(lay.rows < lay.door && lay.door < lay.now.top && lay.now.top < lay.log.top && lay.log.top < lay.fw && lay.fw < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: the chain, a file, NOW PLAYING, the log, the keys, the way out`);
     check(!lay.hint, `at ${w} wide: no sentence under the machine; its facts are in THE KEYS`);
     const head = await pw.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); return { h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize), frameTop: document.getElementById('frame').getBoundingClientRect().top, lede: document.querySelector('.lede').getBoundingClientRect().height }; });
@@ -273,10 +275,8 @@ try {
       // the site scrolls smoothly, so the test scrolls instantly and reads settled positions
       const scrolled = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); const before = document.getElementById('lab-now').getBoundingClientRect().top; window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const out = { frame: document.getElementById('frame').getBoundingClientRect().top, now: document.getElementById('lab-now').getBoundingClientRect().top, before }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
       check(scrolled.frame > 8 && scrolled.frame < 24 && scrolled.now < scrolled.before - 400, `at ${w}x${h}: scrolled 700px, the machine stays at the top (${Math.round(scrolled.frame)}px) while the column moves (${Math.round(scrolled.before)} to ${Math.round(scrolled.now)})`);
-      if (h < 730) {
-        const under = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const f = document.getElementById('frame').getBoundingClientRect(), l = document.querySelector('.logbox').getBoundingClientRect(); const band = getComputedStyle(document.querySelector('.screen'), '::after'); const out = { logTop: l.top, frameBottom: f.bottom, band: band.height, z: getComputedStyle(document.querySelector('.screen')).zIndex }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
-        check(under.logTop < under.frameBottom && under.band === '52px' && under.z === '2', `at ${w}x${h}: the log has passed beneath the machine (its top ${Math.round(under.logTop)} against the frame's bottom ${Math.round(under.frameBottom)}), the band under the frame in place`);
-      }
+      const together = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const f = document.getElementById('frame').getBoundingClientRect(), l = document.querySelector('.logbox').getBoundingClientRect(); const out = { logTop: l.top, logBottom: l.bottom, frameBottom: f.bottom }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
+      check(together.logTop > together.frameBottom + 40 && together.logBottom <= h + 1, `at ${w}x${h}: scrolled, the log stays with the machine (its top ${Math.round(together.logTop)} below the frame's bottom ${Math.round(together.frameBottom)}) and fits the window (its bottom ${Math.round(together.logBottom)} of ${h})`);
     }
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves

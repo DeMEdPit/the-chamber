@@ -242,14 +242,16 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 @media(max-width:360px){{.touch .ring{{width:160px;height:160px}}.touch .fire{{width:104px;height:104px}}}}
 .column{{min-width:0;display:flex;flex-direction:column;gap:14px}}
 .logbox{{margin-top:52px}}   /* collapses with the screen's 40: the log's panel clears the badge with the air the old sentence had */
-/* a tall window: the machine and its log stay while the column scrolls past them; a shorter one scrolls whole, and the
-   log gives up some height first so the stage still fits */
-@media(min-width:1140px) and (min-height:730px){{.stage{{position:sticky;top:14px}}}}
-@media(min-width:1140px) and (min-height:810px) and (max-height:899px){{.logbox .log{{height:100px}}}}   /* two names, so these outrank the log's own rule below whatever the order */
-@media(min-width:1140px) and (min-height:730px) and (max-height:809px){{.logbox .log{{height:60px}}}}
-/* a short window, where the frame and the log cannot both fit: the machine alone stays, and the log passes beneath it;
-   a black band under the frame (the page's own black) keeps the log from showing through beside the badge */
-@media(min-width:1140px) and (min-height:620px) and (max-height:729px){{.stage{{align-self:stretch}}.screen{{position:sticky;top:14px;z-index:2}}.screen::after{{content:"";position:absolute;top:100%;left:0;right:0;height:52px;background:var(--bg)}}.link{{z-index:1}}}}
+/* on a wide screen the stage (the frame, the badge, the log) stays while the column scrolls past it, whenever the
+   window is tall enough for the stage to fit: the log gives up height first, and on a short window the machine gives
+   up size, 1.5 times the C64's picture instead of 2 (a whole number of device pixels on a high-density screen); under
+   630 pixels the page scrolls whole. Measured: the stage is 14 + 544 + 52 + 91 + the log's height at full size. The
+   log's rules carry two names so they outrank its own rule below whatever the order */
+@media(min-width:1140px) and (min-height:630px){{.stage{{position:sticky;top:14px}}}}
+@media(min-width:1140px) and (min-height:810px) and (max-height:869px){{.logbox .log{{height:100px}}}}
+@media(min-width:1140px) and (min-height:765px) and (max-height:809px){{.logbox .log{{height:60px}}}}
+@media(min-width:1140px) and (min-height:630px) and (max-height:764px){{.machine{{grid-template-columns:576px 1fr}}.logbox .log{{height:100px}}}}
+@media(min-width:1140px) and (min-height:630px) and (max-height:669px){{.logbox .log{{height:60px}}}}
 .panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}}
 .panel .lab{{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 10px}}
 .panel .lab>span:first-child{{flex:none}}
