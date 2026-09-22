@@ -188,7 +188,7 @@ try {
   await pa.close();
 
   // widths
-  for (const w of [390, 1440]) {
+  for (const w of [390, 1000, 1440]) {   // a phone; one column wider than the frame (the badge once hung from the column's corner); two columns
     const pw = await b.newPage({ viewport: { width: w, height: w < 500 ? 844 : 900 } });
     const errs = [];
     pw.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
@@ -213,7 +213,7 @@ try {
     check(shape0.labels.join() === 'PROGRAM,BYTES,CHECK,MACHINE,FIRMWARE,INPUT,MODE,NODE' && shapeIdle.labels.join() === shape0.labels.join() && shapeRun.labels.slice(-5).join() === 'MACHINE,FIRMWARE,INPUT,MODE,NODE', `at ${w} wide: NOW PLAYING keeps its rows (${shapeIdle.labels.length} idle, ${shapeRun.labels.length} running)`);
     check(Math.abs(shape0.now - shapeRun.now) <= 48 && Math.abs(shapeIdle.now - shapeRun.now) <= 48, `at ${w} wide: NOW PLAYING holds its height, first paint ${shape0.now}, running ${shapeRun.now}, idle ${shapeIdle.now}`);
     const badge = await pw.evaluate(() => { const l = document.getElementById('link').getBoundingClientRect(), f = document.getElementById('frame').getBoundingClientRect(); return { right: f.right - l.right, left: l.left - f.left, block: document.getElementById('link-block').innerText }; });
-    check(w < 1140 ? (badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge sits ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block})`);
+    check(w < 1140 ? (badge.right >= 0 && badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left >= 0 && badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge hangs from the frame's own corner, ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block}; ${Math.round(w < 1140 ? badge.right : badge.left)}px in from the frame's edge)`);
     const badgeNow = await pw.evaluate(() => document.getElementById('link').getBoundingClientRect().width);
     check(Math.abs(badgeNow - shape0.badge) <= 1, `at ${w} wide: the badge keeps one width from first paint to a held read, in its ${w < 1140 ? 'short' : 'long'} form (${Math.round(shape0.badge)} then ${Math.round(badgeNow)})`);
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
