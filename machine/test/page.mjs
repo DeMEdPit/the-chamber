@@ -15,7 +15,9 @@
 // Perception head and a whole program load; RESET works; an address offers a
 // program and never runs it; a program altered outside its stamp is REFUSED
 // HASH_MISMATCH and never runs; when the chain does not give the machine, the
-// page boots it from the site's copies and says so.
+// page boots it from the site's copies and says so; on a coarse pointer the
+// ring reads by angle (one direction or both) and FIRE beside it, the machine's
+// own port proving what they hold.
 //
 //   node machine/test/page.mjs
 // Needs Playwright and Chromium (machine/test/pw.mjs finds them) and python3.
@@ -134,6 +136,50 @@ try {
     await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
     await pw.close();
   }
+
+  // the ring and FIRE, on a coarse pointer: read by angle, the hole rest, one
+  // direction by the Perception page's split or both by the switch, the
+  // machine's own port ($DC00, active low, 127 idle) proving what it holds
+  const tc = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const pt = await tc.newPage();
+  const terrs = [];
+  pt.on('console', (m) => { if (m.type() === 'error') terrs.push(m.text()); });
+  pt.on('pageerror', (e) => terrs.push(String(e)));
+  await pt.goto(`${A.base}/machine/`, { waitUntil: 'load' });
+  const tRunning = await until(() => pt.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  const shown = await pt.evaluate(() => matchMedia('(pointer:coarse)').matches && getComputedStyle(document.getElementById('touch')).display === 'grid');
+  check(!!tRunning && shown, 'on a coarse pointer the ring and FIRE show, the machine running');
+  const c = await pt.evaluate(() => { const r = document.getElementById('ring').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2, top: r.top }; });
+  const at = (deg, k = 0.8) => [c.x + k * c.R * Math.cos(deg * Math.PI / 180), c.y + k * c.R * Math.sin(deg * Math.PI / 180)];
+  const settle = () => new Promise((r) => setTimeout(r, 120));
+  const held = () => pt.evaluate(() => window.machinePage.pad.held);
+  const port = () => pt.evaluate(() => window.machinePage.machine.request('peek', { addr: 0xdc00 }).then((r) => r.value));
+  const lit = () => pt.evaluate(() => [...document.querySelectorAll('#ring .d.on')].map((g) => g.dataset.bits).join(',') + '/' + [...document.querySelectorAll('#ring .d.half')].map((g) => g.dataset.bits).join(','));
+  await pt.mouse.move(...at(0)); await pt.mouse.down(); await settle();
+  check(await held() === 8 && await port() === 127 - 8 && await lit() === '8/', `east: right held, the port reads it (${await port()}), the wedge lit (${await lit()})`);
+  await pt.mouse.move(...at(40)); await settle();
+  check(await held() === 8 && await port() === 127 - 8 && await lit() === '8/10', `40 degrees, one direction: still right, the diagonal wedge half (${await lit()})`);
+  await pt.mouse.move(...at(80)); await settle();
+  check(await held() === 2 && await port() === 127 - 2 && await lit() === '2/', `80 degrees: down, right released (${await port()})`);
+  await pt.mouse.move(...at(200, 0.2)); await settle();
+  check(await held() === 0 && await port() === 127, `the hole is rest (${await port()})`);
+  await pt.mouse.move(...at(200, 1.3)); await settle();
+  check(await held() === 4 && await port() === 127 - 4, `beyond the rim still counts: left (${await port()})`);
+  await pt.mouse.up(); await settle();
+  check(await held() === 0 && await port() === 127 && await lit() === '/', `lifted: nothing held, nothing lit (${await port()})`);
+  await pt.selectOption('#ways', '8');
+  await pt.mouse.move(...at(45)); await pt.mouse.down(); await settle();
+  check(await held() === 10 && await port() === 127 - 10 && await lit() === '10/', `45 degrees, both directions: down and right together (${await port()}), the diagonal wedge lit`);
+  await pt.evaluate(() => { const f = document.querySelector('#touch .fire'); const r = f.getBoundingClientRect(); f.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 7, pointerType: 'touch', isPrimary: false, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true })); });
+  await settle();
+  const fireDown = await pt.evaluate(() => document.querySelector('#touch .fire').classList.contains('down'));
+  check(await held() === 10 && await port() === 127 - 26 && fireDown, `a second finger on FIRE while the ring is held: all three bits (${await port()}), FIRE lit`);
+  await pt.screenshot({ path: join(EVIDENCE, 'ring-390.png'), clip: { x: 0, y: Math.max(0, c.top - 40), width: 390, height: 260 } });
+  await pt.evaluate(() => document.querySelector('#touch .fire').dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, pointerType: 'touch', isPrimary: false, bubbles: true })));
+  await pt.mouse.up(); await settle();
+  check(await held() === 0 && await port() === 127 && !(await pt.evaluate(() => document.querySelector('#touch .fire').classList.contains('down'))), `both lifted: the port idle (${await port()})`);
+  check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
+  await pt.close(); await tc.close();
   A.close();
 
   // B. a program altered outside its stamp is refused and never runs

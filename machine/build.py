@@ -30,6 +30,7 @@ frames only from this site, nothing inline. Standard library only.
 """
 import hashlib
 import json
+import math
 import os
 import pathlib
 import re
@@ -197,15 +198,21 @@ h1{{font-size:clamp(2.2rem,9vw,5.6rem);margin-bottom:14px}}
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 {MONO};letter-spacing:.16em;pointer-events:none}}
 .veil[hidden]{{display:none}}
 .hint{{margin:10px 0 0;font-size:.85rem;color:var(--muted)}}
-.touch{{display:none;margin:12px 0 0;grid-template-columns:1fr 1fr;gap:12px;align-items:center;touch-action:none;
+.touch{{display:none;margin:14px 0 0;grid-template-columns:auto auto;justify-content:space-between;gap:16px;align-items:center;touch-action:none;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}}
-.touch .pad{{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;justify-content:start}}
+.touch .ring{{width:184px;height:184px;display:block;touch-action:none}}
+.touch .ring .w{{fill:var(--panel);stroke:#333;stroke-width:1.5;vector-effect:non-scaling-stroke}}
+.touch .ring .g{{fill:#4d4d48}}
+.touch .ring .d.half .w{{fill:#0a110d}}
+.touch .ring .d.on .w{{fill:#0f1a14;stroke:var(--accent)}}
+.touch .ring .d.on .g,.touch .ring .d.half .g{{fill:var(--accent)}}
+.touch[data-ways="4"] .ring .diag .g{{opacity:.4}}
 .touch button{{font:700 .72rem/1 {MONO};letter-spacing:.1em;color:var(--ink);background:var(--panel);border:1px solid #333;border-radius:8px;
   touch-action:none;user-select:none;-webkit-user-select:none}}
 .touch button.down{{border-color:var(--accent);color:var(--accent);background:#0f1a14}}
-.touch .fire{{height:112px;font-size:.9rem}}
-.touch .pad .u{{grid-column:2;grid-row:1}}.touch .pad .l{{grid-column:1;grid-row:2}}.touch .pad .r{{grid-column:3;grid-row:2}}.touch .pad .d{{grid-column:2;grid-row:3}}
+.touch .fire{{width:120px;height:120px;border-radius:50%;font-size:.9rem;margin-right:8px}}
 @media(pointer:coarse){{.touch{{display:grid}}}}
+@media(max-width:360px){{.touch .ring{{width:160px;height:160px}}.touch .fire{{width:104px;height:104px}}}}
 .column{{min-width:0;display:flex;flex-direction:column;gap:14px}}
 .panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}}
 .panel .lab{{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 10px}}
@@ -238,7 +245,7 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .keys{{margin:0;font-size:.85rem;color:var(--ink);line-height:1.5}}
 .keys dt{{font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--muted);margin-top:6px}}
 .keys dd{{margin:0}}
-select.mode{{font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}}
+select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}}
 .leave a{{display:inline-block;font:700 .72rem/1.4 {MONO};letter-spacing:.14em;color:var(--accent2);text-decoration:none;border:1px solid #2c3f36;border-radius:6px;padding:10px 14px}}
 .leave a:hover{{border-color:var(--accent);color:var(--accent)}}
 .about{{margin:44px 0 0;max-width:70ch}}
@@ -248,6 +255,35 @@ select.mode{{font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;bord
 @media(max-width:1139px){{.machine{{grid-template-columns:1fr}}.frame{{max-width:768px}}}}
 @media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{max-height:260px}}.nl{{grid-template-columns:1fr;gap:0}}}}
 """
+
+
+def ring_svg():
+    """The ring of the touch controls: eight wedges of 45 degrees on an annulus,
+    centred on the eight directions, each carrying the joystick bits it stands
+    for (up 1, down 2, left 4, right 8; a diagonal both) and a glyph pointing
+    its way. The hole is the rest position. host.js reads the ring by angle
+    with the same numbers (RING_HOLE = 40 / 96), so the drawing is the rule."""
+    outer, inner = 96.0, 40.0
+    dirs = (("u", 1, -90), ("ur", 9, -45), ("r", 8, 0), ("dr", 10, 45), ("d", 2, 90), ("dl", 6, 135), ("l", 4, 180), ("ul", 5, 225))
+
+    def n(v):
+        t = ("%.2f" % (v + 0.0)).rstrip("0").rstrip(".")
+        return "0" if t in ("-0", "") else t
+
+    def pt(radius, deg):
+        a = math.radians(deg)
+        return f"{n(radius * math.cos(a))} {n(radius * math.sin(a))}"
+
+    out = []
+    for name, bits, a in dirs:
+        a1, a2 = a - 22.5, a + 22.5
+        d = (f"M{pt(outer, a1)}A{n(outer)} {n(outer)} 0 0 1 {pt(outer, a2)}"
+             f"L{pt(inner, a2)}A{n(inner)} {n(inner)} 0 0 0 {pt(inner, a1)}Z")
+        diag = len(name) == 2
+        glyph = "M0 -73L4.5 -65L-4.5 -65Z" if diag else "M0 -75L6 -64L-6 -64Z"
+        out.append(f'<g class="d {"diag" if diag else "card"}" data-bits="{bits}"><path class="w" d="{d}"/>'
+                   f'<path class="g" d="{glyph}" transform="rotate({a + 90})"/></g>')
+    return '<svg class="ring" id="ring" viewBox="-100 -100 200 200" aria-label="the direction ring">' + "".join(out) + "</svg>"
 
 
 def page_body():
@@ -261,13 +297,8 @@ token of the series, read from its contract and checked the same way; choose any
     <div class="frame" id="frame" aria-label="READY 64, the machine">
       <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
     </div>
-    <div class="touch" id="touch" aria-label="joystick">
-      <div class="pad">
-        <button type="button" class="u" data-bit="1" aria-label="up">&#9650;</button>
-        <button type="button" class="l" data-bit="4" aria-label="left">&#9664;</button>
-        <button type="button" class="r" data-bit="8" aria-label="right">&#9654;</button>
-        <button type="button" class="d" data-bit="2" aria-label="down">&#9660;</button>
-      </div>
+    <div class="touch" id="touch" aria-label="joystick" data-ways="4">
+      {ring_svg()}
       <button type="button" class="fire" data-bit="16">FIRE</button>
     </div>
     <p class="hint">Sound starts with your first tap or key on this page; a phone on silent stays silent. Click the machine to give it your keys. Escape is RUN/STOP on a Commodore 64 and never leaves this page.</p>
@@ -296,6 +327,7 @@ token of the series, read from its contract and checked the same way; choose any
       <dl class="keys">
         <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed"><option value="joystick" selected>joystick in port 2</option><option value="keyboard">the keyboard</option></select></dd>
         <dt>JOYSTICK</dt><dd>arrows move; Z, X or space is FIRE. The programs of the series read port 2.</dd>
+        <dt>DIAGONALS</dt><dd><select class="mode" id="ways" aria-label="how the ring reads a diagonal"><option value="4" selected>one direction</option><option value="8">both directions, eight ways</option></select> <span class="hint">on a touch screen the ring is read by angle, and the hole is rest. The programs of the series stand still when two directions are pressed together, so a diagonal is read as one direction, left or right first, until you say otherwise.</span></dd>
         <dt>KEYBOARD</dt><dd>your keys are the C64's; Escape is RUN/STOP, Home is CLR/HOME, the function keys are F1 to F7.</dd>
         <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint">the page plays what the machine's sound chip makes</span></dd>
         <dt>FIRMWARE</dt><dd>off: the programs of the series run bare, as they do on chain.</dd>

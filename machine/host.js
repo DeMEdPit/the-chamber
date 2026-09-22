@@ -14,7 +14,7 @@ const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
-  sound: $('sound'),
+  sound: $('sound'), ring: $('ring'), ways: $('ways'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
 
@@ -273,18 +273,73 @@ els.reset.addEventListener('click', async () => {
   markOffered(null, null);
 });
 els.retry.addEventListener('click', () => { if (lastAsk) load(lastAsk.work, lastAsk.token); });
-// The touch controls: each button marks itself pressed (a browser lights only one
-// pressed element at a time, and two fingers press two), and the browser's own
-// touch behaviours under a finger (selecting words, zooming on a double tap, a
-// callout on a long press) are switched off over the whole pad.
+// ------------------------------------------------------------------ the touch controls
+// The ring is read as an ANGLE from its centre, so every part of it outside the
+// hole is live and a thumb slides between directions without lifting; the hole
+// is rest. It reads a diagonal two ways, chosen in THE KEYS:
+//   one direction (the default): the programs of the series stand still when two
+//     directions are pressed together (measured on the Perception page, whose
+//     ring settled the split): left and right take 120 degrees each, up and
+//     down 60, so a diagonal is read as the nearer of left and right;
+//   both directions: eight sectors of 45 degrees and a diagonal pushes two
+//     bits, as nopsta's touch stick does, for programs that steer eight ways.
+// The wedge under the thumb lights; when it feeds a neighbour, the neighbour
+// lights as the direction sent and the wedge marks itself half. FIRE is a
+// button of its own, so one finger holds a direction while another fires. The
+// browser's own touch behaviours over the pad (selecting words, zooming on a
+// double tap, a callout on a long press) are switched off.
+const RING_HOLE = 40 / 96;   // the hole's radius over the ring's: the numbers build.py draws
+const WEDGES = [
+  { bits: 1, from: -112.5, to: -67.5 }, { bits: 9, from: -67.5, to: -22.5 }, { bits: 8, from: -22.5, to: 22.5 }, { bits: 10, from: 22.5, to: 67.5 },
+  { bits: 2, from: 67.5, to: 112.5 }, { bits: 6, from: 112.5, to: 157.5 }, { bits: 4, from: 157.5, to: -157.5 }, { bits: 5, from: -157.5, to: -112.5 },
+];
+const FOLD = [{ bits: 8, from: -60, to: 60 }, { bits: 2, from: 60, to: 120 }, { bits: 4, from: 120, to: -120 }, { bits: 1, from: -120, to: -60 }];
+const within = (ang, s) => (s.from < s.to ? ang >= s.from && ang < s.to : ang >= s.from || ang < s.to);
+let ways = 4, ringHeld = 0, ringPointer = null;
+const wedgeEls = new Map([...els.ring.querySelectorAll('.d')].map((g) => [Number(g.dataset.bits), g]));
+function joy(bit, down) { if (machine && machine.alive) machine.request('joystick', { bit, down }).catch(() => {}); }
+function aim(e) {
+  const r = els.ring.getBoundingClientRect();
+  const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  if (Math.hypot(dx, dy) < RING_HOLE * r.width / 2) return null;
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const wedge = WEDGES.find((w) => within(ang, w)).bits;
+  return { wedge, bits: ways === 8 ? wedge : FOLD.find((d) => within(ang, d)).bits };
+}
+function setRing(a) {
+  const bits = a ? a.bits : 0;
+  for (const bit of [1, 2, 4, 8]) if ((ringHeld & bit) && !(bits & bit)) joy(bit, false);
+  for (const bit of [1, 2, 4, 8]) if (!(ringHeld & bit) && (bits & bit)) joy(bit, true);
+  ringHeld = bits;
+  for (const [b, g] of wedgeEls) {
+    const on = !!a && b === bits, half = !!a && !on && b === a.wedge;
+    g.classList.toggle('on', on); g.classList.toggle('half', half);
+    if (on && g !== els.ring.lastElementChild) els.ring.appendChild(g);   // the lit outline drawn over its neighbours'
+  }
+}
 for (const ev of ['touchstart', 'touchmove', 'contextmenu', 'dblclick', 'selectstart']) {
   els.touch.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 }
+els.ring.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (ringPointer !== null) return;   // the first finger on the ring drives it
+  ringPointer = e.pointerId;
+  try { els.ring.setPointerCapture(e.pointerId); } catch (x) { /* a mouse without capture is fine */ }
+  setRing(aim(e));
+});
+els.ring.addEventListener('pointermove', (e) => { if (e.pointerId !== ringPointer) return; e.preventDefault(); setRing(aim(e)); });
+const ringRelease = (e) => { if (e.pointerId !== ringPointer) return; ringPointer = null; setRing(null); };
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) els.ring.addEventListener(ev, ringRelease);
+for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, ringRelease);   // when capture was refused
+els.ways.addEventListener('change', () => {
+  ways = els.ways.value === '8' ? 8 : 4;
+  els.touch.dataset.ways = String(ways);
+  if (ringPointer === null) setRing(null);
+});
 for (const b of els.touch.querySelectorAll('button[data-bit]')) {
   const bit = Number(b.dataset.bit);
-  const send = (down) => { if (machine && machine.alive) machine.request('joystick', { bit, down }).catch(() => {}); };
-  const press = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) { /* a mouse without capture is fine */ } b.classList.add('down'); send(true); };
-  const release = (e) => { e.preventDefault(); if (!b.classList.contains('down')) return; b.classList.remove('down'); send(false); };
+  const press = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) { /* a mouse without capture is fine */ } b.classList.add('down'); joy(bit, true); };
+  const release = (e) => { e.preventDefault(); if (!b.classList.contains('down')) return; b.classList.remove('down'); joy(bit, false); };
   b.addEventListener('pointerdown', press);
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, release);
 }
@@ -319,5 +374,5 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, provenance, report, STATUS };
 start();
