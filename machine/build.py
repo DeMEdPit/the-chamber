@@ -239,7 +239,7 @@ button.load:hover,button.b:hover,button.load:focus-visible,button.b:focus-visibl
 .nl .v{{color:var(--ink);overflow-wrap:anywhere}}
 .nl.bad .v{{color:#ff9d9d}}
 .nl.muted .v{{color:var(--muted)}}
-.log{{list-style:none;margin:0 0 10px;padding:8px 0 0;border-top:1px solid var(--line);font:500 .72rem/1.5 {MONO};color:var(--muted);max-height:160px;overflow:auto}}
+.log{{list-style:none;margin:0 0 10px;padding:8px 0 0;border-top:1px solid var(--line);font:500 .72rem/1.5 {MONO};color:var(--muted);height:160px;box-sizing:border-box;overflow:auto}}
 .log li{{margin:0;overflow-wrap:anywhere}}
 .tools{{display:flex;flex-wrap:wrap;gap:8px;align-items:center}}
 .tools .copied{{font:500 .72rem/1 {MONO};color:var(--muted)}}
