@@ -223,8 +223,9 @@ try {
   await pa.close();
 
   // widths
-  for (const w of [390, 1000, 1440]) {   // a phone; one column wider than the frame (the badge once hung from the column's corner); two columns
-    const pw = await b.newPage({ viewport: { width: w, height: w < 500 ? 844 : 900 } });
+  for (const [w, h] of [[390, 844], [1000, 900], [1440, 900], [1440, 760]]) {   // a phone; one column wider than the frame; two columns on a tall window; two columns on a short one, where the log gives up height so the stage still sticks
+    const pw = await b.newPage({ viewport: { width: w, height: h } });
+    const logWant = w >= 1140 && h < 810 ? 60 : w >= 1140 && h < 900 ? 100 : 160;
     const errs = [];
     pw.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
     pw.on('pageerror', (e) => errs.push(String(e)));
@@ -243,8 +244,10 @@ try {
     await pw.click('#reset');
     await until(() => pw.evaluate(() => document.getElementById('state').textContent === 'RESET'), 5000);
     const shapeIdle = await pw.evaluate(() => ({ now: Math.round(document.getElementById('now').getBoundingClientRect().height), labels: [...document.querySelectorAll('#now .k')].map((k) => k.textContent) }));
-    check(shape0.rows >= 250 && shape0.log >= 150 && shape0.log === shapeRun.log, `at ${w} wide: the list (${shape0.rows}) and the log (${shape0.log}) are their full size before anything arrives`);
-    check(shape0.labels.join() === 'PROGRAM,BYTES,CHECK,MACHINE,FIRMWARE,INPUT,MODE,NODE' && shapeIdle.labels.join() === shape0.labels.join() && shapeRun.labels.slice(-5).join() === 'MACHINE,FIRMWARE,INPUT,MODE,NODE', `at ${w} wide: NOW PLAYING keeps its rows (${shapeIdle.labels.length} idle, ${shapeRun.labels.length} running)`);
+    check(shape0.rows >= 250 && shape0.log === logWant && shape0.log === shapeRun.log, `at ${w}x${h}: the list (${shape0.rows}) and the log (${shape0.log}, ${logWant} wanted at this height) are their full size before anything arrives`);
+    // the first paint may already show the first program's rows when the rig is quick: either set is right, the five machine rows in both, the idle set exact after RESET
+    const IDLE = 'PROGRAM,BYTES,CHECK,MACHINE,FIRMWARE,INPUT,MODE,NODE', TAIL = 'MACHINE,FIRMWARE,INPUT,MODE,NODE';
+    check((shape0.labels.join() === IDLE || shape0.labels.slice(-5).join() === TAIL) && shapeIdle.labels.join() === IDLE && shapeRun.labels.slice(-5).join() === TAIL, `at ${w} wide: NOW PLAYING keeps its rows (${shape0.labels.length} at first paint, ${shapeRun.labels.length} running, ${shapeIdle.labels.length} idle)`);
     check(Math.abs(shape0.now - shapeRun.now) <= 48 && Math.abs(shapeIdle.now - shapeRun.now) <= 48, `at ${w} wide: NOW PLAYING holds its height, first paint ${shape0.now}, running ${shapeRun.now}, idle ${shapeIdle.now}`);
     const badge = await pw.evaluate(() => { const l = document.getElementById('link').getBoundingClientRect(), f = document.getElementById('frame').getBoundingClientRect(); return { right: f.right - l.right, left: l.left - f.left, block: document.getElementById('link-block').innerText }; });
     check(w < 1140 ? (badge.right >= 0 && badge.right < 40 && /^#\d+/.test(badge.block)) : (badge.left >= 0 && badge.left < 40 && /^block /.test(badge.block)), `at ${w} wide: the badge hangs from the frame's own corner, ${w < 1140 ? 'at the right in its short form' : 'at the left in its long form'} (${badge.block}; ${Math.round(w < 1140 ? badge.right : badge.left)}px in from the frame's edge)`);
@@ -261,6 +264,8 @@ try {
     if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w} wide: the log under the machine, NOW PLAYING beside it, the stage sticky (${lay.sticky})`);
     else check(lay.rows < lay.door && lay.door < lay.now.top && lay.now.top < lay.log.top && lay.log.top < lay.fw && lay.fw < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: the chain, a file, NOW PLAYING, the log, the keys, the way out`);
     check(!lay.hint, `at ${w} wide: no sentence under the machine; its facts are in THE KEYS`);
+    const head = await pw.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); return { h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize), frameTop: document.getElementById('frame').getBoundingClientRect().top, lede: document.querySelector('.lede').getBoundingClientRect().height }; });
+    check(head.h1 <= 42 && head.lede < (w < 1140 ? 120 : 40) && head.frameTop < 260, `at ${w}x${h}: a compact header, the title ${head.h1}px, the lede ${Math.round(head.lede)}px tall (one line on a wide screen), the machine ${Math.round(head.frameTop)}px from the top`);
     if (w >= 1140) {
       // the site scrolls smoothly, so the test scrolls instantly and reads settled positions
       const scrolled = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); const before = document.getElementById('lab-now').getBoundingClientRect().top; window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const out = { frame: document.getElementById('frame').getBoundingClientRect().top, now: document.getElementById('lab-now').getBoundingClientRect().top, before }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
@@ -268,7 +273,7 @@ try {
     }
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
-    await pw.screenshot({ path: join(EVIDENCE, `page-${w}.png`), fullPage: true });
+    await pw.screenshot({ path: join(EVIDENCE, `page-${w}x${h}.png`), fullPage: true });
     await pw.close();
   }
 
