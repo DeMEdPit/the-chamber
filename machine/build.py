@@ -290,8 +290,9 @@ def page_body():
     chamber, perception = CONTRACTS["chamber"], CONTRACTS["perception"]
     return f"""<h1>The Machine</h1>
 <p class="lede"><b>READY 64</b>, in this page: minimal64, the Commodore 64 emulator nopsta stored on Ethereum in 2022,
-read off the chain and checked against its pins before it runs. It starts on Tony: Born for Adventure, the first
-token of the series, read from its contract and checked the same way; choose any other program below.</p>
+read off the chain and checked against its pins before it runs. It starts on Tony: Born for Adventure, the
+proof-of-concept token from before the series and the demo its programs are built on, read from its contract and
+checked the same way; choose any other program below.</p>
 <div class="machine">
   <div class="stage">
     <div class="frame" id="frame" aria-label="READY 64, the machine">
