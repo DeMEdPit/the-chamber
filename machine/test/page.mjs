@@ -417,8 +417,8 @@ try {
     pw.on('pageerror', (e) => errs.push(String(e)));
     await pw.goto(`${A.base}/machine/`, { waitUntil: 'load' });
     await until(() => pw.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
-    const bays0 = await pw.evaluate(() => { const b = window.machinePage.bays; const top = (sel) => document.querySelector(sel).getBoundingClientRect().top; const order = ['#bay-now', '#bay-chain', '#bay-file', '#bay-keys', '#bay-log', '.leave'].map(top); return { closed: Object.values(b).every((x) => !x.open && !x.element), open: Object.values(b).every((x) => x.open && x.element), aria: [...document.querySelectorAll('details.bay > summary')].map((s) => s.getAttribute('aria-expanded')).join(), ordered: order.every((t, i) => i === 0 || t > order[i - 1]), heights: ['now', 'chain', 'file', 'keys', 'log'].map((k) => Math.round(document.getElementById('bay-' + k).getBoundingClientRect().height)) }; });
-    if (w < 1140) check(bays0.closed && bays0.aria === 'false,false,false,false,false' && bays0.ordered && bays0.heights.every((x) => x > 40 && x < 80), `at ${w} wide: the five bays start closed, two lines each (${bays0.heights.join(', ')}px), NOW PLAYING first under the pad, then the list, the file door, the keys, the log and the way out`);
+    const bays0 = await pw.evaluate(() => { const b = window.machinePage.bays; const top = (sel) => document.querySelector(sel).getBoundingClientRect().top; const order = ['#bay-now', '#bay-chain', '#bay-file', '#bay-keys', '#bay-log'].map(top); return { closed: Object.values(b).every((x) => !x.open && !x.element), open: Object.values(b).every((x) => x.open && x.element), aria: [...document.querySelectorAll('details.bay > summary')].map((s) => s.getAttribute('aria-expanded')).join(), ordered: order.every((t, i) => i === 0 || t > order[i - 1]), heights: ['now', 'chain', 'file', 'keys', 'log'].map((k) => Math.round(document.getElementById('bay-' + k).getBoundingClientRect().height)) }; });
+    if (w < 1140) check(bays0.closed && bays0.aria === 'false,false,false,false,false' && bays0.ordered && bays0.heights.every((x) => x > 40 && x < 80), `at ${w} wide: the five bays start closed, two lines each (${bays0.heights.join(', ')}px), NOW PLAYING first under the pad, then the list, the file door, the keys and the log`);
     else check(bays0.open && bays0.aria === 'true,true,true,true,true', `at ${w} wide: the five bays start open`);
     if (w < 1140) await pw.evaluate(() => { for (const k of ['now', 'chain', 'file', 'keys', 'log']) window.machinePage.bay(k, true); });   // opened, instantly, for the shape checks below
     const frame = await pw.evaluate(() => { const f = document.getElementById('frame').getBoundingClientRect(); return { w: Math.round(f.width), h: Math.round(f.height), col: Math.round(document.querySelector('.machine').getBoundingClientRect().width), overflow: document.documentElement.scrollWidth > window.innerWidth, scrollY: window.scrollY }; });
@@ -449,12 +449,13 @@ try {
     const lay = await pw.evaluate(async (sel) => {
       window.scrollTo({ top: 0, behavior: 'instant' }); await new Promise((r) => setTimeout(r, 150));
       const r = (id) => document.getElementById(id).getBoundingClientRect();
-      const frame = r('frame'), log = document.querySelector('.logbox').getBoundingClientRect(), now = r('now'), rows = r('rows'), door = r('door'), fw = r('firmware'), leave = document.querySelector('.leave a').getBoundingClientRect();
-      return { frame: { left: frame.left, right: frame.right, bottom: frame.bottom }, log: { left: log.left, top: log.top }, now: { left: now.left, top: now.top }, rows: rows.top, door: door.top, fw: fw.top, leave: leave.top,
+      const frame = r('frame'), log = document.querySelector('.logbox').getBoundingClientRect(), now = r('now'), rows = r('rows'), door = r('door'), fw = r('firmware');
+      return { frame: { left: frame.left, right: frame.right, bottom: frame.bottom }, log: { left: log.left, top: log.top }, now: { left: now.left, top: now.top }, rows: rows.top, door: door.top, fw: fw.top,
                sticky: getComputedStyle(document.querySelector(sel)).position, hint: !!document.querySelector('.stage p.hint') };
     }, stickyEl);
     if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w}x${h}: the log under the machine, NOW PLAYING beside it, the stage sticky (${lay.sticky})`);
-    else check(lay.now.top < lay.rows && lay.rows < lay.door && lay.door < lay.fw && lay.fw < lay.log.top && lay.log.top < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: NOW PLAYING, the chain, a file, the keys, the log, the way out`);
+    else check(lay.now.top < lay.rows && lay.rows < lay.door && lay.door < lay.fw && lay.fw < lay.log.top && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: NOW PLAYING, the chain, a file, the keys, the log`);
+    check(await pw.evaluate(() => !document.querySelector('.leave') && !!document.querySelector('.kicker a[href="/"]') && !!document.querySelector('footer')), `at ${w} wide: no LEAVE card; the kicker's home link and the footer are the way back`);
     check(!lay.hint, `at ${w} wide: no sentence under the machine; its facts are in THE KEYS`);
     const head = await pw.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); const l = document.querySelector('.lede').getBoundingClientRect(); return { h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize), frameTop: document.getElementById('frame').getBoundingClientRect().top, lede: l.height, ledeW: l.width, main: document.querySelector('main').getBoundingClientRect().width, column: document.querySelector('.column').getBoundingClientRect().width }; });
     check(head.h1 <= 42 && head.lede < (w < 1140 ? 160 : 130) && head.ledeW <= Math.min(768, w) && head.frameTop < 300, `at ${w}x${h}: a compact header, the title ${head.h1}px, the lede a block ${Math.round(head.ledeW)} wide and ${Math.round(head.lede)}px tall, the machine ${Math.round(head.frameTop)}px from the top`);
@@ -535,20 +536,30 @@ try {
   await new Promise((r) => setTimeout(r, 700));   // the site scrolls smoothly
   const seen = await pt.evaluate(() => { const r = document.getElementById('how-auto').getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; });
   check(!!revealed && seen, 'a link into a closed bay opens the bay and the fold it names, and the page goes there');
-  // the readout: NOW PLAYING's name is cut on the phone; asked to show it, the line slides left by exactly the hidden width, holds and returns, the mark of the cut gone while it moves
-  await pt.evaluate(() => { window.machinePage.bay('keys', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, hold: 150, back: 60 }); });
+  // the readout, the bounce shape: NOW PLAYING's name is cut on the phone; asked to show it, the line slides left by exactly the hidden
+  // width, rests, slides back at the same pace, rests, and goes out again, the mark of the cut gone while it moves; an open bay stops it
+  // at once and shows the mark again; closed again, it resumes
+  await pt.evaluate(() => { window.machinePage.bay('keys', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, hold: 120, back: 60 }); });
   await new Promise((r) => setTimeout(r, 250));
-  const before = await pt.evaluate(() => { window.machinePage.readout.rest(); return window.machinePage.readout.state('now'); });   // every line at rest first: a line already sliding would make this one wait its turn
+  const before = await pt.evaluate(() => { window.machinePage.readout.rest(); return window.machinePage.readout.state('now'); });   // every line at rest first
   await pt.evaluate(() => window.machinePage.readout.replay('now'));
   await new Promise((r) => setTimeout(r, 60));
-  const mid = await pt.evaluate(() => ({ ...window.machinePage.readout.state('now'), clip: getComputedStyle(document.querySelector('#sum-now .e')).textOverflow, indentNow: getComputedStyle(document.querySelector('#sum-now .e')).textIndent }));
-  const done = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading ? s : null; }), 4000, 40);
-  check(before.over > 20 && !before.active && mid.active && mid.reading && mid.clip === 'clip' && mid.indent === `-${before.over}px` && parseFloat(mid.indentNow) < 0 && !!done && done.indent === '0px' && done.shown,
-        `the readout: the cut name slides ${before.over}px to show its end, then returns and rests with its mark (indent ${mid.indentNow} mid way)`);
-  check(await pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && getComputedStyle(document.querySelector('#sum-now .e')).textOverflow === 'ellipsis' && document.querySelector('#sum-now .f:last-child').getBoundingClientRect().right <= document.getElementById('sum-now').getBoundingClientRect().right + 0.5; }), 'at rest the cut is marked again and the trust words never moved');
-  await pt.evaluate(() => { window.machinePage.bay('now', true); window.machinePage.readout.replay('now'); });
-  await new Promise((r) => setTimeout(r, 120));
-  check(await pt.evaluate(() => !window.machinePage.readout.state('now').active), 'an open bay does not read out: everything is in view');
+  const outward = await pt.evaluate(() => ({ ...window.machinePage.readout.state('now'), clip: getComputedStyle(document.querySelector('#sum-now .e')).textOverflow, indentNow: getComputedStyle(document.querySelector('#sum-now .e')).textIndent }));
+  const outMs = (before.over / 600) * 1000;
+  const homeward = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return s.active && s.indent === '0px' ? s : null; }), outMs + 800, 20);
+  const outAgain = await until(() => pt.evaluate((want) => { const s = window.machinePage.readout.state('now'); return s.active && s.indent === want ? s : null; }, `-${before.over}px`), outMs + 800, 20);
+  check(before.mode === 'bounce' && before.over > 20 && !before.active && outward.active && outward.reading && outward.clip === 'clip' && outward.indent === `-${before.over}px` && parseFloat(outward.indentNow) < 0 && !!homeward && homeward.reading && !!outAgain,
+        `the readout bounces: the cut name slides ${before.over}px to show its end, rests, comes back at the same pace and goes out again (indent ${outward.indentNow} on the way out)`);
+  await pt.evaluate(() => window.machinePage.bay('now', true));
+  await new Promise((r) => setTimeout(r, 80));
+  check(await pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading && s.indent === '0px' && getComputedStyle(document.querySelector('#sum-now .e')).textOverflow === 'ellipsis' && document.querySelector('#sum-now .f:last-child').getBoundingClientRect().right <= document.getElementById('sum-now').getBoundingClientRect().right + 0.5; }), 'an open bay stops the readout at once: the cut marked again, the trust words never moved');
+  await pt.evaluate(() => window.machinePage.bay('now', false));
+  const resumed = await until(() => pt.evaluate(() => (window.machinePage.readout.state('now').active ? true : null)), 2000, 30);
+  check(!!resumed, 'closed again, the line resumes');
+  await pt.evaluate(() => { window.machinePage.readout.tune.mode = 'once'; window.machinePage.readout.rest(); window.machinePage.readout.replay('now'); });
+  const once = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading && s.shown ? s : null; }), outMs + 1500, 30);
+  check(!!once && once.indent === '0px', 'the once shape is one word away: one pass, a quick return, then rest');
+  await pt.evaluate(() => { window.machinePage.readout.tune.mode = 'bounce'; window.machinePage.readout.rest(); });
   check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
   await pt.close(); await tc.close();
   // under reduced motion the bays open and close at once

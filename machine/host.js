@@ -743,9 +743,10 @@ const BAY_KEYS = ['now', 'chain', 'file', 'keys', 'log'];
 const bays = Object.fromEntries(BAY_KEYS.map((k) => [k, $('bay-' + k)]));
 const NARROW = matchMedia('(max-width:1139px)');
 const STILL = matchMedia('(prefers-reduced-motion: reduce)');
-// the readout: a cut name slides once to show its end on a phone (readout.js); false turns it off whole
-const READOUT_ON = true;
-const readout = READOUT_ON ? createReadout({ narrow: () => NARROW.matches, still: () => STILL.matches, closed: (d) => !!d && !d.classList.contains('is-open') }) : null;
+// the readout: a cut name slides to show its end on a phone (readout.js); false turns it off whole; the shape is
+// 'bounce' (out and back, for as long as the card is closed and in view: the owner's pick) or 'once' (one pass, then rest)
+const READOUT_ON = true, READOUT_MODE = 'bounce';
+const readout = READOUT_ON ? createReadout({ mode: READOUT_MODE, narrow: () => NARROW.matches, still: () => STILL.matches, closed: (d) => !!d && !d.classList.contains('is-open') }) : null;
 const bayFixed = (d) => d === bays.log && !NARROW.matches;   // the log is part of the stage on a wide screen
 const bayOpen = (d) => d.classList.contains('is-open');
 function setBay(d, open, instant) {
@@ -764,7 +765,7 @@ function setBay(d, open, instant) {
   }
   if (s) s.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (!open && s && d.contains(document.activeElement) && document.activeElement !== s) s.focus({ preventScroll: true });
-  if (readout && open) readout.resetAll(d);   // an open bay shows everything; nothing needs to slide
+  if (readout) { if (open) readout.resetAll(d); else readout.resume(d); }   // an open bay shows everything; a closed one may read out again
   clearTimeout(d.settleTimer);
   if (d.classList.contains('moving')) d.settleTimer = setTimeout(() => { if (d.classList.contains('moving')) settleBay(d); }, 600);   // a transition that never ends (the tab hidden, the element gone) still settles
 }
