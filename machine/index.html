@@ -239,8 +239,13 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 .bay>summary .lab{grid-area:lab;margin:0;min-width:0}
 .bay>summary .bs{grid-area:sum;display:flex;min-width:0;font:500 .74rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
 .bs>span{white-space:pre}
-.bs .e{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;color:var(--ink)}
-.bs .e.reading{text-overflow:clip}   /* the readout (readout.js): the cut part slides once to show its end; the mark of the cut goes while it moves */
+.bs .e{overflow:hidden;min-width:0;flex:0 1 auto;color:var(--ink)}
+/* a line that does not fit fades out at its edge (the host marks it `cut`); while the readout (readout.js) moves it, both edges fade;
+   the text moves as a transform on its own span, so the machine's work on the main thread never makes it stutter */
+.bs .e.cut{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent)}
+.bs .e.cut.reading{-webkit-mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 16px),transparent)}
+.bs .e .t{display:inline-block;white-space:pre}
+.bs .e.reading .t{will-change:transform}
 .bs .f{flex:none}
 .bs>span:empty{display:none}
 .bm{grid-area:mark;position:relative;width:12px;height:12px;align-self:center;justify-self:center}
@@ -374,7 +379,7 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
       <button type="button" class="fire" data-bit="16">FIRE</button>
     </div>
     <details class="panel bay logbox is-open" id="bay-log" open aria-labelledby="lab-log">
-      <summary class="bh" aria-expanded="true" aria-controls="bay-log-body"><span class="lab"><span id="lab-log">THE LOG</span></span><span class="bs" id="sum-log"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <summary class="bh" aria-expanded="true" aria-controls="bay-log-body"><span class="lab"><span id="lab-log">THE LOG</span></span><span class="bs" id="sum-log"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
       <div class="bb" id="bay-log-body"><div class="bi">
       <ul class="log" id="log" aria-label="what the page read and checked; the last lines, the whole log copies"></ul>
       <div class="tools">
@@ -388,14 +393,14 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
   </div>
   <aside class="column">
     <details class="panel bay chain is-open" id="bay-chain" open aria-labelledby="lab-chain">
-      <summary class="bh" aria-expanded="true" aria-controls="bay-chain-body"><span class="lab"><span id="lab-chain">FROM THE CHAIN</span></span><span class="bs" id="sum-chain"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <summary class="bh" aria-expanded="true" aria-controls="bay-chain-body"><span class="lab"><span id="lab-chain">FROM THE CHAIN</span></span><span class="bs" id="sum-chain"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
       <div class="bb" id="bay-chain-body"><div class="bi">
       <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
       <div class="rows" id="rows" aria-live="polite"></div>
       </div></div>
     </details>
     <details class="panel bay file is-open" id="bay-file" open aria-labelledby="lab-file">
-      <summary class="bh" aria-expanded="true" aria-controls="bay-file-body"><span class="lab"><span id="lab-file">FROM A FILE</span></span><span class="bs" id="sum-file"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <summary class="bh" aria-expanded="true" aria-controls="bay-file-body"><span class="lab"><span id="lab-file">FROM A FILE</span></span><span class="bs" id="sum-file"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
       <div class="bb" id="bay-file-body"><div class="bi">
       <label class="door" id="door" data-state="idle"><input type="file" id="file" accept=".prg,.d64,.crt" aria-label="choose a program file, a disk image or a cartridge image"><span id="door-text">drop a .prg, a .d64 or a .crt here, or choose one</span></label>
       <div class="disk" id="disk" hidden aria-label="the disk's directory">
@@ -410,14 +415,14 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
       </div></div>
     </details>
     <details class="panel bay now is-open" id="bay-now" open aria-labelledby="lab-now">
-      <summary class="bh" aria-expanded="true" aria-controls="bay-now-body"><span class="lab"><span id="lab-now">NOW PLAYING</span><span class="state" id="state" aria-live="polite">THE MACHINE IS OFF</span></span><span class="bs" id="sum-now"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <summary class="bh" aria-expanded="true" aria-controls="bay-now-body"><span class="lab"><span id="lab-now">NOW PLAYING</span><span class="state" id="state" aria-live="polite">THE MACHINE IS OFF</span></span><span class="bs" id="sum-now"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
       <div class="bb" id="bay-now-body"><div class="bi">
       <button type="button" class="b" id="retry" hidden>RETRY</button>
       <div class="playing" id="now"></div>
       </div></div>
     </details>
     <details class="panel bay keys is-open" id="bay-keys" open aria-labelledby="lab-keys">
-      <summary class="bh" aria-expanded="true" aria-controls="bay-keys-body"><span class="lab"><span id="lab-keys">THE KEYS</span></span><span class="bs" id="sum-keys"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <summary class="bh" aria-expanded="true" aria-controls="bay-keys-body"><span class="lab"><span id="lab-keys">THE KEYS</span></span><span class="bs" id="sum-keys"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
       <div class="bb" id="bay-keys-body"><div class="bi">
       <p class="grp">PLAY</p>
       <dl class="keys">

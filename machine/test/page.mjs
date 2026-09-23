@@ -536,29 +536,29 @@ try {
   await new Promise((r) => setTimeout(r, 700));   // the site scrolls smoothly
   const seen = await pt.evaluate(() => { const r = document.getElementById('how-auto').getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; });
   check(!!revealed && seen, 'a link into a closed bay opens the bay and the fold it names, and the page goes there');
-  // the readout, the bounce shape: NOW PLAYING's name is cut on the phone; asked to show it, the line slides left by exactly the hidden
-  // width, rests, slides back at the same pace, rests, and goes out again, the mark of the cut gone while it moves; an open bay stops it
-  // at once and shows the mark again; closed again, it resumes
-  await pt.evaluate(() => { window.machinePage.bay('keys', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, hold: 120, back: 60 }); });
+  // the readout, the bounce shape: NOW PLAYING's name is cut on the phone, the cut marked by a fade; asked to show it, the text slides
+  // left by exactly the hidden width, rests, slides back at the same pace, rests, and goes out again, on a transform of its own span;
+  // an open bay glides it home and shows the cut's mark again; closed again, it resumes
+  await pt.evaluate(() => { window.machinePage.bay('keys', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, rewait: 10, hold: 120, back: 60, glide: 40 }); });
   await new Promise((r) => setTimeout(r, 250));
-  const before = await pt.evaluate(() => { window.machinePage.readout.rest(); return window.machinePage.readout.state('now'); });   // every line at rest first
+  const before = await pt.evaluate(() => { window.machinePage.readout.rest(); const e = document.querySelector('#sum-now .e'); return { ...window.machinePage.readout.state('now'), cut: e.classList.contains('cut'), mask: (getComputedStyle(e).webkitMaskImage || getComputedStyle(e).maskImage) !== 'none' }; });   // every line at rest first
   await pt.evaluate(() => window.machinePage.readout.replay('now'));
   await new Promise((r) => setTimeout(r, 60));
-  const outward = await pt.evaluate(() => ({ ...window.machinePage.readout.state('now'), clip: getComputedStyle(document.querySelector('#sum-now .e')).textOverflow, indentNow: getComputedStyle(document.querySelector('#sum-now .e')).textIndent }));
+  const outward = await pt.evaluate(() => { const t = document.querySelector('#sum-now .e .t'); return { ...window.machinePage.readout.state('now'), tx: new DOMMatrixReadOnly(getComputedStyle(t).transform).e }; });
   const outMs = (before.over / 600) * 1000;
-  const homeward = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return s.active && s.indent === '0px' ? s : null; }), outMs + 800, 20);
-  const outAgain = await until(() => pt.evaluate((want) => { const s = window.machinePage.readout.state('now'); return s.active && s.indent === want ? s : null; }, `-${before.over}px`), outMs + 800, 20);
-  check(before.mode === 'bounce' && before.over > 20 && !before.active && outward.active && outward.reading && outward.clip === 'clip' && outward.indent === `-${before.over}px` && parseFloat(outward.indentNow) < 0 && !!homeward && homeward.reading && !!outAgain,
-        `the readout bounces: the cut name slides ${before.over}px to show its end, rests, comes back at the same pace and goes out again (indent ${outward.indentNow} on the way out)`);
+  const homeward = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return s.active && s.offset === 0 ? s : null; }), outMs + 800, 20);
+  const outAgain = await until(() => pt.evaluate((want) => { const s = window.machinePage.readout.state('now'); return s.active && s.offset === want ? s : null; }, -before.over), outMs + 800, 20);
+  check(before.mode === 'bounce' && before.over > 20 && !before.active && before.cut && before.mask && outward.active && outward.reading && outward.offset === -before.over && outward.tx < 0 && !!homeward && homeward.reading && !!outAgain,
+        `the readout bounces: the cut name, marked by a fade, slides ${before.over}px to show its end, rests, comes back at the same pace and goes out again (${Math.round(outward.tx)}px on the way out)`);
   await pt.evaluate(() => window.machinePage.bay('now', true));
-  await new Promise((r) => setTimeout(r, 80));
-  check(await pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading && s.indent === '0px' && getComputedStyle(document.querySelector('#sum-now .e')).textOverflow === 'ellipsis' && document.querySelector('#sum-now .f:last-child').getBoundingClientRect().right <= document.getElementById('sum-now').getBoundingClientRect().right + 0.5; }), 'an open bay stops the readout at once: the cut marked again, the trust words never moved');
+  await new Promise((r) => setTimeout(r, 150));
+  check(await pt.evaluate(() => { const s = window.machinePage.readout.state('now'); const e = document.querySelector('#sum-now .e'); return !s.active && !s.reading && s.offset === 0 && e.classList.contains('cut') && !e.classList.contains('reading') && document.querySelector('#sum-now .f:last-child').getBoundingClientRect().right <= document.getElementById('sum-now').getBoundingClientRect().right + 0.5; }), 'an open bay glides the readout home: the cut marked again, the trust words never moved');
   await pt.evaluate(() => window.machinePage.bay('now', false));
   const resumed = await until(() => pt.evaluate(() => (window.machinePage.readout.state('now').active ? true : null)), 2000, 30);
   check(!!resumed, 'closed again, the line resumes');
   await pt.evaluate(() => { window.machinePage.readout.tune.mode = 'once'; window.machinePage.readout.rest(); window.machinePage.readout.replay('now'); });
   const once = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading && s.shown ? s : null; }), outMs + 1500, 30);
-  check(!!once && once.indent === '0px', 'the once shape is one word away: one pass, a quick return, then rest');
+  check(!!once && once.offset === 0, 'the once shape is one word away: one pass, a quick return, then rest');
   await pt.evaluate(() => { window.machinePage.readout.tune.mode = 'bounce'; window.machinePage.readout.rest(); });
   check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
   await pt.close(); await tc.close();

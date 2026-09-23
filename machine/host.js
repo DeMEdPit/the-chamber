@@ -765,7 +765,7 @@ function setBay(d, open, instant) {
   }
   if (s) s.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (!open && s && d.contains(document.activeElement) && document.activeElement !== s) s.focus({ preventScroll: true });
-  if (readout) { if (open) readout.resetAll(d); else readout.resume(d); }   // an open bay shows everything; a closed one may read out again
+  if (readout) { if (open) readout.stopAll(d); else readout.resume(d); }   // an open bay shows everything, its line gliding home; a closed one may read out again
   clearTimeout(d.settleTimer);
   if (d.classList.contains('moving')) d.settleTimer = setTimeout(() => { if (d.classList.contains('moving')) settleBay(d); }, 600);   // a transition that never ends (the tab hidden, the element gone) still settles
 }
@@ -808,7 +808,7 @@ function verdictOf(p) {
 }
 /** The five lines, recomputed whole whenever anything they say could have changed. */
 function bayLines() {
-  const put = (k, a, e, c) => { const s = $('sum-' + k); if (!s) return; s.children[0].textContent = a; const el = s.children[1]; const was = el.textContent; el.textContent = e; s.children[2].textContent = c; if (readout && was !== e) readout.update(el); };
+  const put = (k, a, e, c) => { const s = $('sum-' + k); if (!s) return; s.children[0].textContent = a; const el = s.children[1]; const was = el.textContent; el.firstElementChild.textContent = e; s.children[2].textContent = c; if (readout && was !== e) readout.update(el); };
   const reading = state.phase === 'reading' || state.phase === 'checking';
   if (reading) put('now', '', asking || 'the machine', '');
   else if (playing) put('now', '', playing.program.label, ` · ${verdictOf(playing.program)} · ${playing.intervened ? 'INTERVENED' : 'PURE'}`);
@@ -832,7 +832,12 @@ function bayLines() {
   put('keys', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · ${fw} · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
   const last = els.log.lastElementChild;
   put('log', '', last ? last.textContent : 'nothing yet', ` · ${fullLog.length} line${fullLog.length === 1 ? '' : 's'}`);   // the last thing said first, the count after
+  markCuts();
 }
+/** A line that does not fit is marked by a fade at its edge (the stylesheet's `cut`), whatever the readout does. */
+function markCuts() { for (const el of document.querySelectorAll('.bs .e')) el.classList.toggle('cut', el.scrollWidth > el.clientWidth + 1); }
+let cutWidth = window.innerWidth;
+window.addEventListener('resize', () => { if (window.innerWidth !== cutWidth) { cutWidth = window.innerWidth; markCuts(); } });
 
 // ------------------------------------------------------------------ controls
 els.search.addEventListener('input', () => renderRows(els.search.value));
@@ -983,5 +988,5 @@ async function start() {
 }
 window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
   get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say,
-  readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false } };
+  readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false }, markCuts };
 start();
