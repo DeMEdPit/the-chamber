@@ -258,11 +258,38 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 /* on a wide screen the COPY buttons sit in the log's label row, out of the flow, so every tier's log is 44 pixels
    taller for the same stage; the label's note gives them the room, and they are shorter there so they clear the log's
    top rule (measured: the row's rule sits 37 pixels under the panel's edge) */
-@media(min-width:1140px){{.logbox{{position:relative}}.logbox .lab .n{{display:none}}.logbox .tools{{position:absolute;top:10px;right:16px;flex-direction:row-reverse}}.logbox .tools .b{{padding:5px 10px}}.logbox .tools #copy{{order:1}}.logbox .tools #copy-log{{order:0}}.logbox .tools .copied{{order:2}}.logbox .log{{margin-bottom:0}}}}   /* read left to right: the note, COPY PROVENANCE, COPY THE LOG */
+@media(min-width:1140px){{.logbox{{position:relative}}.bay.logbox>summary{{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"lab sum";cursor:default}}.bay.logbox>summary .bs{{font-size:.7rem;line-height:1.2;padding-right:290px}}.bay.logbox>summary .bm{{display:none}}.logbox>.bb>.bi{{overflow:visible}}.logbox .tools{{position:absolute;top:10px;right:16px;flex-direction:row-reverse}}.logbox .tools .b{{padding:5px 10px}}.logbox .tools #copy{{order:1}}.logbox .tools #copy-log{{order:0}}.logbox .tools .copied{{order:2}}.logbox .log{{margin-bottom:0}}}}   /* read left to right: the name, the line, COPY PROVENANCE, COPY THE LOG */
 .panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:0}}   /* a grid item's minimum is its content's: the firmware switch's longest option made THE KEYS, and so the column and the frame, 6px wider than the phone's page */
 .panel .lab{{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 10px}}
 .panel .lab>span:first-child{{flex:none}}
-.panel .lab .n{{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none;text-align:right}}
+/* a bay: a panel that folds. Its header is the whole button: the name, and one live line, what is true now in the page's
+   own words, the thing in ink and its qualifiers muted, the thing the only part that can be cut short (the trust words are
+   never cut); the mark a drawn plus whose upright collapses into the bar as the drawer opens, in the body's own time.
+   Open, the controls and the record; the account under the page is the third depth. Closed on a phone, open on a wide
+   screen, where the log is the stage's and does not fold. The body is one grid row from 0fr to 1fr, so the drawer
+   opens as one object; the inner box clips it and carries the panel's bottom air, so the closed row is truly empty */
+.panel.bay{{padding:0}}
+.bay>summary{{list-style:none;cursor:pointer;padding:14px 16px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"lab mark" "sum mark";column-gap:14px;row-gap:4px;align-items:center;border-radius:10px;-webkit-tap-highlight-color:transparent}}
+.bay>summary::-webkit-details-marker{{display:none}}
+.bay>summary::marker{{content:""}}
+.bay>summary:focus-visible{{outline:2px solid var(--accent);outline-offset:-2px}}
+.bay>summary .lab{{grid-area:lab;margin:0;min-width:0}}
+.bay>summary .bs{{grid-area:sum;display:flex;min-width:0;font:500 .74rem/1.45 {MONO};color:var(--muted)}}
+.bs>span{{white-space:pre}}
+.bs .e{{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;color:var(--ink)}}
+.bs .f{{flex:none}}
+.bs>span:empty{{display:none}}
+.bm{{grid-area:mark;position:relative;width:12px;height:12px;align-self:center}}
+.bm::before,.bm::after{{content:"";position:absolute;background:var(--accent2);border-radius:1px;transition:transform 240ms cubic-bezier(.2,.8,.2,1)}}
+.bm::before{{left:0;top:5px;width:12px;height:2px}}
+.bm::after{{left:5px;top:0;width:2px;height:12px}}
+.bay.is-open>summary .bm::after{{transform:scaleY(0)}}
+.bb{{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 240ms cubic-bezier(.2,.8,.2,1),opacity 180ms ease}}
+.is-open>.bb{{grid-template-rows:1fr;opacity:1}}
+.bi{{min-height:0;overflow:hidden}}
+.bay>.bb>.bi{{margin:0 16px}}
+.bay>.bb>.bi::after{{content:"";display:block;height:14px}}
+@media(prefers-reduced-motion:reduce){{.bb,.bm::before,.bm::after{{transition:none}}}}
 .search{{width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 10px;font:500 .9rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px}}
 .search:focus{{outline:0;border-color:var(--accent)}}
 .rows{{height:330px;box-sizing:border-box;overflow:auto;border-top:1px solid var(--line)}}
@@ -278,12 +305,12 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 .disk .dh{{display:flex;justify-content:space-between;gap:12px;font:700 .6rem/2.2 {MONO};letter-spacing:.16em;text-transform:uppercase;color:var(--accent2)}}
 .disk .dh .n{{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none;text-align:right}}
 .disk .rows{{height:auto;max-height:224px}}
-/* a fold: a small mono summary with a plus, the rest muted */
+/* a fold: a small mono summary with a plus, the rest muted; its body opens as a bay's does */
 .fold{{font-size:.78rem;line-height:1.45;color:var(--muted)}}
 .fold summary{{cursor:pointer;list-style:none;font:700 .6rem/1.9 {MONO};letter-spacing:.16em;color:var(--accent2)}}
 .fold summary::-webkit-details-marker{{display:none}}
 .fold summary::before{{content:"+ "}}
-.fold[open] summary::before{{content:"− "}}
+.fold.is-open summary::before{{content:"− "}}
 .paste{{margin:10px 0 0}}
 .paste textarea.json{{height:72px;margin:6px 0 0;color:var(--ink)}}
 .paste .tools{{margin-top:8px}}
@@ -300,7 +327,7 @@ button.more{{color:var(--muted);border-color:#2a2a2a;margin-right:6px}}
 button.more:disabled{{opacity:.6;cursor:default}}
 button.load,button.b,button.more{{flex:none;font:700 .66rem/1 {MONO};letter-spacing:.14em;color:var(--accent2);background:transparent;border:1px solid #2c3f36;border-radius:6px;padding:8px 12px;cursor:pointer}}
 button.load:hover,button.b:hover,button.more:hover,button.load:focus-visible,button.b:focus-visible,button.more:focus-visible{{border-color:var(--accent);color:var(--accent);outline:0}}
-.state{{font:700 .8rem/1.4 {MONO};letter-spacing:.16em;color:var(--ink);margin:0 0 10px}}
+.lab .state{{margin:0;font:700 .66rem/1.2 {MONO};letter-spacing:.16em;color:var(--ink);text-align:right;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .state[data-phase="running"]{{color:var(--accent)}}
 .state[data-phase="refused"],.state[data-phase="failed"]{{color:#ff9d9d}}
 .playing{{display:flex;flex-direction:column;gap:6px;margin:0;min-height:404px}}   /* the height of a Chamber room's rows, measured: the panel keeps its size from the first paint */
@@ -337,10 +364,12 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
 .about h2{{margin-top:44px}}
 .about p{{font-size:.95rem;color:#deded9}}
 .about code{{font-size:.8rem}}
-/* one column: the two wrappers dissolve and the panels take the order the phone has always had; the frame fills the
-   column as the phone's does, the badge hung from its corner (the owner's word, 2026-09-22: the picture is scaled by the
-   width there, whole multiples kept for two columns, where the frame is 768 again) */
-@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{order:1}}.touch{{order:2;margin:11px 0}}.chain{{order:3}}.file{{order:4}}.now{{order:5}}.logbox{{order:6;margin:0}}.keys{{order:7}}.leave{{order:8}}}}
+/* one column: the two wrappers dissolve and the panels take the phone's order, NOW PLAYING first under the pad (what is
+   running, and how far to trust it, read without opening anything: the owner's word, 2026-09-23), then the list, the
+   file door, the keys, the log and the way out; the frame fills the column as the phone's does, the badge hung from its
+   corner (the owner's word, 2026-09-22: the picture is scaled by the width there, whole multiples kept for two columns,
+   where the frame is 768 again) */
+@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{order:1}}.touch{{order:2;margin:11px 0}}.now{{order:3}}.chain{{order:4}}.file{{order:5}}.keys{{order:6}}.logbox{{order:7;margin:0}}.leave{{order:8}}}}
 @media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{height:260px}}.nl{{grid-template-columns:1fr;gap:0}}.playing{{min-height:510px}}}}
 """
 
@@ -480,8 +509,9 @@ def page_body():
       {ring_svg()}
       <button type="button" class="fire" data-bit="16">FIRE</button>
     </div>
-    <section class="panel logbox" aria-labelledby="lab-log">
-      <div class="lab"><span id="lab-log">THE LOG</span><span class="n">what the page read and checked</span></div>
+    <details class="panel bay logbox is-open" id="bay-log" open aria-labelledby="lab-log">
+      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-log">THE LOG</span></span><span class="bs" id="sum-log"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb"><div class="bi">
       <ul class="log" id="log" aria-label="what the page read and checked; the last lines, the whole log copies"></ul>
       <div class="tools">
         <button type="button" class="b" id="copy">COPY PROVENANCE</button>
@@ -489,35 +519,42 @@ def page_body():
         <span class="copied" id="copied"></span>
       </div>
       <textarea class="json" id="provenance-json" readonly aria-label="the provenance as JSON" hidden></textarea>
-    </section>
+      </div></div>
+    </details>
   </div>
   <aside class="column">
-    <section class="panel chain" aria-labelledby="lab-chain">
-      <div class="lab"><span id="lab-chain">FROM THE CHAIN</span><span class="n" id="count"></span></div>
+    <details class="panel bay chain is-open" id="bay-chain" open aria-labelledby="lab-chain">
+      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-chain">FROM THE CHAIN</span></span><span class="bs" id="sum-chain"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb"><div class="bi">
       <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
       <div class="rows" id="rows" aria-live="polite"></div>
-    </section>
-    <section class="panel file" aria-labelledby="lab-file">
-      <div class="lab"><span id="lab-file">FROM A FILE</span><span class="n">a .prg, a .d64 or a .crt of yours</span></div>
+      </div></div>
+    </details>
+    <details class="panel bay file is-open" id="bay-file" open aria-labelledby="lab-file">
+      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-file">FROM A FILE</span></span><span class="bs" id="sum-file"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb"><div class="bi">
       <label class="door" id="door" data-state="idle"><input type="file" id="file" accept=".prg,.d64,.crt" aria-label="choose a program file, a disk image or a cartridge image"><span id="door-text">drop a .prg, a .d64 or a .crt here, or choose one</span></label>
       <div class="disk" id="disk" hidden aria-label="the disk's directory">
         <div class="dh"><span id="disk-name"></span><span class="n" id="disk-count"></span></div>
         <div class="rows" id="disk-rows"></div>
       </div>
-      <details class="fold paste" id="paste-door"><summary>OR PASTE</summary>
+      <details class="fold paste" id="paste-door"><summary aria-expanded="false">OR PASTE</summary><div class="bb"><div class="bi">
         <textarea class="json" id="paste" spellcheck="false" autocomplete="off" aria-label="a program as hex or base64" placeholder="a program as hex or base64, its load address first"></textarea>
         <div class="tools"><button type="button" class="b" id="run-paste">RUN</button><span class="copied" id="paste-note"></span></div>
-      </details>
-      <p class="fine">It stays in this browser and is sent nowhere. A .prg is checked for its shape, a load address and a size that fits, read for what it needs (the KERNAL, BASIC, the joystick, the keyboard, the SID) and claimed nothing else about: NOW PLAYING says YOUR FILE, and FIRMWARE on AUTO gives it the on-chain OpenROMs when it needs them. A .d64 is opened here too: its directory is listed and one program runs at a time, because the machine has no drive; a program that loads more from the disk stops there. Pasted hex or base64 runs the same way. A .crt cartridge runs in the four formats this machine has (Normal 4K and 16K, Ocean Type 1, C64GS, Magic Desk); an 8K Normal image is refused, since the machine's reader traps on it, and can be repacked as 16K or Magic Desk; a cartridge stays in the port for the life of a machine, so anything loaded after it starts a new one. A program of the series dropped here is recognised by its pins and runs as it does on chain.</p>
-    </section>
-    <section class="panel now" aria-labelledby="lab-now">
-      <div class="lab"><span id="lab-now">NOW PLAYING</span><span class="n">copies under the machine</span></div>
-      <p class="state" id="state" aria-live="polite">THE MACHINE IS OFF</p>
+      </div></div></details>
+      <p class="fine">It stays in this browser and is sent nowhere; the page checks its shape, reads it for what it needs, and NOW PLAYING says YOUR FILE, claiming nothing else: <a href="#about-programs">the formats and their limits</a>.</p>
+      </div></div>
+    </details>
+    <details class="panel bay now is-open" id="bay-now" open aria-labelledby="lab-now">
+      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-now">NOW PLAYING</span><span class="state" id="state" aria-live="polite">THE MACHINE IS OFF</span></span><span class="bs" id="sum-now"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb"><div class="bi">
       <button type="button" class="b" id="retry" hidden>RETRY</button>
       <div class="playing" id="now"></div>
-    </section>
-    <section class="panel keys" aria-labelledby="lab-keys">
-      <div class="lab"><span id="lab-keys">THE KEYS</span></div>
+      </div></div>
+    </details>
+    <details class="panel bay keys is-open" id="bay-keys" open aria-labelledby="lab-keys">
+      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-keys">THE KEYS</span></span><span class="bs" id="sum-keys"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb"><div class="bi">
       <p class="grp">PLAY</p>
       <dl class="keys">
         <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed" autocomplete="off"><option value="joystick" selected>joystick in port 2</option><option value="joystick1">joystick in port 1</option><option value="joysticks">joystick in both ports</option><option value="keyboard">the keyboard</option></select> <span class="hint">what the arrows and letters feed; AUTO reads a file for it and takes both ports when it cannot tell</span></dd>
@@ -529,10 +566,11 @@ def page_body():
       <p class="grp">MACHINE</p>
       <dl class="keys">
         <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span>
-          <details class="fold how" id="how-auto"><summary>HOW AUTO DECIDES</summary><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></details></dd>
+          <details class="fold how" id="how-auto"><summary aria-expanded="false">HOW AUTO DECIDES</summary><div class="bb"><div class="bi"><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></div></div></details></dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button> <span class="hint">starts the machine over; under the firmware, READY comes back</span></dd>
       </dl>
-    </section>
+      </div></div>
+    </details>
     <section class="panel leave" aria-labelledby="lab-leave">
       <div class="lab"><span id="lab-leave">LEAVE THE MACHINE</span></div>
       <a href="/">BACK TO THE CHAMBER</a>

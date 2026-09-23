@@ -15,7 +15,7 @@ import { createAudio } from './audio.js';
 const PAGE = 'machine/2b';
 const $ = (id) => document.getElementById(id);
 const els = {
-  frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'), count: $('count'),
+  frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
   input: $('input-mode'), reset: $('reset'), retry: $('retry'), touch: $('touch'), copyLog: $('copy-log'),
   sound: $('sound'), ring: $('ring'), ways: $('ways'), firmware: $('firmware'), firmwareWhy: $('firmware-why'),
@@ -44,12 +44,22 @@ const fullLog = [];
 const SHORT = (h) => (h ? h.slice(0, 12) + '…' : '');
 const num = (n) => Number(n).toLocaleString('en-US');
 
+let lastSaid = null;   // the newest line: the same thing said again is counted on it, not written again
 function say(text) {
-  fullLog.push(`${new Date().toISOString().slice(11, 23)} ${text}`);
-  const li = document.createElement('li');
-  li.textContent = text;
-  els.log.appendChild(li);
-  while (els.log.children.length > LOG_LINES) els.log.removeChild(els.log.firstChild);
+  if (lastSaid && lastSaid.text === text) {
+    lastSaid.n++;
+    lastSaid.li.textContent = `${text} ×${lastSaid.n}`;
+    fullLog[fullLog.length - 1] = `${lastSaid.stamp} ${text} ×${lastSaid.n}`;
+  } else {
+    const stamp = new Date().toISOString().slice(11, 23);
+    fullLog.push(`${stamp} ${text}`);
+    const li = document.createElement('li');
+    li.textContent = text;
+    els.log.appendChild(li);
+    while (els.log.children.length > LOG_LINES) els.log.removeChild(els.log.firstChild);
+    lastSaid = { text, n: 1, li, stamp };
+  }
+  bayLines();
 }
 /** Everything a report needs, as one block: the page, the browser, the state, the provenance, the whole log. */
 function report() {
@@ -128,7 +138,7 @@ function rowsOf(cat) {
   }
   return out;
 }
-let allRows = [];
+let allRows = [], countText = '';
 function renderRows(filter) {
   const q = (filter || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
   const shown = allRows.filter((r) => q.every((t) => r.words.includes(t)));
@@ -153,7 +163,8 @@ function renderRows(filter) {
     els.rows.appendChild(row);
     if (r.revisions && revisionRows.has(`${r.work}/${r.token}`)) for (const sub of revisionRows.get(`${r.work}/${r.token}`)) els.rows.appendChild(sub);
   }
-  els.count.textContent = shown.length === allRows.length ? `${allRows.length} programs on the chain` : `${shown.length} of ${allRows.length}`;
+  countText = shown.length === allRows.length ? `${allRows.length} programs` : `${shown.length} of ${allRows.length} programs`;
+  bayLines();
 }
 
 // ------------------------------------------------------------------ the revisions of a mind
@@ -246,6 +257,7 @@ async function programFromCartridge(file, bytes) {
 let disk = null;   // the open disk: { file, image, dir }
 async function openDisk(file) {
   const name = file.name || 'a disk';
+  fileLine = { name, state: 'busy' };
   door('busy', `reading ${name}`);
   try {
     const image = new Uint8Array(await file.arrayBuffer());
@@ -266,11 +278,13 @@ async function openDisk(file) {
     }
     disk = { file: fileFacts(file), image, dir, summary: `${name} · ${dir.name || 'unnamed'} · ${programs.length} program${programs.length === 1 ? '' : 's'} · pick one below` };
     renderDisk();
+    fileLine = { name, state: 'disk' };
     door('ok', disk.summary);
     say(`your disk ${name}: ${num(image.length)} bytes, ${dir.tracks} tracks${dir.errorBytes ? ' with error bytes' : ''}, "${dir.name}" ${dir.id} ${dir.dos}, ${dir.entries.length} entries, ${programs.length} PRG; read in this browser, sent nowhere; the machine has no drive, so a program of it runs alone`);
   } catch (e) {
     const code = e.code || 'FAILED';
     disk = null; els.disk.hidden = true;
+    fileLine = { name, state: 'refused' };
     door('refused', `${code} · ${e.message}`);
     say(`your disk was refused (${code}): ${e.message}`);
   }
@@ -358,12 +372,14 @@ function decide(program) {
 }
 let cartridgeIn = false;   // a cartridge was put into the machine now running: it stays in its port for the machine's life
 const DOOR_IDLE = 'drop a .prg, a .d64 or a .crt here, or choose one';
-function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; }
+function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; bayLines(); }
+let fileLine = { name: '', state: 'idle' };   // the door's last answer, for the header line: what was brought, and what became of it
 /** The door at rest: the open disk's summary, or the invitation. */
 function doorRest() { if (disk) door('ok', disk.summary); else door('idle', ''); }
 /** Where an ask is answered: the paste's own note for a paste, the door for a file or a disk's program; on a run, the other rests. */
 function told(ask, state, text) {
-  if (ask.text !== undefined) { els.pasteNote.textContent = state === 'idle' ? '' : text; if (state === 'ok') doorRest(); }
+  fileLine = { name: ask.text !== undefined ? 'the paste' : ask.entry ? ask.entry.name || `entry ${ask.entry.index + 1}` : ask.file.name || 'a file', state };
+  if (ask.text !== undefined) { els.pasteNote.textContent = state === 'idle' ? '' : text; if (state === 'ok') doorRest(); else bayLines(); }
   else { door(state, text); if (state === 'ok') els.pasteNote.textContent = ''; }
 }
 
@@ -472,10 +488,16 @@ async function setFirmware(mode) {
   }
 }
 /** The page plays the machine's sound once a gesture has unlocked the page's audio; until then the next tap does it. */
+let attachingSound = null;
 async function attachSound() {
   if (!machine || !machine.alive || audio.attached) return;
-  if (!audio.ready) { say('sound: waits for your first tap or key on this page'); return; }
-  try { await audio.attach(machine); } catch (e) { say(`sound: the machine did not take the audio request (${e.code || e.message})`); }
+  if (attachingSound) return attachingSound;   // one tap raises three events; they share one attempt
+  attachingSound = (async () => {
+    if (!audio.ready) await audio.settle();     // a gesture's resume is asynchronous: it is waited for before the page judges
+    if (!audio.ready) { say('sound: waits for your first tap or key on this page'); return; }
+    try { await audio.attach(machine); } catch (e) { say(`sound: the machine did not take the audio request (${e.code || e.message})`); }
+  })().finally(() => { attachingSound = null; });
+  return attachingSound;
 }
 for (const ev of ['pointerup', 'click', 'keydown', 'touchend']) {
   document.addEventListener(ev, () => { if (audio.unlock() && machine && machine.alive && !audio.attached && state.phase === 'running') attachSound(); }, { capture: true, passive: true });
@@ -491,10 +513,14 @@ async function run(ask) {
   els.copied.textContent = '';
   const fromFile = !!(ask.file || ask.entry || ask.text !== undefined);
   let program = null;
+  const row = fromFile ? null : allRows.find((r) => r.work === ask.work && r.token === ask.token);
+  asking = fromFile ? (ask.file ? ask.file.name : ask.entry ? ask.entry.name : 'the paste') : row ? (row.group === row.title ? row.title : `${row.group} · ${row.title}`) : `${ask.work} ${ask.token}`;
+  refusal = null;
+  bayLines();
   try {
     if (!catalogue) throw Object.assign(new Error('the catalogue has not loaded'), { code: 'NO_CATALOGUE' });
-    if (ask.file) { disk = null; els.disk.hidden = true; door('busy', `reading ${ask.file.name}`); program = await programFromFile(ask.file); }
-    else if (ask.entry) { door('busy', `reading ${ask.entry.name} from ${ask.disk.file.name}`); program = await programFromDisk(ask.disk, ask.entry); }
+    if (ask.file) { disk = null; els.disk.hidden = true; told(ask, 'busy', `reading ${ask.file.name}`); program = await programFromFile(ask.file); }
+    else if (ask.entry) { told(ask, 'busy', `reading ${ask.entry.name} from ${ask.disk.file.name}`); program = await programFromDisk(ask.disk, ask.entry); }
     else if (ask.text !== undefined) { told(ask, 'busy', 'reading the paste'); program = await programFromText(ask.text); }
     const d = decide(program);   // a program of the chain is decided before it is read: bare under AUTO
     setState('reading', 'READING');
@@ -528,6 +554,7 @@ async function run(ask) {
     if (fromFile) told(ask, 'ok', `${program.label} · ${num(program.bytes.length)} bytes · running · no chain claim${loadsMore(program.facts.scan) ? ' · loads more from a disk: stops at the drive' : ''}`); else { doorRest(); els.pasteNote.textContent = ''; }
   } catch (e) {
     const code = e.code || 'FAILED';
+    refusal = { code, text: e.message };
     if (fromFile) told(ask, 'refused', `${code} · ${e.message}`);
     if (fromFile && !program) {
       // not a program the machine loads: said at the door and in the log; what was playing plays on
@@ -550,6 +577,7 @@ async function run(ask) {
   }
 }
 function load(work, token, revision) { return run(revision === undefined ? { work, token } : { work, token, revision }); }
+let asking = '', refusal = null;   // what was asked for last, and the refusal or failure that answered it, for the header line
 
 function markOffered(work, token, revision) {
   // the work's row is marked for any of its revisions; a revision's own row only for itself
@@ -700,6 +728,103 @@ function renderNow(code, text) {
   els.now.appendChild(heading('THE MACHINE'));
   for (const [k, v, cls] of machineRows()) els.now.appendChild(line(k, v, cls));
   els.json.value = playing ? JSON.stringify(provenance(), null, 1) : '';
+  bayLines();
+}
+
+// ------------------------------------------------------------------ the bays
+// Every panel but the way out folds. Its header is the whole button and carries one live line, what is true now in
+// the page's own words: the thing in ink, its qualifiers muted, the thing the only part that can be cut short, so
+// the trust words always show. Open, the controls and the record; the account under the page is the third depth.
+// Closed on a phone, open on a wide screen, where the log is the stage's and does not fold; a link into a closed bay
+// opens it; nothing is remembered between visits. The body is one grid row, 0fr to 1fr, and the mark's upright
+// collapses into its bar in the same time; under reduced motion both are instant.
+const BAY_KEYS = ['now', 'chain', 'file', 'keys', 'log'];
+const bays = Object.fromEntries(BAY_KEYS.map((k) => [k, $('bay-' + k)]));
+const NARROW = matchMedia('(max-width:1139px)');
+const STILL = matchMedia('(prefers-reduced-motion: reduce)');
+const bayFixed = (d) => d === bays.log && !NARROW.matches;   // the log is part of the stage on a wide screen
+const bayOpen = (d) => d.classList.contains('is-open');
+function setBay(d, open, instant) {
+  const s = d.querySelector(':scope > summary'), body = d.querySelector(':scope > .bb');
+  if (d.open === open && bayOpen(d) === open) return;
+  if (instant || STILL.matches || !body) {
+    d.classList.remove('moving');
+    d.open = open; d.classList.toggle('is-open', open);
+  } else if (open) {
+    d.open = true;                           // rendered at 0fr first, so the row has somewhere to grow from
+    d.classList.add('moving');
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (d.classList.contains('moving')) d.classList.add('is-open'); }));
+  } else {
+    d.classList.add('moving');
+    d.classList.remove('is-open');           // the row shrinks; the element closes when the shrink has ended
+  }
+  if (s) s.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (!open && s && d.contains(document.activeElement) && document.activeElement !== s) s.focus({ preventScroll: true });
+  clearTimeout(d.settleTimer);
+  if (d.classList.contains('moving')) d.settleTimer = setTimeout(() => { if (d.classList.contains('moving')) settleBay(d); }, 600);   // a transition that never ends (the tab hidden, the element gone) still settles
+}
+function settleBay(d) {
+  d.classList.remove('moving');
+  if (!bayOpen(d)) d.open = false;
+}
+for (const d of document.querySelectorAll('details.bay, details.fold')) {
+  const s = d.querySelector(':scope > summary'), body = d.querySelector(':scope > .bb');
+  s.addEventListener('click', (e) => { e.preventDefault(); if (bayFixed(d)) return; setBay(d, !bayOpen(d)); });
+  if (body) body.addEventListener('transitionend', (e) => { if (e.target === body && e.propertyName === 'grid-template-rows') settleBay(d); });
+}
+/** A link into a closed bay or fold opens it, then the page goes there. */
+function revealHash() {
+  const id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
+  const t = id ? document.getElementById(id) : null;
+  if (!t) return;
+  let opened = false;
+  for (let d = t.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) {
+    if (!bayOpen(d)) { setBay(d, true, true); opened = true; }
+  }
+  if (opened) t.scrollIntoView({ block: 'start' });
+}
+function bayInit() {
+  const id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
+  const t = id ? document.getElementById(id) : null;
+  for (const k of BAY_KEYS) setBay(bays[k], !NARROW.matches || !!(t && bays[k].contains(t)), true);
+  for (const d of document.querySelectorAll('details.fold')) if (t && d.contains(t)) setBay(d, true, true);
+}
+NARROW.addEventListener('change', () => { if (!NARROW.matches) setBay(bays.log, true, true); });   // a wide window has the log open: it is the stage's there
+window.addEventListener('hashchange', revealHash);
+/** The verdict on a program of the chain: the weakest word among its checks, so the line never claims more than the record. */
+const RANK = { [STATUS.PINNED]: 0, [STATUS.CONTRACT_CONSISTENT]: 1, [STATUS.NODE_REPORTED]: 2 };
+function verdictOf(p) {
+  if (p.kind === 'file') return STATUS.YOUR_FILE;
+  let worst = null;   // the bytes' own words: the program, and the stamp or the mind inside it; the head's status is the node's word on which revision is the head, not a verdict on bytes
+  for (const v of [p.statuses.program, p.statuses.stamp, p.statuses.mind].filter(Boolean)) { if (!(v in RANK)) return v; if (worst === null || RANK[v] > RANK[worst]) worst = v; }
+  return worst || STATUS.NODE_REPORTED;
+}
+/** The five lines, recomputed whole whenever anything they say could have changed. */
+function bayLines() {
+  const put = (k, a, e, c) => { const s = $('sum-' + k); if (!s) return; s.children[0].textContent = a; s.children[1].textContent = e; s.children[2].textContent = c; };
+  const reading = state.phase === 'reading' || state.phase === 'checking';
+  if (reading) put('now', '', asking || 'the machine', '');
+  else if (playing) put('now', '', playing.program.label, ` · ${verdictOf(playing.program)} · ${playing.intervened ? 'INTERVENED' : 'PURE'}`);
+  else if (state.phase === 'refused') put('now', '', asking, ' · REFUSED');
+  else if (state.phase === 'failed') put('now', '', asking || 'nothing', refusal ? ` · ${refusal.text}` : '');
+  else if (state.phase === 'off') put('now', '', 'nothing yet', '');
+  else if (state.phase === 'idle') put('now', '', firmwareOn ? `${FIRMWARE_NAME} at READY` : 'the machine is on and bare', ' · nothing playing');
+  else put('now', '', asking, '');
+  const chainAsk = lastAsk && !(lastAsk.file || lastAsk.entry || lastAsk.text !== undefined);
+  const busyChain = reading && chainAsk, fromChain = !busyChain && playing && playing.program.kind !== 'file';
+  put('chain', countText + (busyChain ? ' · reading ' : fromChain ? ' · playing ' : ''), busyChain ? asking : fromChain ? playing.program.label : '', '');
+  const fileRunning = playing && playing.program.kind === 'file';
+  const programs = disk ? disk.dir.entries.filter((e) => e.typeName === 'PRG').length : 0;
+  if (fileLine.state === 'refused') put('file', '', fileLine.name, ' · REFUSED');
+  else if (fileLine.state === 'busy') put('file', 'reading ', fileLine.name, '');
+  else if (disk && fileLine.state === 'disk') put('file', '', disk.file.name, ` · ${programs} program${programs === 1 ? '' : 's'} · pick one`);   // a disk just opened: the door waits on a pick, whatever plays
+  else if (fileRunning) put('file', '', playing.program.label, ` · ${STATUS.YOUR_FILE}`);
+  else if (disk) put('file', '', disk.file.name, ` · ${programs} program${programs === 1 ? '' : 's'} · pick one`);
+  else put('file', '.prg · .d64 · .crt', '', '');
+  const fw = firmwareMode === 'auto' ? (machineFacts ? `AUTO · ${firmwareOn ? 'on' : 'bare'}` : 'AUTO') : firmwareMode.toUpperCase();
+  put('keys', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · ${fw} · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
+  const last = els.log.lastElementChild;
+  put('log', `${fullLog.length} line${fullLog.length === 1 ? '' : 's'}${last ? ' · ' : ''}`, last ? last.textContent : 'nothing yet', '');
 }
 
 // ------------------------------------------------------------------ controls
@@ -719,7 +844,7 @@ els.input.addEventListener('change', async () => {
   inputMode = ['keyboard', 'joystick1', 'joysticks'].includes(els.input.value) ? els.input.value : 'joystick';
   inputWhy = 'by the switch';
   if (machine && machine.alive) { try { await machine.request('input', inputAsk()); } catch (e) { /* the machine is gone; the next load sets it */ } }
-  if (playing) renderNow();
+  if (playing) renderNow(); else bayLines();
 });
 els.reset.addEventListener('click', async () => {
   if (!machine || !machine.alive) return;
@@ -815,12 +940,14 @@ for (const b of els.touch.querySelectorAll('button[data-bit]')) {
 els.sound.addEventListener('click', () => {
   audio.setOn(!audio.on);
   els.sound.textContent = audio.on ? 'SOUND ON' : 'SOUND OFF';
+  bayLines();
   if (audio.on && machine && machine.alive && !audio.attached) attachSound();
 });
 
 // ------------------------------------------------------------------ start
 async function start() {
   els.firmware.value = firmwareMode; els.input.value = inputMode;   // a browser may restore a form's values on reload; the page's state is the page's
+  bayInit();
   setState('off', 'THE MACHINE IS OFF');
   renderNow();
   try {
@@ -847,5 +974,6 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS };
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
+  get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say };
 start();

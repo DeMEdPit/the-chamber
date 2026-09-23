@@ -84,8 +84,19 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
     src.start(ctx.currentTime);
   }
 
+  /** Resolves once the context runs, or after a short wait if it will not: a gesture's resume is asynchronous. */
+  function settle(ms = 400) {
+    if (!ctx || ctx.state === 'running') return Promise.resolve(!!ctx && ctx.state === 'running');
+    return new Promise((resolve) => {
+      let done = false;
+      const fin = () => { if (done) return; done = true; ctx.removeEventListener('statechange', fin); resolve(ctx.state === 'running'); };
+      ctx.addEventListener('statechange', fin);
+      setTimeout(fin, ms);
+    });
+  }
+
   return {
-    unlock, attach, detach,
+    unlock, attach, detach, settle,
     get ready() { return !!ctx && ctx.state === 'running'; },
     get attached() { return !!(machine && machine.alive); },
     get pulled() { return pulled; },

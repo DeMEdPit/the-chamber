@@ -21,7 +21,11 @@
 // provenance names the node, the block and its hash (the read session); on a
 // two-node rig, an endpoint that contradicts a pin is set aside for the visit
 // and the read restarts whole on the next, while one that fails in transport is
-// demoted and the read restarts there too, with no verdict on it.
+// demoted and the read restarts there too, with no verdict on it; the five
+// panels are bays whose headers carry one live line in the page's own words,
+// open on a wide screen and closed on a phone, NOW PLAYING first there, the
+// body one row that grows and shrinks (instant under reduced motion), a link
+// into a closed bay opening it; the log folds a line said twice into one.
 //
 //   node machine/test/page.mjs
 // Needs Playwright and Chromium (machine/test/pw.mjs finds them) and python3.
@@ -80,15 +84,26 @@ try {
   check(!(await pg.evaluate(() => Array.from(document.scripts).some((s) => !s.src))), 'no inline script on the page');
   const opening = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /Tony: Born for Adventure/.test(document.getElementById('now').textContent)), 90000, 500);
   check(!!opening, 'the page opens on the Tony demo, running');
+  // the bays: every panel but the way out folds, its header the button and one live line, what is true now in the page's own words
+  const lines = () => pg.evaluate(() => Object.fromEntries(Object.entries(window.machinePage.bays).map(([k, v]) => [k, v.line])));
+  const lines0 = await lines();
+  check(lines0.now === 'Tony: Born for Adventure (C64 demo) · PINNED · PURE' && lines0.chain === '67 programs · playing Tony: Born for Adventure (C64 demo)' && lines0.file === '.prg · .d64 · .crt' && lines0.keys === 'joystick 2 · AUTO · bare · sound on' && /^\d+ lines · running Tony: Born for Adventure \(C64 demo\)$/.test(lines0.log),
+        `every bay's header line says what is true now: ${Object.values(lines0).join(' | ')}`);
+  check(await pg.evaluate(() => Object.values(window.machinePage.bays).every((b) => b.open && b.element && !b.moving) && [...document.querySelectorAll('details.bay > summary')].every((s) => s.getAttribute('aria-expanded') === 'true') && document.querySelectorAll('details.bay').length === 5), 'on a wide screen the five bays start open, each header saying so');
+  const fine = await pg.evaluate(() => ({ text: document.querySelector('.fine').textContent.trim(), href: (document.querySelector('.fine a') || {}).getAttribute && document.querySelector('.fine a').getAttribute('href'), target: !!document.getElementById('about-programs') }));
+  check(/^It stays in this browser and is sent nowhere; .* NOW PLAYING says YOUR FILE, claiming nothing else: the formats and their limits\.$/.test(fine.text) && fine.href === '#about-programs' && fine.target, `the file door keeps one sentence and a link down to the account of the formats (${fine.text.length} characters)`);
   await pg.fill('#search', '5');
   const narrowed = await pg.evaluate(() => document.querySelectorAll('#rows .row').length);
   check(narrowed > 0 && narrowed < 67, `the search narrows the rows (${narrowed})`);
+  check((await lines()).chain === `${narrowed} of 67 programs · playing Tony: Born for Adventure (C64 demo)`, `FROM THE CHAIN's line counts the narrowed rows (${(await lines()).chain})`);
   await pg.click('#rows .row[data-work="chamber"][data-token="5"] button.load');
   const running = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /The Chamber · 5/.test(document.getElementById('now').textContent)), 90000, 500);
   const stateText = await pg.evaluate(() => document.getElementById('state').textContent);
   check(!!running, `LOAD on Chamber token 5 reaches RUNNING (${stateText})`);
   const now = await pg.evaluate(() => document.getElementById('now').textContent);
   check(/PINNED/.test(now) && /CONTRACT-CONSISTENT/.test(now) && /block 4,999/.test(now) && /PURE/.test(now), 'NOW PLAYING: the program PINNED, the stamp CONTRACT-CONSISTENT at the block, the mode PURE');
+  const lines5 = await lines();
+  check(/^The Chamber · 5\b.* · CONTRACT-CONSISTENT · PURE$/.test(lines5.now) && /^\d+ of 67 programs · playing The Chamber · 5\b/.test(lines5.chain), `the lines carry the weakest word of the bytes' checks, never more: ${lines5.now} | ${lines5.chain}`);
   // NOW PLAYING in two groups, and its links: every one opens in a new tab and goes to the contract, the token, the block or the emulator's parts on the explorer
   const groups = await pg.evaluate(() => [...document.querySelectorAll('#now .grp')].map((g) => g.textContent).join('|'));
   check(groups === 'THE PROGRAM|THE MACHINE', `NOW PLAYING is two groups, the program and the machine (${groups})`);
@@ -157,6 +172,8 @@ try {
   await pg.setInputFiles('#file', { name: 'hello.prg', mimeType: 'application/octet-stream', buffer: PRG_B });
   const fileRan = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent) && /YOUR FILE/.test(document.getElementById('now').textContent)), 30000, 500);
   check(!!fileRan, 'a .prg of your own runs: NOW PLAYING names the file and says YOUR FILE');
+  const linesF = await lines();
+  check(linesF.now === 'hello.prg · YOUR FILE · PURE' && linesF.file === 'hello.prg · YOUR FILE' && /^\d+ of 67 programs$/.test(linesF.chain), `a file's lines: YOUR FILE, and the chain's line names no program (${linesF.now} | ${linesF.file} | ${linesF.chain})`);
   const wroteB = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 2)), 10000);
   check(!!wroteB, 'the file ran on the machine (screen code 2 at $0400)');
   const provFile = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
@@ -179,6 +196,7 @@ try {
     check(!!said && said.includes(code) && words.test(said), `${name} is refused ${code} in words: ${said ? said.trim().slice(0, 120) : 'nothing said'}`);
   }
   check(await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 'a refused file leaves the running program alone');
+  check((await lines()).file === 'cart.crt · REFUSED' && (await lines()).now === 'hello.prg · YOUR FILE · PURE', `the door's line says what was refused while NOW PLAYING's keeps what runs (${(await lines()).file})`);
   check(requests.length === requestsBefore, `the refusals made no request either (${requests.length - requestsBefore})`);
   // the disk door: a .d64 is opened and its directory listed, nothing run; a program picked from it runs, said as YOUR FILE
   // with the drive's absence said; the provenance names the disk and the entry; a paste runs the same way, hex or base64,
@@ -191,9 +209,11 @@ try {
   const listed = await until(() => pg.evaluate(() => (document.getElementById('door').dataset.state === 'ok' && !document.getElementById('disk').hidden ? { door: document.getElementById('door-text').textContent, name: document.getElementById('disk-name').textContent, count: document.getElementById('disk-count').textContent, rows: [...document.querySelectorAll('#disk-rows .row')].map((r) => r.querySelector('.title').textContent + '|' + r.querySelector('.sub').textContent + '|' + !!r.querySelector('button')) } : null)), 10000, 100);
   check(!!listed && listed.door === 'games.d64 · CHAMBER TEST · 3 programs · pick one below' && listed.name === 'CHAMBER TEST · C6 2A' && listed.count === 'games.d64 · 35 tracks' && listed.rows.join(';') === 'FOUR|PRG · 1 block|true;NOTES|SEQ · 1 block · not a program|false;LONG|PRG · 3 blocks|true;MULTI|PRG · 1 block · loads more from the disk: stops at the drive here|true', `a .d64 is opened and its directory listed, LOAD on each program, a loader said to be one (${listed ? listed.rows.join('; ') : 'not listed'})`);
   check(await pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /hello\.prg/.test(document.getElementById('now').textContent)), 'opening a disk runs nothing: the program playing plays on');
+  check((await lines()).file === 'games.d64 · 3 programs · pick one', `the door's line names the open disk and its programs (${(await lines()).file})`);
   await pg.click('#disk-rows .row[data-index="0"] button.load');
   const diskRan = await until(() => pg.evaluate(() => (document.getElementById('state').dataset.phase === 'running' && /FOUR from games\.d64/.test(document.getElementById('now').textContent) ? document.getElementById('now').textContent : null)), 30000, 500);
   check(!!diskRan && /YOUR FILE/.test(diskRan) && /the machine has no drive: a program that loads more from the disk stops there/.test(diskRan), 'a program picked from the disk runs, said as YOUR FILE, the drive\'s absence said in NOW PLAYING');
+  check((await lines()).file === 'FOUR from games.d64 · YOUR FILE', `the door's line names the disk's program running (${(await lines()).file})`);
   check(!!(await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 4)), 10000)), 'the disk\'s program ran on the machine (screen code 4 at $0400)');
   const provDisk = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
   check(provDisk && provDisk.source === 'disk' && provDisk.file.name === 'games.d64' && provDisk.file.size === 174848 && provDisk.file.disk.name === 'CHAMBER TEST' && provDisk.file.disk.id === 'C6' && provDisk.file.disk.entry.name === 'FOUR' && provDisk.file.disk.entry.type === 'PRG' && provDisk.file.disk.entry.blocks === 1 && provDisk.program.status === 'YOUR FILE' && provDisk.program.bytes === 20 && provDisk.node === null && provDisk.pasted === null,
@@ -274,6 +294,10 @@ try {
   await pg.selectOption('#input-mode', 'joystick1');
   const portOne = await until(() => pg.evaluate(() => (window.machinePage.input === 'joystick1' && /INPUT\s*joystick in port 1 · by the switch/.test(document.getElementById('now').textContent) ? true : null)), 5000, 100);
   check(!!portOne && (await pg.evaluate(() => document.getElementById('input-mode').options.length === 4 && [...document.getElementById('input-mode').options].map((o) => o.value).join() === 'joystick,joystick1,joysticks,keyboard')), 'INPUT offers port 2, port 1, both ports and the keyboard, and NOW PLAYING says which port the stick feeds');
+  check(/^joystick 1 · AUTO · bare · sound on$/.test((await lines()).keys), `THE KEYS' line follows the switch (${(await lines()).keys})`);
+  await pg.click('#sound');
+  check(/· sound off$/.test((await lines()).keys) && (await pg.evaluate(() => document.getElementById('sound').textContent === 'SOUND OFF')), `and the sound (${(await lines()).keys})`);
+  await pg.click('#sound');
   await pg.selectOption('#input-mode', 'joystick');
   await until(() => pg.evaluate(() => window.machinePage.input === 'joystick'), 5000, 100);
   const stub = (...code) => Buffer.from([0x01, 0x08, 0x0b, 0x08, 0x0a, 0x00, 0x9e, 0x32, 0x30, 0x36, 0x31, 0x00, 0x00, 0x00, ...code]);
@@ -312,6 +336,7 @@ try {
   check(fwLinks.links.join() === `contract=https://etherscan.io/address/${fwLinks.root},repository=https://github.com/DeMEdPit/openroms-ethereum-pressing-1`, `the firmware on links to the pressing's contract and repository (${fwLinks.links.map((l) => l.split('=')[0]).join(', ')})`);
   check(!!(await until(screenHasReady, 15000, 500)), 'the OpenROMs banner and READY on the screen, no reset needed');
   check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard'), 'the keyboard is the input under the firmware');
+  check((await lines()).keys === 'keyboard · ON · sound on' && (await lines()).now === 'OpenROMs pressing 1 at READY · nothing playing', `the lines under the firmware, READY and nothing playing (${(await lines()).keys} | ${(await lines()).now})`);
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
   const underFw = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /FIRMWARE.*on · OpenROMs pressing 1 \(contract · repository\) · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 30000, 500);
@@ -331,6 +356,30 @@ try {
   await pg.click('#reset');
   const reset = await until(() => pg.evaluate(() => document.getElementById('state').textContent === 'RESET'), 5000);
   check(!!reset, 'RESET');
+  check((await lines()).now === 'the machine is on and bare · nothing playing', `NOW PLAYING's line after RESET (${(await lines()).now})`);
+  // the log folds a line said again into one with a count, so a repeated report is read once
+  await pg.evaluate(() => { for (let i = 0; i < 3; i++) window.machinePage.say('the same thing, said again'); });
+  const folded = await pg.evaluate(() => ({ last: document.querySelector('#log li:last-child').textContent, count: [...document.querySelectorAll('#log li')].filter((l) => /the same thing/.test(l.textContent)).length, report: window.machinePage.report().split('\n').filter((l) => /the same thing/.test(l)), line: window.machinePage.bays.log.line }));
+  check(folded.last === 'the same thing, said again ×3' && folded.count === 1 && folded.report.length === 1 && /the same thing, said again ×3$/.test(folded.report[0]) && /^\d+ lines · the same thing, said again ×3$/.test(folded.line), `a line said three times is one line with a count, in the panel, the copied log and the header (${folded.line})`);
+  check(await pg.evaluate(() => window.machinePage.report().split('\n').filter((l) => /sound: waits for your first tap/.test(l)).length <= 1), 'the sound\'s waiting is said at most once');
+  // a bay folds: the header is the whole button, the body one row that grows and shrinks in 240ms, the mark's upright collapsing with it
+  const motion = await pg.evaluate(() => ({ body: getComputedStyle(document.querySelector('#bay-keys > .bb')).transitionDuration, mark: getComputedStyle(document.querySelector('#bay-keys .bm'), '::after').transitionDuration, marker: getComputedStyle(document.querySelector('#bay-keys > summary')).listStyleType, markOpen: getComputedStyle(document.querySelector('#bay-keys .bm'), '::after').transform }));
+  check(/^0\.24s/.test(motion.body) && motion.mark === '0.24s' && motion.marker === 'none' && motion.markOpen === 'matrix(1, 0, 0, 0, 0, 0)', `the body and the mark move together in 240ms; open, the mark's upright is collapsed (${motion.body}; ${motion.markOpen})`);
+  const keysLineBefore = (await lines()).keys;
+  await pg.click('#bay-keys > summary');
+  const closing = await pg.evaluate(() => { const b = window.machinePage.bays.keys; return { moving: b.moving, element: b.element, open: b.open }; });
+  const closed = await until(() => pg.evaluate(() => { const b = window.machinePage.bays.keys; return !b.open && !b.element && !b.moving ? true : null; }), 3000, 50);
+  const afterClose = await pg.evaluate(() => ({ hidden: document.querySelector('#bay-keys > .bb').getBoundingClientRect().height === 0 && !document.getElementById('input-mode').checkVisibility(), aria: document.querySelector('#bay-keys > summary').getAttribute('aria-expanded'), mark: getComputedStyle(document.querySelector('#bay-keys .bm'), '::after').transform, line: window.machinePage.bays.keys.line }));
+  check(closing.moving && closing.element && !closing.open && !!closed && afterClose.hidden && afterClose.aria === 'false' && afterClose.mark === 'none' && afterClose.line === keysLineBefore && /^joystick 2 · OFF · sound on$/.test(afterClose.line), `THE KEYS closes on its header: the row shrinks first, the element closes when it has, the controls gone, the header saying closed with its line intact (${afterClose.line})`);
+  await pg.click('#bay-keys > summary');
+  const reopened = await until(() => pg.evaluate(() => { const b = window.machinePage.bays.keys; return b.open && b.element && !b.moving ? true : null; }), 3000, 50);
+  check(!!reopened && (await pg.evaluate(() => document.getElementById('input-mode').checkVisibility() && document.querySelector('#bay-keys > .bb').getBoundingClientRect().height > 100 && document.querySelector('#bay-keys > summary').getAttribute('aria-expanded') === 'true')), 'and opens again on its header, the controls back');
+  await pg.click('#bay-log > summary');
+  check(await pg.evaluate(() => { const b = window.machinePage.bays.log; return b.open && b.element && !b.moving && getComputedStyle(document.querySelector('#bay-log .bm')).display === 'none'; }), 'on a wide screen the log is the stage\'s: its header is not a button and it does not fold');
+  const fold = await pg.evaluate(() => ({ open: document.getElementById('how-auto').open, body: !!document.querySelector('#how-auto > .bb > .bi > p') }));
+  await pg.click('#how-auto > summary');
+  const foldOpen = await until(() => pg.evaluate(() => (document.getElementById('how-auto').open && document.getElementById('how-auto').classList.contains('is-open') && !document.getElementById('how-auto').classList.contains('moving') ? true : null)), 3000, 50);
+  check(!fold.open && fold.body && !!foldOpen && (await pg.evaluate(() => document.querySelector('#how-auto > summary').getAttribute('aria-expanded') === 'true')), 'HOW AUTO DECIDES folds the same way, its body one row');
   check(pageErrors.length === 0, `no page errors (${pageErrors.length})${pageErrors.length ? ': ' + pageErrors.join(' | ').slice(0, 300) : ''}`);
   const ce = noiseFree(consoleErrors);
   check(ce.length === 0, `no console errors (${ce.length})${ce.length ? ': ' + ce.join(' | ').slice(0, 400) : ''}`);
@@ -364,6 +413,10 @@ try {
     pw.on('pageerror', (e) => errs.push(String(e)));
     await pw.goto(`${A.base}/machine/`, { waitUntil: 'load' });
     await until(() => pw.evaluate(() => document.querySelectorAll('#rows .row').length > 0), 10000);
+    const bays0 = await pw.evaluate(() => { const b = window.machinePage.bays; const top = (sel) => document.querySelector(sel).getBoundingClientRect().top; const order = ['#bay-now', '#bay-chain', '#bay-file', '#bay-keys', '#bay-log', '.leave'].map(top); return { closed: Object.values(b).every((x) => !x.open && !x.element), open: Object.values(b).every((x) => x.open && x.element), aria: [...document.querySelectorAll('details.bay > summary')].map((s) => s.getAttribute('aria-expanded')).join(), ordered: order.every((t, i) => i === 0 || t > order[i - 1]), heights: ['now', 'chain', 'file', 'keys', 'log'].map((k) => Math.round(document.getElementById('bay-' + k).getBoundingClientRect().height)) }; });
+    if (w < 1140) check(bays0.closed && bays0.aria === 'false,false,false,false,false' && bays0.ordered && bays0.heights.every((x) => x > 40 && x < 80), `at ${w} wide: the five bays start closed, two lines each (${bays0.heights.join(', ')}px), NOW PLAYING first under the pad, then the list, the file door, the keys, the log and the way out`);
+    else check(bays0.open && bays0.aria === 'true,true,true,true,true', `at ${w} wide: the five bays start open`);
+    if (w < 1140) await pw.evaluate(() => { for (const k of ['now', 'chain', 'file', 'keys', 'log']) window.machinePage.bay(k, true); });   // opened, instantly, for the shape checks below
     const frame = await pw.evaluate(() => { const f = document.getElementById('frame').getBoundingClientRect(); return { w: Math.round(f.width), h: Math.round(f.height), col: Math.round(document.querySelector('.machine').getBoundingClientRect().width), overflow: document.documentElement.scrollWidth > window.innerWidth, scrollY: window.scrollY }; });
     check(frame.w > 200 && (t.frame === null ? frame.w === frame.col : frame.w === t.frame) && !frame.overflow && noiseFree(errs).length === 0, `at ${w}x${h}: the frame ${frame.w}×${frame.h}${t.frame ? ` (${t.frame} wanted at this height)` : ` (the column's ${frame.col}, in one column)`}, no horizontal overflow, no errors (${noiseFree(errs).length})`);
     check(frame.scrollY === 0, `at ${w} wide: the page stays at the top on load (scrollY ${frame.scrollY})`);
@@ -397,7 +450,7 @@ try {
                sticky: getComputedStyle(document.querySelector(sel)).position, hint: !!document.querySelector('.stage p.hint') };
     }, stickyEl);
     if (w >= 1140) check(Math.abs(lay.log.left - lay.frame.left) < 2 && lay.log.top >= lay.frame.bottom + 50 && lay.now.left > lay.frame.right && lay.sticky === 'sticky', `at ${w}x${h}: the log under the machine, NOW PLAYING beside it, the stage sticky (${lay.sticky})`);
-    else check(lay.rows < lay.door && lay.door < lay.now.top && lay.now.top < lay.log.top && lay.log.top < lay.fw && lay.fw < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: the chain, a file, NOW PLAYING, the log, the keys, the way out`);
+    else check(lay.now.top < lay.rows && lay.rows < lay.door && lay.door < lay.fw && lay.fw < lay.log.top && lay.log.top < lay.leave && lay.sticky !== 'sticky', `at ${w} wide: one column in the phone's order: NOW PLAYING, the chain, a file, the keys, the log, the way out`);
     check(!lay.hint, `at ${w} wide: no sentence under the machine; its facts are in THE KEYS`);
     const head = await pw.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); const l = document.querySelector('.lede').getBoundingClientRect(); return { h1: parseFloat(getComputedStyle(document.querySelector('h1')).fontSize), frameTop: document.getElementById('frame').getBoundingClientRect().top, lede: l.height, ledeW: l.width, main: document.querySelector('main').getBoundingClientRect().width, column: document.querySelector('.column').getBoundingClientRect().width }; });
     check(head.h1 <= 42 && head.lede < (w < 1140 ? 160 : 130) && head.ledeW <= Math.min(768, w) && head.frameTop < 300, `at ${w}x${h}: a compact header, the title ${head.h1}px, the lede a block ${Math.round(head.ledeW)} wide and ${Math.round(head.lede)}px tall, the machine ${Math.round(head.frameTop)}px from the top`);
@@ -408,8 +461,8 @@ try {
       check(scrolled.frame > 8 && scrolled.frame < 24 && scrolled.now < scrolled.before - 400, `at ${w}x${h}: scrolled 700px, the machine stays at the top (${Math.round(scrolled.frame)}px) while the column moves (${Math.round(scrolled.before)} to ${Math.round(scrolled.now)})`);
       const together = await pw.evaluate(async () => { const wait = () => new Promise((r) => setTimeout(r, 150)); window.scrollTo({ top: 700, behavior: 'instant' }); await wait(); const f = document.getElementById('frame').getBoundingClientRect(), l = document.querySelector('.logbox').getBoundingClientRect(); const out = { logTop: l.top, logBottom: l.bottom, frameBottom: f.bottom }; window.scrollTo({ top: 0, behavior: 'instant' }); await wait(); return out; });
       check(together.logTop > together.frameBottom + 40 && together.logBottom <= h + 1, `at ${w}x${h}: scrolled, the log stays with the machine (its top ${Math.round(together.logTop)} below the frame's bottom ${Math.round(together.frameBottom)}) and fits the window (its bottom ${Math.round(together.logBottom)} of ${h})`);
-      const buttons = await pw.evaluate(() => { const lab = document.querySelector('.logbox .lab').getBoundingClientRect(), t = document.getElementById('copy-log').getBoundingClientRect(), box = document.querySelector('.logbox').getBoundingClientRect(), log = document.getElementById('log').getBoundingClientRect(); return { inLabel: t.top >= lab.top - 6 && t.bottom <= lab.bottom + 30 && t.right <= box.right, noteHidden: getComputedStyle(document.querySelector('.logbox .lab .n')).display === 'none', clear: log.top - t.bottom }; });
-      check(buttons.inLabel && buttons.noteHidden && buttons.clear >= 3, `at ${w}x${h}: the COPY buttons sit in the log's label row, inside the panel, clear of the log's top rule by ${buttons.clear.toFixed(1)}px`);
+      const buttons = await pw.evaluate(() => { const lab = document.querySelector('.logbox .lab').getBoundingClientRect(), t = document.getElementById('copy-log').getBoundingClientRect(), left = document.getElementById('copy').getBoundingClientRect(), box = document.querySelector('.logbox').getBoundingClientRect(), log = document.getElementById('log').getBoundingClientRect(), line = document.querySelector('#sum-log .e').getBoundingClientRect(); return { inLabel: t.top >= lab.top - 6 && t.bottom <= lab.bottom + 30 && t.right <= box.right, lineBeside: Math.abs((line.top + line.bottom) / 2 - (lab.top + lab.bottom) / 2) < 4 && line.right <= left.left - 8 && line.width > 40, clear: log.top - t.bottom }; });
+      check(buttons.inLabel && buttons.lineBeside && buttons.clear >= 3, `at ${w}x${h}: the COPY buttons sit in the log's label row, inside the panel, clear of the log's top rule by ${buttons.clear.toFixed(1)}px, the log's line beside its name and clear of them`);
     }
     // the panels keep their shape: the list and the log are their full size before anything arrives, and NOW PLAYING
     // shows the same rows, dashes or facts, so nothing below it moves when a program lands or leaves
@@ -429,8 +482,11 @@ try {
   const tRunning = await until(() => pt.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
   const shown = await pt.evaluate(() => matchMedia('(pointer:coarse)').matches && getComputedStyle(document.getElementById('touch')).display === 'grid');
   check(!!tRunning && shown, 'on a coarse pointer the ring and FIRE show, the machine running');
+  const phoneHead = await pt.evaluate(() => { const b = window.machinePage.bays; const s = document.getElementById('sum-now').getBoundingClientRect(), e = document.querySelector('#sum-now .e'), last = document.querySelector('#sum-now .f:last-child').getBoundingClientRect(); return { closed: Object.values(b).every((x) => !x.open && !x.element), oneLine: s.height < 24, cut: e.scrollWidth > e.clientWidth, trustShown: last.right <= s.right + 0.5 && last.width > 60, line: b.now.line, keys: b.keys.line, state: document.getElementById('state').getBoundingClientRect().right <= document.querySelector('#bay-now > summary').getBoundingClientRect().right }; });
+  check(phoneHead.closed && phoneHead.oneLine && phoneHead.cut && phoneHead.trustShown && phoneHead.line === 'Tony: Born for Adventure (C64 demo) · PINNED · PURE' && phoneHead.keys === 'joystick 2 · AUTO · bare · sound on' && phoneHead.state, `on the phone the bays are closed, each line one line tall, the name cut short and the trust words whole (${phoneHead.line})`);
+  await pt.evaluate(() => window.machinePage.bay('keys', true));
   check(await pt.evaluate(() => getComputedStyle(document.querySelector('dt.touch-only')).display === 'block' && getComputedStyle(document.querySelector('dd.touch-only')).display === 'block' && getComputedStyle(document.querySelector('span.touch-only')).display === 'inline'), 'on a coarse pointer DIAGONALS and the phone note show in THE KEYS');
-  const pad = await pt.evaluate(() => { const r = (sel) => document.querySelector(sel).getBoundingClientRect(); const f = r('#frame'), ring = r('#ring'), fire = r('#touch .fire'), chain = r('.chain'), link = r('#link'); return { above: ring.top - f.bottom, below: chain.top - ring.bottom, level: Math.abs((ring.top + ring.bottom) / 2 - (fire.top + fire.bottom) / 2), badgeClear: fire.top - link.bottom }; });
+  const pad = await pt.evaluate(() => { const r = (sel) => document.querySelector(sel).getBoundingClientRect(); const f = r('#frame'), ring = r('#ring'), fire = r('#touch .fire'), first = r('#bay-now'), link = r('#link'); return { above: ring.top - f.bottom, below: first.top - ring.bottom, level: Math.abs((ring.top + ring.bottom) / 2 - (fire.top + fire.bottom) / 2), badgeClear: fire.top - link.bottom }; });
   check(Math.abs(pad.above - 25) < 1 && Math.abs(pad.below - 25) < 1 && pad.level < 1 && pad.badgeClear > 0, `the pad has the same air above and below the ring (${Math.round(pad.above)} and ${Math.round(pad.below)}), FIRE level with it, the badge clear of FIRE`);
   // the ring is brought fully into view before it is pressed: the strip above it pushed its lower half past a phone's viewport
   // the site scrolls smoothly, so the scroll is asked for instantly and the rect read after it has settled
@@ -465,8 +521,21 @@ try {
   await pt.evaluate(() => document.querySelector('#touch .fire').dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, pointerType: 'touch', isPrimary: false, bubbles: true })));
   await pt.mouse.up(); await settle();
   check(await held() === 0 && await port() === 127 && !(await pt.evaluate(() => document.querySelector('#touch .fire').classList.contains('down'))), `both lifted: the port idle (${await port()})`);
+  // a link into a closed bay opens it, and the fold inside it too, and the page goes there
+  await pt.evaluate(() => { window.machinePage.bay('keys', false); location.hash = '#how-auto'; });
+  const revealed = await until(() => pt.evaluate(() => { const k = window.machinePage.bays.keys, h = document.getElementById('how-auto'); return k.open && k.element && h.open && h.classList.contains('is-open') ? true : null; }), 3000, 50);
+  await new Promise((r) => setTimeout(r, 700));   // the site scrolls smoothly
+  const seen = await pt.evaluate(() => { const r = document.getElementById('how-auto').getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; });
+  check(!!revealed && seen, 'a link into a closed bay opens the bay and the fold it names, and the page goes there');
   check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
   await pt.close(); await tc.close();
+  // under reduced motion the bays open and close at once
+  const pm = await b.newPage({ viewport: { width: 1180, height: 900 } });
+  await pm.emulateMedia({ reducedMotion: 'reduce' });
+  await pm.goto(`${A.base}/machine/`, { waitUntil: 'load' });
+  const still = await pm.evaluate(() => { const d = document.getElementById('bay-keys'); const before = getComputedStyle(d.querySelector(':scope > .bb')).transitionDuration; d.querySelector(':scope > summary').click(); const b = window.machinePage.bays.keys; return { before, moving: b.moving, element: b.element, open: b.open }; });
+  check(/^0s/.test(still.before) && !still.moving && !still.element && !still.open, `under reduced motion nothing moves: the bay closes at once (${still.before})`);
+  await pm.close();
   A.close();
 
   // B. a program altered outside its stamp is refused and never runs
