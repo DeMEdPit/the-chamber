@@ -760,7 +760,8 @@ function setBay(d, open, instant) {
   } else if (open) {
     d.open = true;                           // rendered at 0fr first, so the row has somewhere to grow from
     d.classList.add('moving');
-    requestAnimationFrame(() => requestAnimationFrame(() => { if (d.classList.contains('moving')) d.classList.add('is-open'); }));
+    void body.offsetHeight;                  // laid out at 0fr before the change, so the row grows from it; in the same task, so no settle,
+    d.classList.add('is-open');              // however late or early, can find the bay marked moving and not yet open (it did, on a phone under load)
   } else {
     d.classList.add('moving');
     d.classList.remove('is-open');           // the row shrinks; the element closes when the shrink has ended
@@ -773,7 +774,7 @@ function setBay(d, open, instant) {
 }
 function settleBay(d) {
   d.classList.remove('moving');
-  if (!bayOpen(d)) d.open = false;
+  d.open = bayOpen(d);                       // the class is the intent, set at the tap; the element follows it, whenever the settle comes
 }
 for (const d of document.querySelectorAll('details.bay, details.fold')) {
   const s = d.querySelector(':scope > summary'), body = d.querySelector(':scope > .bb');
@@ -831,8 +832,8 @@ function bayLines() {
   else if (disk) put('file', '', disk.file.name, ` · ${programs} program${programs === 1 ? '' : 's'} · pick one`);
   else put('file', '.prg · .d64 · .crt', '', '');
   put('controls', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
-  const stick = inputMode === 'keyboard' ? 'no stick' : inputMode === 'joysticks' ? 'sticks in both ports' : `stick in port ${joyPort()}`;
-  put('ports', '', `${stick} · ${cartridgeIn ? 'cartridge in' : 'no cartridge'} · ${firmwareOn ? 'pressing 1 in the sockets' : 'sockets empty'}`, '');   // no trust word here, so the whole line slides on a phone
+  const stick = inputMode === 'keyboard' ? 'no stick' : inputMode === 'joysticks' ? 'both sticks' : `stick in port ${joyPort()}`;
+  put('ports', '', `${stick} · ${cartridgeIn ? 'cartridge in' : 'no cartridge'} · ${firmwareOn ? 'OpenROMs' : 'bare'}`, '');   // short enough for a phone whole; no trust word here, so all of it slides when it is cut
   portRows();
   const last = els.log.lastElementChild;
   put('log', '', last ? last.textContent : 'nothing yet', ` · ${fullLog.length} line${fullLog.length === 1 ? '' : 's'}`);   // the last thing said first, the count after

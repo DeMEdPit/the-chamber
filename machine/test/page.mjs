@@ -87,7 +87,7 @@ try {
   // the bays: every panel but the way out folds, its header the button and one live line, what is true now in the page's own words
   const lines = () => pg.evaluate(() => Object.fromEntries(Object.entries(window.machinePage.bays).map(([k, v]) => [k, v.line])));
   const lines0 = await lines();
-  check(lines0.now === 'Tony: Born for Adventure (C64 demo) · PINNED · PURE' && lines0.chain === '67 programs · playing Tony: Born for Adventure (C64 demo)' && lines0.file === '.prg · .d64 · .crt' && lines0.controls === 'joystick 2 · sound on' && lines0.ports === 'stick in port 2 · no cartridge · sockets empty' && /^running Tony: Born for Adventure \(C64 demo\) · \d+ lines$/.test(lines0.log),
+  check(lines0.now === 'Tony: Born for Adventure (C64 demo) · PINNED · PURE' && lines0.chain === '67 programs · playing Tony: Born for Adventure (C64 demo)' && lines0.file === '.prg · .d64 · .crt' && lines0.controls === 'joystick 2 · sound on' && lines0.ports === 'stick in port 2 · no cartridge · bare' && /^running Tony: Born for Adventure \(C64 demo\) · \d+ lines$/.test(lines0.log),
         `every bay's header line says what is true now: ${Object.values(lines0).join(' | ')}`);
   // THE PORTS: the machine's sockets, drawn from ports.json (one row a port, in its groups, the switch that governs a
   // socket in that socket's group), each row's live text what this page has in it now; closed by default at every width
@@ -273,8 +273,8 @@ try {
   const crtWrote = await until(() => pg.evaluate(() => window.machinePage.machine.request('peek', { addr: 1024 }).then((r) => r.value === 3)), 15000);
   check(!!crtWrote && (await pg.evaluate(() => window.machinePage.cartridgeIn === true && window.machinePage.machine.gateMark === undefined)), 'the cartridge booted on a machine of its own (C at $0400)');
   const portsCart = await pg.evaluate(() => ({ rows: window.machinePage.ports, line: window.machinePage.bays.ports.line, input: window.machinePage.input }));
-  const stickWord = portsCart.input === 'keyboard' ? 'no stick' : portsCart.input === 'joysticks' ? 'sticks in both ports' : `stick in port ${portsCart.input === 'joystick1' ? 1 : 2}`;
-  check(portsCart.rows.cartridge === 'PROBE 16K · Normal · for the life of this machine' && portsCart.line === `${stickWord} · cartridge in · sockets empty`, `THE PORTS shows the cartridge in its port (${portsCart.rows.cartridge}; ${portsCart.line})`);
+  const stickWord = portsCart.input === 'keyboard' ? 'no stick' : portsCart.input === 'joysticks' ? 'both sticks' : `stick in port ${portsCart.input === 'joystick1' ? 1 : 2}`;
+  check(portsCart.rows.cartridge === 'PROBE 16K · Normal · for the life of this machine' && portsCart.line === `${stickWord} · cartridge in · bare`, `THE PORTS shows the cartridge in its port (${portsCart.rows.cartridge}; ${portsCart.line})`);
   const provCart = JSON.parse(await pg.evaluate(() => document.getElementById('provenance-json').value) || 'null');
   check(provCart && provCart.source === 'cartridge' && provCart.cartridge.typeName === 'Normal' && provCart.cartridge.chips.length === 1 && provCart.cartridge.chips[0].size === 16384 && provCart.program.status === 'YOUR FILE' && provCart.program.load === null && provCart.node === null, 'the provenance names the cartridge and no chain');
   await pg.click('#reset');
@@ -317,7 +317,7 @@ try {
   check(!!portOne && (await pg.evaluate(() => document.getElementById('input-mode').options.length === 4 && [...document.getElementById('input-mode').options].map((o) => o.value).join() === 'joystick,joystick1,joysticks,keyboard')), 'INPUT offers port 2, port 1, both ports and the keyboard, and NOW PLAYING says which port the stick feeds');
   check(/^joystick 1 · sound on$/.test((await lines()).controls), `THE CONTROLS' line follows the switch (${(await lines()).controls})`);
   const portsOne = await pg.evaluate(() => ({ line: window.machinePage.bays.ports.line, rows: window.machinePage.ports }));
-  check(portsOne.line === 'stick in port 1 · no cartridge · sockets empty' && portsOne.rows.port1 === 'your stick' && portsOne.rows.port2 === 'empty', `and THE PORTS moves the stick to port 1 (${portsOne.line}; port 1 ${portsOne.rows.port1}, port 2 ${portsOne.rows.port2})`);
+  check(portsOne.line === 'stick in port 1 · no cartridge · bare' && portsOne.rows.port1 === 'your stick' && portsOne.rows.port2 === 'empty', `and THE PORTS moves the stick to port 1 (${portsOne.line}; port 1 ${portsOne.rows.port1}, port 2 ${portsOne.rows.port2})`);
   await pg.click('#sound');
   check(/· sound off$/.test((await lines()).controls) && (await pg.evaluate(() => document.getElementById('sound').textContent === 'SOUND OFF')), `and the sound (${(await lines()).controls})`);
   await pg.click('#sound');
@@ -361,7 +361,7 @@ try {
   check(await pg.evaluate(() => window.machinePage.input === 'keyboard' && document.getElementById('input-mode').value === 'keyboard'), 'the keyboard is the input under the firmware');
   check((await lines()).controls === 'keyboard · sound on' && (await lines()).now === 'OpenROMs pressing 1 at READY · nothing playing', `the lines under the firmware, READY and nothing playing (${(await lines()).controls} | ${(await lines()).now})`);
   const portsOn = await pg.evaluate(() => ({ line: window.machinePage.bays.ports.line, rows: window.machinePage.ports }));
-  check(portsOn.line === 'no stick · no cartridge · pressing 1 in the sockets' && portsOn.rows.sockets === 'OpenROMs pressing 1 · PINNED' && portsOn.rows.port1 === 'empty' && portsOn.rows.port2 === 'empty', `THE PORTS under the firmware: the pressing in the sockets, held to its pins, no stick (${portsOn.line}; ${portsOn.rows.sockets})`);
+  check(portsOn.line === 'no stick · no cartridge · OpenROMs' && portsOn.rows.sockets === 'OpenROMs pressing 1 · PINNED' && portsOn.rows.port1 === 'empty' && portsOn.rows.port2 === 'empty', `THE PORTS under the firmware: the pressing in the sockets, held to its pins, no stick (${portsOn.line}; ${portsOn.rows.sockets})`);
   await pg.fill('#search', 'tony');
   await pg.click('#rows .row[data-work="tony"] button.load');
   const underFw = await until(() => pg.evaluate(() => document.getElementById('state').dataset.phase === 'running' && /FIRMWARE.*on · OpenROMs pressing 1 \(contract · repository\) · PINNED · from ethereum/.test(document.getElementById('now').textContent)), 30000, 500);
@@ -397,7 +397,8 @@ try {
   await until(() => pg.evaluate(() => { const bm = document.querySelector('#bay-controls .bm'); const m = new DOMMatrixReadOnly(getComputedStyle(bm, '::after').transform), w = new DOMMatrixReadOnly(getComputedStyle(bm).transform); return Math.abs(m.a - 1) < 0.01 && Math.abs(m.b) < 0.01 && Math.abs(w.a - 1) < 0.01 && Math.abs(w.b) < 0.01 ? true : null; }), 1500, 30);   // the mark turns back on the drawer's clock
   const afterClose = await pg.evaluate(() => ({ hidden: document.querySelector('#bay-controls > .bb').getBoundingClientRect().height === 0 && !document.getElementById('reset').checkVisibility(), aria: document.querySelector('#bay-controls > summary').getAttribute('aria-expanded'), mark: getComputedStyle(document.querySelector('#bay-controls .bm'), '::after').transform, line: window.machinePage.bays.controls.line }));
   check(closing.moving && closing.element && !closing.open && !!closed && afterClose.hidden && afterClose.aria === 'false' && afterClose.mark === 'none' && afterClose.line === controlsLineBefore && /^joystick 2 · sound on$/.test(afterClose.line), `THE CONTROLS closes on its header: the row shrinks first, the element closes when it has, the controls gone, the header saying closed with its line intact (${afterClose.line})`);
-  await pg.click('#bay-controls > summary');
+  const atOnce = await pg.evaluate(() => { const d = document.getElementById('bay-controls'); d.querySelector(':scope > summary').click(); return { open: d.open, marked: d.classList.contains('is-open'), moving: d.classList.contains('moving') }; });
+  check(atOnce.open && atOnce.marked && atOnce.moving, 'a tap to open marks the bay open in the same task, before any frame or settle can run');
   const reopened = await until(() => pg.evaluate(() => { const b = window.machinePage.bays.controls; return b.open && b.element && !b.moving ? true : null; }), 3000, 50);
   check(!!reopened && (await pg.evaluate(() => document.getElementById('reset').checkVisibility() && document.querySelector('#bay-controls > .bb').getBoundingClientRect().height > 100 && document.querySelector('#bay-controls > summary').getAttribute('aria-expanded') === 'true')), 'and opens again on its header, the controls back');
   await pg.click('#bay-log > summary');
@@ -561,7 +562,7 @@ try {
   // the readout, the bounce shape: NOW PLAYING's name is cut on the phone, the cut marked by a fade; asked to show it, the text slides
   // left by exactly the hidden width, rests, slides back at the same pace, rests, and goes out again, on a transform of its own span;
   // an open bay glides it home and shows the cut's mark again; closed again, it resumes
-  await pt.evaluate(() => { window.machinePage.bay('controls', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, rewait: 10, hold: 120, back: 60, glide: 40 }); });
+  await pt.evaluate(() => { window.machinePage.bay('controls', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, rewait: 10, hold: 120, back: 60, glide: 40, minLeg: 0 }); });
   await new Promise((r) => setTimeout(r, 250));
   const before = await pt.evaluate(() => { window.machinePage.readout.rest(); const e = document.querySelector('#sum-now .e'); return { ...window.machinePage.readout.state('now'), cut: e.classList.contains('cut'), mask: (getComputedStyle(e).webkitMaskImage || getComputedStyle(e).maskImage) !== 'none' }; });   // every line at rest first
   await pt.evaluate(() => window.machinePage.readout.replay('now'));
@@ -582,6 +583,20 @@ try {
   const once = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading && s.shown ? s : null; }), outMs + 1500, 30);
   check(!!once && once.offset === 0, 'the once shape is one word away: one pass, a quick return, then rest');
   await pt.evaluate(() => { window.machinePage.readout.tune.mode = 'bounce'; window.machinePage.readout.rest(); });
+  // a line whose text changes while it moves glides home and is judged again: it must move again on its own (it stayed
+  // flagged as moving, at rest, until its card was opened: the owner's phone, 2026-09-23)
+  await pt.evaluate(() => { document.getElementById('bay-log').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 40, wait: 120, rewait: 60, hold: 200, glide: 60, stagger: 0, minLeg: 0 }); window.machinePage.readout.rest(); window.machinePage.readout.replay('log'); });
+  const logMoving = await until(() => pt.evaluate(() => { const st = window.machinePage.readout.state('log'); return st.active && st.offset < 0 ? true : null; }), 4000, 50);
+  await pt.evaluate(() => window.machinePage.say('a new line, said while the readout moves'));
+  const logAgain = await until(() => pt.evaluate(() => { const st = window.machinePage.readout.state('log'); return st.active && st.offset < 0 && st.shown ? st : null; }), 4000, 50);
+  check(!!logMoving && !!logAgain, `a line changed while moving glides home and moves again by itself (${logAgain ? 'offset ' + logAgain.offset : 'stuck'})`);
+  // a cut of sixteen pixels or less is left still, the fade marking it; a longer one moves
+  await pt.evaluate(() => { window.machinePage.bay('ports', false); window.machinePage.bay('controls', false); window.machinePage.readout.rest(); document.getElementById('bay-controls').scrollIntoView({ block: 'center', behavior: 'instant' }); });   // every card closed and in view
+  await pt.setViewportSize({ width: 362, height: 844 });
+  await new Promise((r) => setTimeout(r, 600));
+  const small = await until(() => pt.evaluate(() => { const p = window.machinePage.readout.state('ports'), n = window.machinePage.readout.state('now'); return n.active && p.shown ? { p, n, cut: document.querySelector('#sum-ports .e').classList.contains('cut') } : null; }), 5000, 100);
+  check(!!small && small.p.over > 2 && small.p.over <= 16 && !small.p.active && !small.p.reading && small.cut && small.n.over > 16 && small.n.active, `at 362 wide a cut of ${small ? small.p.over : '?'}px stays still under the fade while a cut of ${small ? small.n.over : '?'}px moves`);
+  await pt.setViewportSize({ width: 390, height: 844 });
   check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
   await pt.close(); await tc.close();
   // under reduced motion the bays open and close at once

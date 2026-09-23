@@ -14,17 +14,24 @@
 // one first, so they drift apart. Nothing ever snaps: a line whose card
 // leaves the view finishes its pass and stops; a card opening or a line
 // changing glides the text home; a resize that only changes the height
-// (a phone's address bar) is ignored. The text moves by a transform on an
+// (a phone's address bar) is ignored. Two floors keep a short cut from
+// twitching (the owner's phone, 2026-09-23): a cut of `minTravel` pixels
+// or less stays still, marked by the fade alone, since the fade already
+// covers that much; and a leg never takes less than `minLeg`, so a short
+// travel is a slow drift, not a jump. The text moves by a transform on an
 // inner span, off the main thread, and the cut is marked by a fade at the
 // edge (the stylesheet's, on the host's `cut` class), so the machine's
 // own work never makes it stutter. The whole text is always there for a
 // screen reader and for anyone who opens the bay. One switch in host.js
 // turns it off and one word picks the shape; this file is its whole body.
-export function createReadout({ narrow, still, closed, mode = 'bounce', speed = 30, wait = 1000, rewait = 300, hold = 900, back = 300, glide = 260, stagger = 700 } = {}) {
-  const tune = { mode, speed, wait, rewait, hold, back, glide, stagger };   // pixels a second; the pauses in milliseconds
+export function createReadout({ narrow, still, closed, mode = 'bounce', speed = 30, wait = 1000, rewait = 300, hold = 900, back = 300, glide = 260, stagger = 700, minTravel = 16, minLeg = 1200 } = {}) {
+  const tune = { mode, speed, wait, rewait, hold, back, glide, stagger, minTravel, minLeg };   // pixels a second; the pauses and the floor in milliseconds; the smallest cut in pixels
   const EASE = 'cubic-bezier(.45,0,.55,1)';   // the same curve out and back: soft at both ends, one pace between
   const shown = new WeakMap();                // el -> the text last shown (the 'once' shape shows each text one time)
-  const timers = new WeakMap();               // el -> the pending timer
+  const judge = new WeakMap();                // el -> the timer that will judge the line (consider)
+  const motion = new WeakMap();               // el -> the timer of the leg or the glide under way; apart from `judge`, so a judgement
+                                              //       scheduled during a glide never cancels the glide's end (it did once, and the line stayed
+                                              //       flagged as moving, at rest, until its card was opened: the owner's phone, 2026-09-23)
   const inView = new WeakSet();               // the bays substantially in view
   const active = new Set();                   // the lines moving now
   const queue = [];                           // 'once': lines waiting their turn
@@ -41,13 +48,11 @@ export function createReadout({ narrow, still, closed, mode = 'bounce', speed = 
   const canRun = (el) => narrow() && !still() && closed(bayOf(el)) && (io ? inView.has(bayOf(el)) : true) && document.visibilityState !== 'hidden';
   const lines = (root) => root.querySelectorAll('.bs .e');
   const place = (el) => [...lines(document)].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).indexOf(el);   // its place down the screen
+  const later = (map, el, fn, ms) => { clearTimeout(map.get(el)); map.set(el, setTimeout(fn, ms)); };
 
   function watch(bay) { if (io) io.observe(bay); else inView.add(bay); }
   /** A line is judged after a pause; the first time, later by its place down the screen, so the lines start out of step. */
-  function schedule(el, ms) {
-    clearTimeout(timers.get(el));
-    timers.set(el, setTimeout(() => consider(el), ms));
-  }
+  function schedule(el, ms) { later(judge, el, () => consider(el), ms); }
   /** The line changed: what was moving glides home, and the new text is judged after the pause, so a line that changes again at once is not chased. */
   function update(el) {
     const first = !shown.has(el);
@@ -55,14 +60,14 @@ export function createReadout({ narrow, still, closed, mode = 'bounce', speed = 
     schedule(el, tune.wait + (first && tune.mode === 'bounce' ? Math.max(0, place(el)) * tune.stagger : 0));
   }
   function consider(el) {
-    if (active.has(el)) return;
+    if (active.has(el)) { schedule(el, tune.glide + 40); return; }   // still gliding home: judged again once it has
     const text = el.textContent;
     if (tune.mode === 'once' && shown.get(el) === text) return;
     if (!canRun(el)) return;
     if (tune.mode === 'once' && active.size) { if (!queue.includes(el)) queue.push(el); return; }   // once: one line at a time
     const over = el.scrollWidth - el.clientWidth;
     shown.set(el, text);
-    if (over <= 2) return;
+    if (over <= tune.minTravel) return;                        // a cut this small is marked by the fade and left still
     run(el, over, text);
   }
   /** Out by exactly the hidden width, rest; then back at the same pace and again ('bounce'), or a quick return and rest ('once'). */
@@ -73,15 +78,16 @@ export function createReadout({ narrow, still, closed, mode = 'bounce', speed = 
     el.classList.add('reading');
     t.style.transform = 'translateX(0px)';
     void t.offsetWidth;                                       // the start lands before the motion begins
-    const ms = (over / tune.speed) * 1000;
-    const slide = (x, then) => { t.style.transition = `transform ${(ms / 1000).toFixed(2)}s ${EASE}`; t.style.transform = `translateX(${x}px)`; timers.set(el, setTimeout(then, ms + tune.hold)); };
+    const ms = Math.max((over / tune.speed) * 1000, tune.minLeg);   // one pace, but never a leg shorter than the floor
+    const slide = (x, then) => { t.style.transition = `transform ${(ms / 1000).toFixed(2)}s ${EASE}`; t.style.transform = `translateX(${x}px)`; later(motion, el, then, ms + tune.hold); };
     const out = () => slide(-over, tune.mode === 'bounce' ? home : quick);
     const home = () => slide(0, again);
     const again = () => { if (tune.mode === 'bounce' && canRun(el) && el.textContent === text) out(); else finish(el); };
-    const quick = () => { t.style.transition = `transform ${tune.back}ms ease`; t.style.transform = 'translateX(0px)'; timers.set(el, setTimeout(() => finish(el), tune.back + 20)); };
+    const quick = () => { t.style.transition = `transform ${tune.back}ms ease`; t.style.transform = 'translateX(0px)'; later(motion, el, () => finish(el), tune.back + 20); };
     out();
   }
   function finish(el) {
+    clearTimeout(motion.get(el));
     const t = inner(el);
     if (t) { t.style.transition = ''; t.style.transform = ''; }
     el.classList.remove('reading');
@@ -90,15 +96,15 @@ export function createReadout({ narrow, still, closed, mode = 'bounce', speed = 
   }
   /** A moving line comes home in a short glide, then rests. */
   function stop(el) {
-    clearTimeout(timers.get(el));
+    clearTimeout(judge.get(el));
     const i = queue.indexOf(el); if (i >= 0) queue.splice(i, 1);
     if (!active.has(el)) return;
     const t = inner(el);
     t.style.transition = `transform ${tune.glide}ms ease`; t.style.transform = 'translateX(0px)';
-    timers.set(el, setTimeout(() => finish(el), tune.glide + 20));
+    later(motion, el, () => finish(el), tune.glide + 20);
   }
   /** At once, with no glide: for a hidden tab. */
-  function reset(el) { clearTimeout(timers.get(el)); const i = queue.indexOf(el); if (i >= 0) queue.splice(i, 1); if (active.has(el)) finish(el); }
+  function reset(el) { clearTimeout(judge.get(el)); const i = queue.indexOf(el); if (i >= 0) queue.splice(i, 1); if (active.has(el)) finish(el); }
   function stopAll(root) { for (const el of lines(root)) stop(el); }
   function resetAll(root) { for (const el of lines(root)) reset(el); }
   /** A bay closed again, or the page came back: its lines are judged again after a short pause. */
