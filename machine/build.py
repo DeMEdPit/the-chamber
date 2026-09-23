@@ -41,7 +41,7 @@ from urllib.parse import urlsplit
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from page import out_root, render, write  # noqa: E402
+from page import esc, out_root, render, write  # noqa: E402
 from registry import RPCS, CONTRACTS  # noqa: E402
 
 HERE = ROOT / "machine"
@@ -259,7 +259,7 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
    taller for the same stage; the label's note gives them the room, and they are shorter there so they clear the log's
    top rule (measured: the row's rule sits 37 pixels under the panel's edge) */
 @media(min-width:1140px){{.logbox{{position:relative}}.bay.logbox>summary{{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"lab sum";cursor:default}}.bay.logbox>summary .bs{{font-size:.7rem;line-height:1.2;padding-right:290px}}.bay.logbox>summary .bm{{display:none}}.logbox>.bb>.bi{{overflow:visible}}.logbox .tools{{position:absolute;top:10px;right:16px;flex-direction:row-reverse}}.logbox .tools .b{{padding:5px 10px}}.logbox .tools #copy{{order:1}}.logbox .tools #copy-log{{order:0}}.logbox .tools .copied{{order:2}}.logbox .log{{margin-bottom:0}}}}   /* read left to right: the name, the line, COPY PROVENANCE, COPY THE LOG */
-.panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:0}}   /* a grid item's minimum is its content's: the firmware switch's longest option made THE CONTROLS, and so the column and the frame, 6px wider than the phone's page */
+.panel{{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:0}}   /* a grid item's minimum is its content's: the firmware switch's longest option made THE PORTS (THE CONTROLS before), and so the column and the frame, 6px wider than the phone's page */
 .panel .lab{{display:flex;justify-content:space-between;gap:12px;font:700 .66rem/1.2 {MONO};letter-spacing:.18em;color:var(--accent);margin:0 0 10px}}
 .panel .lab>span:first-child{{flex:none}}
 /* a bay: a panel that folds. Its header is the whole button: the name, and one live line, what is true now in the page's
@@ -380,7 +380,7 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
    footer are the way back); the frame fills the column as the phone's does, the badge hung from its
    corner (the owner's word, 2026-09-22: the picture is scaled by the width there, whole multiples kept for two columns,
    where the frame is 768 again) */
-@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{order:1}}.touch{{order:2;margin:11px 0}}.now{{order:3}}.chain{{order:4}}.file{{order:5}}.controls{{order:6}}.logbox{{order:7;margin:0}}}}
+@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{order:1}}.touch{{order:2;margin:11px 0}}.now{{order:3}}.chain{{order:4}}.file{{order:5}}.controls{{order:6}}.ports{{order:7}}.logbox{{order:8;margin:0}}}}
 @media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{height:260px}}.nl{{grid-template-columns:1fr;gap:0}}.playing{{min-height:510px}}}}
 """
 
@@ -388,6 +388,7 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
 # ---------------------------------------------------------------- the share card
 CARD = "machine/card.png"
 BOOT_SCREEN = HERE / "boot-screen.json"
+PORTS = HERE / "ports.json"      # the machine's ports, as this build has them: THE PORTS is drawn from it
 CARD_SIZE = (2400, 1260)          # twice 1200 x 630, the shape share previews take
 CARD_SCALE = 6                    # one screen pixel is six card pixels
 CARD_GREEN = (0x39, 0xFF, 0x88)   # the site's accent, site.css --accent
@@ -498,6 +499,74 @@ def ring_svg():
     return '<svg class="ring" id="ring" viewBox="-100 -100 200 200" aria-label="the direction ring">' + "".join(out) + "</svg>"
 
 
+# ---------------------------------------------------------------- THE PORTS
+# The machine's sockets as this build has them, drawn from ports.json: one row a port, in the groups the description
+# gives (the side, the back, inside), each row's live text the host's (host.js, `portRows`). A switch that governs a
+# socket sits in that socket's group: INPUT after the control ports, FIRMWARE after the ROM sockets. Another machine
+# is another description and another `PORT_CONTROLS`; the card and its rules are the same.
+PORT_CONTROLS = {
+    "input": ('<dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed" autocomplete="off">'
+              '<option value="joystick" selected>joystick in port 2</option><option value="joystick1">joystick in port 1</option>'
+              '<option value="joysticks">joystick in both ports</option><option value="keyboard">the keyboard</option></select> '
+              '<span class="hint">what the arrows feed; AUTO chooses from the file</span></dd>'),
+    "firmware": ('<dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off">'
+                 '<option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option>'
+                 '<option value="on">on: OpenROMs pressing 1, READY first</option></select> '
+                 '<span class="why" id="firmware-why">AUTO · decides when a program loads</span>\n'
+                 '          <details class="fold how" id="how-auto"><summary aria-expanded="false" aria-controls="how-auto-body">HOW AUTO DECIDES</summary>'
+                 '<div class="bb" id="how-auto-body"><div class="bi"><p>A program of the chain runs bare, as it does on chain. A file of yours is read for '
+                 'what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the '
+                 'on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so '
+                 'the switch stays yours: <a href="#about-controls">the whole account</a>.</p></div></div></details></dd>'),
+}
+
+
+def ports():
+    """The description of the machine's ports, checked for its shape."""
+    d = json.loads(PORTS.read_text(encoding="utf-8"))
+    if d.get("version") != 1 or not isinstance(d.get("groups"), list) or not isinstance(d.get("ports"), list):
+        die("ports.json is not what the card expects")
+    by_id = {}
+    for p in d["ports"]:
+        for k in ("id", "label", "hint"):
+            if not isinstance(p.get(k), str) or not p[k]:
+                die(f"ports.json: a port lacks {k}")
+        if not re.fullmatch(r"[a-z0-9]+", p["id"]) or p["id"] in by_id:
+            die(f"ports.json: port id {p['id']!r} is not a fresh lowercase word")
+        by_id[p["id"]] = p
+    placed = []
+    for g in d["groups"]:
+        if not isinstance(g.get("label"), str) or not isinstance(g.get("ports"), list) or not g["ports"]:
+            die("ports.json: a group lacks its label or its ports")
+        for pid in g["ports"]:
+            if pid not in by_id or pid in placed:
+                die(f"ports.json: group {g.get('id')!r} names {pid!r}, unknown or placed twice")
+            placed.append(pid)
+        if "control" in g and g["control"] not in PORT_CONTROLS:
+            die(f"ports.json: group {g.get('id')!r} asks for a control this build has no markup for: {g['control']!r}")
+    if len(placed) != len(by_id):
+        die("ports.json: a port is in no group")
+    return d, by_id
+
+
+def ports_card():
+    d, by_id = ports()
+    groups = []
+    for g in d["groups"]:
+        rows = "".join(f'\n        <dt>{esc(by_id[pid]["label"])}</dt><dd><span class="live" id="port-{pid}"></span> <span class="hint">{esc(by_id[pid]["hint"])}</span></dd>'
+                       for pid in g["ports"])
+        control = f'\n        {PORT_CONTROLS[g["control"]]}' if "control" in g else ""
+        groups.append(f'      <p class="grp">{esc(g["label"])}</p>\n      <dl class="ctl prt">{rows}{control}\n      </dl>')
+    body = "\n".join(groups)
+    return f"""    <details class="panel bay ports" id="bay-ports" aria-labelledby="lab-ports">
+      <summary class="bh" aria-expanded="false" aria-controls="bay-ports-body"><span class="lab"><span id="lab-ports">THE PORTS</span></span><span class="bs" id="sum-ports"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-ports-body"><div class="bi">
+{body}
+      </div></div>
+    </details>
+"""
+
+
 def page_body():
     chamber, perception = CONTRACTS["chamber"], CONTRACTS["perception"]
     return f"""<h1>The Machine</h1>
@@ -566,23 +635,16 @@ def page_body():
     <details class="panel bay controls is-open" id="bay-controls" open aria-labelledby="lab-controls">
       <summary class="bh" aria-expanded="true" aria-controls="bay-controls-body"><span class="lab"><span id="lab-controls">THE CONTROLS</span></span><span class="bs" id="sum-controls"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
       <div class="bb" id="bay-controls-body"><div class="bi">
-      <p class="grp">PLAY</p>
       <dl class="ctl">
-        <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed" autocomplete="off"><option value="joystick" selected>joystick in port 2</option><option value="joystick1">joystick in port 1</option><option value="joysticks">joystick in both ports</option><option value="keyboard">the keyboard</option></select> <span class="hint">what the arrows feed; AUTO chooses from the file</span></dd>
-        <dt>JOYSTICK</dt><dd>arrows move · Z, X or space FIRE <span class="hint">other keys type; the series' programs read port 2</span></dd>
+        <dt>JOYSTICK</dt><dd>arrows move · Z, X or space FIRE <span class="hint">other keys type; its port is under THE PORTS</span></dd>
         <dt class="touch-only">DIAGONALS</dt><dd class="touch-only"><select class="mode" id="ways" aria-label="how the ring reads a diagonal" autocomplete="off"><option value="4" selected>one direction</option><option value="8">both directions, eight ways</option></select> <span class="hint">one direction suits the series; both for eight ways</span></dd>
         <dt>KEYBOARD</dt><dd>click the machine to give it your keys <span class="hint">Escape is RUN/STOP · Home is CLR/HOME · F1 to F7</span></dd>
         <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint"><span class="fine-only">starts on your first click or key</span><span class="touch-only">starts on your first tap; silent if the phone is</span></span></dd>
-      </dl>
-      <p class="grp">MACHINE</p>
-      <dl class="ctl">
-        <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span>
-          <details class="fold how" id="how-auto"><summary aria-expanded="false" aria-controls="how-auto-body">HOW AUTO DECIDES</summary><div class="bb" id="how-auto-body"><div class="bi"><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></div></div></details></dd>
         <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button> <span class="hint">the machine starts over; READY under the firmware</span></dd>
       </dl>
       </div></div>
     </details>
-  </aside>
+{ports_card()}  </aside>
 </div>
 <section class="about" aria-label="the account of the page">
   <h3 id="about-machine">The machine</h3>

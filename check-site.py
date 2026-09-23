@@ -283,7 +283,7 @@ def check_shared_rules():
 
 
 def check_inputs():
-    for f in ("surface/surface.json", "architecture/findings.json", "machine/parts/MANIFEST.json", "machine/catalogue.json"):
+    for f in ("surface/surface.json", "architecture/findings.json", "machine/parts/MANIFEST.json", "machine/catalogue.json", "machine/ports.json"):
         try:
             json.loads((ROOT / f).read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001

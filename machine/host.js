@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // THE MACHINE, the page: one machine in a frame, a search over the catalogue,
-// the states beside the frame, NOW PLAYING with its provenance, the controls, and
-// the way out. Nothing runs until a LOAD is pressed. The machine document is
+// the states beside the frame, NOW PLAYING with its provenance, the controls, the
+// ports (the machine's sockets, drawn from ports.json by the build; their live
+// rows here) and the log. Nothing runs until a LOAD is pressed. The machine document is
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
 import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
@@ -371,7 +372,7 @@ function decide(program) {
   const inp = inputOf(f.scan, on);
   return { on, cart: !!file.cart, input: inp.input, inputWhy: inp.why, why: firmwareMode === 'auto' ? f.needs.why : `${firmwareMode} by the switch` };
 }
-let cartridgeIn = false;   // a cartridge was put into the machine now running: it stays in its port for the machine's life
+let cartridgeIn = false, cartridgeNow = null;   // a cartridge was put into the machine now running: it stays in its port for the machine's life; its facts, for THE PORTS
 const DOOR_IDLE = 'drop a .prg, a .d64 or a .crt here, or choose one';
 function door(state, text) { els.door.dataset.state = state; els.doorText.textContent = state === 'idle' ? DOOR_IDLE : text; bayLines(); }
 let fileLine = { name: '', state: 'idle' };   // the door's last answer, for the header line: what was brought, and what became of it
@@ -393,7 +394,7 @@ async function ensureMachine(d) {
       : d.on ? `rebuilding the machine with ${FIRMWARE_NAME}: ${d.why}` : `rebuilding the machine bare: ${d.why}`);
     audio.detach(); machine.destroy(); machine = null; playing = null;
   }
-  cartridgeIn = false;
+  cartridgeIn = false; cartridgeNow = null;
   firmwareOn = d.on; firmwareWhy = d.why;
   veil(d.on ? `STARTING THE MACHINE WITH ${FIRMWARE_NAME.toUpperCase()}` : 'STARTING THE MACHINE');
   machine = createMachine({
@@ -544,7 +545,7 @@ async function run(ask) {
     await machine.request('input', inputAsk());
     const buf = program.bytes.slice().buffer;
     const loaded = await machine.request('load', { kind: program.cart ? 'crt' : 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
-    if (program.cart) cartridgeIn = true;
+    if (program.cart) { cartridgeIn = true; cartridgeNow = { title: program.facts.cartridge.title, typeName: program.facts.cartridge.typeName }; }
     playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened, file: ask.file || null };
     veil('');
     setState('running', 'RUNNING');
@@ -739,7 +740,8 @@ function renderNow(code, text) {
 // Closed on a phone, open on a wide screen, where the log is the stage's and does not fold; a link into a closed bay
 // opens it; nothing is remembered between visits. The body is one grid row, 0fr to 1fr, and the mark's upright
 // collapses into its bar in the same time; under reduced motion both are instant.
-const BAY_KEYS = ['now', 'chain', 'file', 'controls', 'log'];
+const BAY_KEYS = ['now', 'chain', 'file', 'controls', 'ports', 'log'];
+const CLOSED_BY_DEFAULT = new Set(['ports']);   // a reference card: closed at every width until it is opened, or a link lands inside it
 const bays = Object.fromEntries(BAY_KEYS.map((k) => [k, $('bay-' + k)]));
 const NARROW = matchMedia('(max-width:1139px)');
 const STILL = matchMedia('(prefers-reduced-motion: reduce)');
@@ -792,7 +794,7 @@ function revealHash() {
 function bayInit() {
   const id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
   const t = id ? document.getElementById(id) : null;
-  for (const k of BAY_KEYS) setBay(bays[k], !NARROW.matches || !!(t && bays[k].contains(t)), true);
+  for (const k of BAY_KEYS) setBay(bays[k], (!NARROW.matches && !CLOSED_BY_DEFAULT.has(k)) || !!(t && bays[k].contains(t)), true);
   if (readout) for (const k of BAY_KEYS) readout.watch(bays[k]);
   for (const d of document.querySelectorAll('details.fold')) if (t && d.contains(t)) setBay(d, true, true);
 }
@@ -828,10 +830,32 @@ function bayLines() {
   else if (fileRunning) put('file', '', playing.program.label, ` · ${STATUS.YOUR_FILE}`);
   else if (disk) put('file', '', disk.file.name, ` · ${programs} program${programs === 1 ? '' : 's'} · pick one`);
   else put('file', '.prg · .d64 · .crt', '', '');
-  const fw = firmwareMode === 'auto' ? (machineFacts ? `AUTO · ${firmwareOn ? 'on' : 'bare'}` : 'AUTO') : firmwareMode.toUpperCase();
-  put('controls', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · ${fw} · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
+  put('controls', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
+  const stick = inputMode === 'keyboard' ? 'no stick' : inputMode === 'joysticks' ? 'sticks in both ports' : `stick in port ${joyPort()}`;
+  put('ports', '', `${stick} · ${cartridgeIn ? 'cartridge in' : 'no cartridge'} · ${firmwareOn ? 'pressing 1 in the sockets' : 'sockets empty'}`, '');   // no trust word here, so the whole line slides on a phone
+  portRows();
   const last = els.log.lastElementChild;
   put('log', '', last ? last.textContent : 'nothing yet', ` · ${fullLog.length} line${fullLog.length === 1 ? '' : 's'}`);   // the last thing said first, the count after
+}
+// THE PORTS' live rows: what this page has in each of the machine's sockets now, in the page's own words. The rows
+// themselves come from ports.json through the build; this is the one place the page's state is read into them, so
+// another machine's page changes this function and its description, not the card
+const portEls = Object.fromEntries([...document.querySelectorAll('#bay-ports .live')].map((e) => [e.id.slice(5), e]));
+function portRows() {
+  const stickIn = (port) => inputMode !== 'keyboard' && (joyPort() === port || joyPort() === 0);
+  const fw = machineFacts && machineFacts.firmware;
+  const rows = {
+    port1: stickIn(1) ? 'your stick' : 'empty',
+    port2: stickIn(2) ? 'your stick' : 'empty',
+    cartridge: cartridgeIn && cartridgeNow ? `${cartridgeNow.title || 'a cartridge'} · ${cartridgeNow.typeName} · for the life of this machine` : 'empty',
+    serial: `no drive${disk ? ` · ${disk.file.name} is read by the page instead` : ''}`,
+    cassette: 'nothing',
+    user: 'nothing',
+    av: `the screen · sound ${audio.on ? 'on' : 'off'}`,
+    sockets: !machineFacts ? (firmwareMode === 'on' ? `${FIRMWARE_NAME} when the machine starts` : 'empty')
+      : fw && fw.mode === 'on' ? `${FIRMWARE_NAME} · ${fw.status}${/^ethereum/.test(fw.source) ? '' : ' · the site\'s copies'}` : 'empty · the machine runs bare',
+  };
+  for (const [id, text] of Object.entries(rows)) if (portEls[id] && portEls[id].textContent !== text) portEls[id].textContent = text;
   markCuts();
 }
 /** A line that does not fit is marked by a fade at its edge (the stylesheet's `cut`), whatever the readout does. */
@@ -986,7 +1010,7 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
   get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say,
   readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false }, markCuts };
 start();

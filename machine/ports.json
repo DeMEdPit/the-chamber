@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "machine": "Commodore 64, as nopsta's 2022 build of minimal64 stands: what each socket has behind it in the machine and what this page plugs into it",
+  "groups": [
+    {"id": "side", "label": "SIDE", "ports": ["port1", "port2"], "control": "input"},
+    {"id": "back", "label": "BACK", "ports": ["cartridge", "serial", "cassette", "user", "av"]},
+    {"id": "inside", "label": "INSIDE", "ports": ["sockets"], "control": "firmware"}
+  ],
+  "ports": [
+    {"id": "port1", "label": "CONTROL PORT 1", "hint": "a joystick; the games that read port 1"},
+    {"id": "port2", "label": "CONTROL PORT 2", "hint": "a joystick; the series' programs read it"},
+    {"id": "cartridge", "label": "CARTRIDGE PORT", "hint": "a .crt from FROM A FILE, in four formats"},
+    {"id": "serial", "label": "SERIAL BUS", "hint": "no drive was ever built behind the bus"},
+    {"id": "cassette", "label": "CASSETTE PORT", "hint": "no tape: the build has none"},
+    {"id": "user", "label": "USER PORT", "hint": "nothing behind it: not built"},
+    {"id": "av", "label": "VIDEO AND SOUND", "hint": "the screen above; the sound to this page"},
+    {"id": "sockets", "label": "ROM SOCKETS", "hint": "KERNAL, BASIC and the character ROM"}
+  ]
+}
