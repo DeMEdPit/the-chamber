@@ -12,7 +12,7 @@ import { shade, pale, parse } from '../instruments/colour.js';
 import { wave, createScope } from '../instruments/scope.js';
 import { createSpectrum } from '../instruments/spectrum.js';
 import { drawText, screenCode, textWidth } from '../instruments/romfont.js';
-import { glyphScale, layout, drawChassis, PAD, GLYPH, MARGIN } from '../instruments/chassis.js';
+import { glyphScale, glyphFor, titleRoom, fitTitle, layout, drawChassis, PAD, GLYPH, MARGIN } from '../instruments/chassis.js';
 
 let failures = 0;
 const check = (cond, what) => { console.log((cond ? 'PASS ' : 'FAIL ') + what); if (!cond) failures++; };
@@ -128,10 +128,21 @@ check(!a.offer(null) && a.pending === '', 'an empty reading is nothing');
 {
   check(PAD === 2.25 && GLYPH === 4 && MARGIN === 8, 'the token\'s pad and glyph, a quarter of its 4x canvas numbers');
   check(glyphScale(2, 1) === 1 && glyphScale(4, 2) === 2 && glyphScale(3, 1) === 2 && glyphScale(2.8, 3) === 3 && glyphScale(6, 2) === 3, 'the glyph scale: 1 at the desktop, 2 at its retina, 2 at three times, 3 on a phone at three');
-  const L = layout(376, 144, 4, 2);   // the token's own canvas: a 0.245 panel at 1536 wide, the band 144 tall, k = 4, as if at ratio 2
+  // the glyph must fit the panel: on a phone at three device pixels a CSS pixel the panel is 264 device pixels wide and
+  // "SID SPECTRUM" fits at two, not the six-CSS-pixel three; at two a CSS pixel it fits at one alone; the desktop keeps one,
+  // full screen two; a title too long for one pixel a ROM pixel is trimmed as the token trims (the tenth character on)
+  const phone3 = 0.245 * 358 * 3, k3 = 358 / 384 * 3, phone2 = 0.245 * 358 * 2, k2 = 358 / 384 * 2;
+  check(glyphFor(phone3, k3, 3, 'SID SPECTRUM') === 2 && glyphFor(phone3, k3, 3, 'SID OUTPUT') === 2 && glyphScale(k3, 3) === 3, `on a phone at three the title fits at ${glyphFor(phone3, k3, 3, 'SID SPECTRUM')} device pixels a ROM pixel, not the ${glyphScale(k3, 3)} the device would have`);
+  check(glyphFor(phone2, k2, 2, 'SID SPECTRUM') === 1 && glyphFor(188, 2, 1, 'SID SPECTRUM') === 1 && glyphFor(282, 3, 1, 'SID SPECTRUM') === 2 && glyphFor(376, 4, 2, 'SID SPECTRUM') === 2, 'at two a phone fits one; the desktop one, full screen two, the retina desktop the token\'s own two');
+  check(Math.abs(titleRoom(188, 2, 1) - (188 - 4.5 - 10 - 188 * 0.055 - 4.5 - 4)) < 1e-9, 'the title\'s room: the panel less the pad, the lamp\'s room, the minus, the pad and a gap');
+  check(fitTitle('SID SPECTRUM', 96, 1) === 'SID SPECTRUM' && fitTitle('SID SPECTRUM', 80, 1) === 'SID SPECTR' && fitTitle('PERCEPTRON HEAD TWO', 120, 1) === 'PERCEPTRON HEAD' && fitTitle('SID SPECTRUM', 40, 1) === 'SID S', `a title that does not fit at one is trimmed at a word past its eighth character, else at the room (${fitTitle('SID SPECTRUM', 80, 1)}; ${fitTitle('PERCEPTRON HEAD TWO', 120, 1)})`);
+  const Lp = layout(phone3, Math.round(36 / 272 * 358 * 3 / 384 * 384 / 1) , k3, 3, { title: 'SID SPECTRUM' });
+  check(Lp.g === 2 && Lp.title.text === 'SID SPECTRUM' && Lp.title.x + 12 * 8 * 2 <= Lp.minus.x - 2 * k3 + 1e-9, `on the phone the whole title sits before the minus (ends ${Math.round(Lp.title.x + 192)} of ${Math.round(Lp.minus.x)})`);
+  check(layout(188, 72, 2, 1, { title: 'SID SPECTRUM', g: 1 }).g === 1 && layout(188, 72, 2, 1, { title: 'X', g: 2 }).g === 2, 'a rack may hand every panel one glyph');
+  const L = layout(376, 144, 4, 2, { title: 'SID OUTPUT' });   // the token's own canvas: a 0.245 panel at 1536 wide, the band 144 tall, k = 4, as if at ratio 2
   check(L.pad === 9 && L.g === 2 && L.bar === 9 + 16 + 9 && L.window.y === 34 && L.window.x === 9 && L.window.w === 358 && L.window.h === 144 - 34 - 9 && Math.abs(L.minus.size - 376 * 0.055) < 1e-9 && L.minus.y === 9,
         `at the token's own scale the layout is the token's: pad 9, glyph 2, the window at 34, the minus ${L.minus.size.toFixed(2)} wide`);
-  const L2 = layout(188, 72, 2, 1);
+  const L2 = layout(188, 72, 2, 1, { title: 'SID OUTPUT' });
   check(L2.pad === 4.5 && L2.g === 1 && L2.bar === 17 && L2.window.h === 72 - 17 - 4.5 && L2.title.y === Math.round(4.5 + 1) && L2.lampRoom === 10, 'at the desktop half of that: pad 4.5, the glyph 8 px, the bar 17');
   const ctx = recorder();
   const font = new Uint8Array(4096); font[19 * 8] = 0xff;

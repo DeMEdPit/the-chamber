@@ -125,7 +125,7 @@ try {
   const strongest = (px) => px.column.reduce((a, p) => (p.reduce((x, y) => x + y, 0) > a.reduce((x, y) => x + y, 0) ? p : a), px.column[0]);
   const glyphHolds = (px, ch, ink, panel) => { const g = glyphOf(ch); return px.glyph.every((row, r) => row.every((p, b) => near(p, g[r][b] ? ink : panel, 10))); };
   const ch0 = await panelPixels('scope');
-  check(ch0.font.status === 'PINNED' && ch0.font.sha256 === pins && ch0.title === 'SID OUTPUT' && ch0.g >= 1 && Number.isInteger(ch0.g), `the titles are set in the pressing's character ROM, held to its pin (${String(ch0.font.sha256).slice(0, 12)}…, ${ch0.g} px a ROM pixel)`);
+  check(ch0.font.status === 'PINNED' && ch0.font.sha256 === pins && ch0.title === 'SID OUTPUT' && ch0.g === 1, `the titles are set in the pressing's character ROM, held to its pin (${String(ch0.font.sha256).slice(0, 12)}…, ${ch0.g} px a ROM pixel on the desktop)`);
   check(near(ch0.body, '#262626') && near(ch0.window, '#000000') && traced(ch0, '#39ff88', '#000000') && ch0.colours.ink === '#39ff88' && ch0.from === 'site',
         `under GREEN the chassis is the token's default, the site's green as the ink: the body ${ch0.body.join(',')}, the window ${ch0.window.join(',')}, the trace ${strongest(ch0).join(',')}`);
   check(glyphHolds(ch0, 'S', '#39ff88', '#262626'), 'the title\'s first glyph is the ROM\'s S, pixel for pixel, in the ink on the body');
@@ -715,6 +715,20 @@ try {
   await pt.setViewportSize({ width: 390, height: 844 });
   check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
   await pt.close(); await tc.close();
+  // a phone at three device pixels a CSS pixel: the panels' titles fit their panels at one glyph size, the smaller a title
+  // needs (the six-CSS-pixel floor gives way to the room), the whole title drawn, the minus clear of it, the panel in the picture
+  {
+    const fc = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+    const fp = await fc.newPage();
+    await fp.goto(`${A.base}/machine/`, { waitUntil: 'load' });
+    await until(() => fp.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+    await fp.evaluate(() => window.machinePage.instrumentsMode('instruments'));
+    const fit = await until(() => fp.evaluate(() => { const i = window.machinePage.instruments; return i.panels.scope && i.panels.spectrum && i.panels.spectrum.title ? { dpr: window.devicePixelRatio, layer: document.getElementById('layer').clientWidth, p: i.panels } : null; }), 5000, 100);
+    const fits = (p, text) => p.title.text === text && p.title.g === 2 && p.title.x + text.length * 8 * p.title.g <= p.minus.x - 2 * p.k + 1e-6 && p.left + p.width <= fit.layer + 1;
+    check(!!fit && fit.dpr === 3 && fits(fit.p.spectrum, 'SID SPECTRUM') && fits(fit.p.scope, 'SID OUTPUT') && fit.p.scope.title.g === fit.p.spectrum.title.g,
+          `on a phone at three device pixels a CSS pixel both titles fit their panels whole at ${fit && fit.p.spectrum.title.g} device pixels a ROM pixel, one size, the minus clear (${fit ? Math.round(fit.p.spectrum.title.x + 96 * fit.p.spectrum.title.g) + ' of ' + Math.round(fit.p.spectrum.minus.x) : 'no panels'})`);
+    await fp.close(); await fc.close();
+  }
   // under reduced motion the bays open and close at once
   const pm = await b.newPage({ viewport: { width: 1180, height: 900 } });
   await pm.emulateMedia({ reducedMotion: 'reduce' });

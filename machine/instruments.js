@@ -29,7 +29,7 @@
 import { createScope } from './instruments/scope.js';
 import { createSpectrum } from './instruments/spectrum.js';
 import { SITE, pickColours, createAdoption } from './instruments/scene.js';
-import { MARGIN, drawChassis, layout as chassisLayout } from './instruments/chassis.js';
+import { MARGIN, drawChassis, layout as chassisLayout, glyphFor } from './instruments/chassis.js';
 
 // the picture's own geometry: 384 by 272 with the C64's border, 32 px at the sides and 36 above and below, which
 // is where a token's own page keeps its panels (the top band) and where an added one goes (the next free band)
@@ -164,8 +164,15 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     for (const b of bands) if (!taken.has(b)) return b;
     return bands[bands.length - 1];
   }
+  /** The glyph every panel shares: the smallest any panel's title needs to fit, so the titles are one size. */
+  function glyphAll(W) {
+    const k = W / PICTURE_W * dpr;
+    let g = Infinity;
+    for (const p of Object.values(panels)) { const r = byId[p.id], pw = Math.round((FACE_W[r.face] || FACE_W.quarter) * W * dpr); g = Math.min(g, glyphFor(pw, k, dpr, r.title || r.name)); }
+    return g === Infinity ? null : g;
+  }
   /** Size and place one panel: the element is the body in CSS pixels; the canvas around it carries the chassis and its shadow. */
-  function place(p, W, H) {
+  function place(p, W, H, g) {
     const r = byId[p.id], w = FACE_W[r.face] || FACE_W.quarter, h = BAND;
     let x, y;
     if (p.pos) { x = p.pos.x; y = p.pos.y; } else {
@@ -173,13 +180,13 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
       y = p.band.startsWith('top') ? 0 : 1 - h;
     }
     const bw = w * W, bh = h * H, k = W / PICTURE_W * dpr;                // the body in CSS px; device px per picture px
-    const pw = Math.round(bw * dpr), ph = Math.round(bh * dpr), L = chassisLayout(pw, ph, k, dpr);
+    const pw = Math.round(bw * dpr), ph = Math.round(bh * dpr), L = chassisLayout(pw, ph, k, dpr, { title: r.title || r.name, g });
     const folded = p.el.classList.contains('folded'), m = Math.ceil(MARGIN * k);
     Object.assign(p.el.style, { left: `${x * W}px`, top: `${y * H}px`, width: `${bw}px`, height: `${folded ? L.bar / dpr : bh}px` });
     const cw = pw + 2 * m, ch = (folded ? Math.round(L.bar) : ph) + 2 * m;
     if (p.cv.width !== cw || p.cv.height !== ch) { p.cv.width = cw; p.cv.height = ch; }
     Object.assign(p.cv.style, { left: `${-m / dpr}px`, top: `${-m / dpr}px`, width: `${cw / dpr}px`, height: `${ch / dpr}px` });
-    p.geom = { k, ox: m, oy: m, pw, ph, L, folded };
+    p.geom = { k, g: L.g, ox: m, oy: m, pw, ph, L, folded };
     p.bar.style.height = `${L.bar / dpr}px`;
     Object.assign(p.fold.style, { left: `${L.minus.x / dpr}px`, top: `${L.minus.y / dpr}px`, width: `${L.minus.size / dpr}px`, height: `${L.minus.size / dpr}px` });
     Object.assign(p.lamp.style, { left: `${L.pad / dpr + (L.lampRoom / dpr - LAMP) / 2}px`, top: `${(L.bar / dpr - LAMP) / 2}px` });
@@ -190,7 +197,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     const g = p.geom; if (!g) return;
     const ctx = p.cv.getContext('2d'), r = byId[p.id], d = drawers[r.module], col = coloursNow();
     ctx.clearRect(0, 0, p.cv.width, p.cv.height);
-    drawChassis(ctx, { pw: g.pw, ph: g.ph, k: g.k, dpr, ox: g.ox, oy: g.oy, colours: col, title: r.title || r.name, font: chargen, folded: g.folded,
+    drawChassis(ctx, { pw: g.pw, ph: g.ph, k: g.k, dpr, ox: g.ox, oy: g.oy, colours: col, title: r.title || r.name, font: chargen, folded: g.folded, g: g.g,
       face: d && d.window ? (c, x, y, w, h) => d.window(c, x, y, w, h, data, rate, { colours: col, k: g.k }) : null });
   }
   function makePanel(r) {
@@ -235,7 +242,8 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
   function layout() {
     const W = frame.clientWidth, H = frame.clientHeight;
     if (!W || !H) return;
-    for (const p of Object.values(panels)) place(p, W, H);
+    const g = glyphAll(W);
+    for (const p of Object.values(panels)) place(p, W, H, g);
     for (const r of rows) if (r.compact) { const cw = Math.round(r.compact.clientWidth * dpr), ch = Math.round(r.compact.clientHeight * dpr); if (cw && ch && (r.compact.width !== cw || r.compact.height !== ch)) { r.compact.width = cw; r.compact.height = ch; } }
   }
 
@@ -314,7 +322,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     return { mode: state.mode, chosen: state.chosen, on: { ...state.on }, available: { ...state.available }, own: { ...state.own }, layers: layers(), faces: { ...state.faceState },
       colour: state.colour, colours: { ink: c.ink, ground: c.ground, panel: c.panel }, from: from(), learned: adoption.learned, sceneWhy: state.sceneWhy, reads: state.reads, tinting: tinting(), font: { ...fontFacts },
       panels: Object.fromEntries(Object.entries(panels).map(([k, p]) => [k, { band: p.el.dataset.band, pill: p.el.classList.contains('folded'), left: p.el.offsetLeft, top: p.el.offsetTop, width: p.el.offsetWidth, height: p.el.offsetHeight,
-        ...(p.geom ? { k: p.geom.k, canvas: { w: p.cv.width, h: p.cv.height }, body: { x: p.geom.ox, y: p.geom.oy, w: p.geom.pw, h: p.geom.ph }, bar: p.geom.L.bar, pad: p.geom.L.pad, title: { x: p.geom.ox + p.geom.L.title.x, y: p.geom.oy + p.geom.L.title.y, g: p.geom.L.g },
+        ...(p.geom ? { k: p.geom.k, canvas: { w: p.cv.width, h: p.cv.height }, body: { x: p.geom.ox, y: p.geom.oy, w: p.geom.pw, h: p.geom.ph }, bar: p.geom.L.bar, pad: p.geom.L.pad, title: { x: p.geom.ox + p.geom.L.title.x, y: p.geom.oy + p.geom.L.title.y, g: p.geom.L.g, text: p.geom.L.title.text, room: p.geom.L.room }, minus: { x: p.geom.ox + p.geom.L.minus.x, size: p.geom.L.minus.size },
           window: { x: p.geom.ox + p.geom.L.window.x, y: p.geom.oy + p.geom.L.window.y, w: p.geom.L.window.w, h: p.geom.L.window.h } } : {}) }])) };
   }
 

@@ -62,7 +62,11 @@ recorded.
   device): a rounded body in the panel colour under a soft shadow, a pad of
   2.25 picture pixels, the title in the C64's character ROM four picture
   pixels tall (`instruments/romfont.js`, from the pressing's ROM as the page
-  holds it to its pin; a plain font stands in and the page says so), the
+  holds it to its pin; a plain font stands in and the page says so; the
+  glyph a whole number of device pixels per ROM pixel, as large as the
+  title's room on the panel allows and never larger than the device's own,
+  one size across the rack's panels, a title that does not fit even at one
+  trimmed as the token trims its own), the
   minus in the corner (a plus when folded to the title), and a rounded
   window in the ground with the instrument's face clipped inside. The
   green lamp before the title is the page's own. The scope's window shows
