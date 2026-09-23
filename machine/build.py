@@ -368,8 +368,10 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .keys .touch-only{{display:none}}   /* DIAGONALS governs the ring, and the note about a phone on silent is for a phone: shown where the ring shows; the sound's hint has a form for each */
 @media(pointer:coarse){{.keys dt.touch-only,.keys dd.touch-only{{display:block}}.keys span.touch-only{{display:inline}}.keys .fine-only{{display:none}}}}
 select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}}
-.about{{margin:44px 0 0;max-width:70ch}}
-.about h2{{margin-top:44px}}
+/* the account under the machine: its sections under their own titles, no heading over them (the owner, 2026-09-23), a rule
+   and a little air where it began */
+.about{{margin:44px 0 0;max-width:70ch;padding-top:26px;border-top:1px solid var(--line)}}
+.about h3:first-child{{margin-top:0}}
 .about p{{font-size:.95rem;color:#deded9}}
 .about code{{font-size:.8rem}}
 /* one column: the two wrappers dissolve and the panels take the phone's order, NOW PLAYING first under the pad (what is
@@ -582,8 +584,7 @@ def page_body():
     </details>
   </aside>
 </div>
-<section class="about">
-  <h2>What this page does, and does not</h2>
+<section class="about" aria-label="the account of the page">
   <h3 id="about-machine">The machine</h3>
   <p>The machine is the emulator nopsta stored on Ethereum in 2022, in four data contracts: <a href="https://etherscan.io/address/0x1Cc49e603B4b205Be0E74f8833971Bea5beccEC9" target="_blank" rel="noopener">the gunzip helper</a> and <a href="https://etherscan.io/address/0xEF13021d5302c3fCe437A3C281A286479ba60008" target="_blank" rel="noopener">three parts of minimal64</a>. The page reads them from the chain first; if no node answers, it uses the site's own copies of the same bytes; either way each part must hash to the pin the page carries, or it does not run, and NOW PLAYING says which source it was.</p>
   <p>The machine runs in a frame that cannot reach this page, the network or your storage; the page speaks to it over one port, by <a href="PROTOCOL.md">a written protocol</a>. Nothing on this page reaches into the machine: the mode is PURE, and the provenance would say INTERVENED if anything ever did. The machine document is GPL-2.0-only, nopsta's licence; the page around it is MIT; <a href="LICENSES.md">what is what</a>.</p>
