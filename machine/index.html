@@ -231,7 +231,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
    Open, the controls and the record; the account under the page is the third depth. Closed on a phone, open on a wide
    screen, where the log is the stage's and does not fold. The body is one grid row from 0fr to 1fr, so the drawer
    opens as one object; the inner box clips it and carries the panel's bottom air, so the closed row is truly empty */
-.panel.bay{padding:0}
+.panel.bay{padding:0;--bay-ms:240ms;--bay-ease:cubic-bezier(.2,.8,.2,1)}   /* one clock for the drawer and the mark, so they can never drift apart (the owner, 2026-09-23: the mark must match the section's own speed) */
 .bay>summary{list-style:none;cursor:pointer;padding:14px 16px 10px;display:grid;grid-template-columns:minmax(0,1fr) 32px;grid-template-areas:"lab mark" "sum mark";column-gap:12px;row-gap:4px;align-items:center;border-radius:10px;-webkit-tap-highlight-color:transparent}   /* the mark's rail: a column of its own, 44 with the gap, the mark centred in it, so the longest line ends well before it */
 .bay>summary::-webkit-details-marker{display:none}
 .bay>summary::marker{content:""}
@@ -248,17 +248,21 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 .bs .e.reading .t{will-change:transform}
 .bs .f{flex:none}
 .bs>span:empty{display:none}
-.bm{grid-area:mark;position:relative;width:12px;height:12px;align-self:center;justify-self:center}
+.bm{grid-area:mark;position:relative;width:12px;height:12px;align-self:center;justify-self:center;transition:transform var(--bay-ms) var(--bay-ease)}
 .bm::before,.bm::after{content:"";position:absolute;background:var(--accent2);border-radius:1px}
 .bm::before{left:0;top:5px;width:12px;height:2px}
-.bm::after{left:5px;top:0;width:2px;height:12px;transform-origin:50% 50%;transition:transform 320ms cubic-bezier(.45,0,.55,1)}   /* the upright falls a quarter turn onto the bar as the card opens, and rises as it closes: one soft motion, a little longer than the drawer (the owner's ask, 2026-09-23, after a site whose plus falls into a minus) */
+.bm::after{left:5px;top:0;width:2px;height:12px;transform-origin:50% 50%;transition:transform var(--bay-ms) var(--bay-ease)}
+/* as the card opens the whole mark turns half a turn while its upright falls a quarter turn onto the bar, so a plus becomes a
+   minus in one movement on the drawer's own clock and curve; closing runs it back (the owner's ask, 2026-09-23, after a site
+   whose plus falls into a minus) */
+.bay.is-open>summary .bm{transform:rotate(180deg)}
 .bay.is-open>summary .bm::after{transform:rotate(90deg)}
-.bb{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 240ms cubic-bezier(.2,.8,.2,1),opacity 180ms ease}
+.bb{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows var(--bay-ms) var(--bay-ease),opacity 180ms ease}
 .is-open>.bb{grid-template-rows:1fr;opacity:1}
 .bi{min-height:0;overflow:hidden}
 .bay>.bb>.bi{margin:0 16px}
 .bay>.bb>.bi::after{content:"";display:block;height:14px}
-@media(prefers-reduced-motion:reduce){.bb,.bm::before,.bm::after{transition:none}}
+@media(prefers-reduced-motion:reduce){.bb,.bm,.bm::before,.bm::after{transition:none}}
 .search{width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 10px;font:500 .9rem/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px}
 .search:focus{outline:0;border-color:var(--accent)}
 .rows{height:330px;box-sizing:border-box;overflow:auto;border-top:1px solid var(--line)}
@@ -275,7 +279,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 .disk .dh .n{color:var(--muted);letter-spacing:.06em;font-weight:500;text-transform:none;text-align:right}
 .disk .rows{height:auto;max-height:224px}
 /* a fold: a small mono summary with a plus, the rest muted; its body opens as a bay's does */
-.fold{font-size:.78rem;line-height:1.45;color:var(--muted)}
+.fold{font-size:.78rem;line-height:1.45;color:var(--muted);--bay-ms:240ms;--bay-ease:cubic-bezier(.2,.8,.2,1)}
 .fold summary{cursor:pointer;list-style:none;font:700 .6rem/1.9 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--accent2)}
 .fold summary::-webkit-details-marker{display:none}
 .fold summary::before{content:"+ "}
