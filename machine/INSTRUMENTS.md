@@ -54,7 +54,8 @@ recorded.
   phone's browser stops it when the page is left) there is no buffer
   sounding: the faces say the sound is paused rather than drawing a
   stale buffer, and the page asks for the clock back when it comes
-  into view.
+  into view; a clock that says it runs while its time stands still is
+  stalled, and the next tap builds a fresh one.
 - A panel sits in one of the picture's four border bands (`top-left`,
   `top-right`, `bottom-left`, `bottom-right`): a work's own instrument
   where its page keeps it, an added one in the next free band; a visitor

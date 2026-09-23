@@ -264,7 +264,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
   function words(r) {
     const fs = state.faceState[r.id];
     const where = panels[r.id] ? (state.own[r.id] ? `the work's own · ${panels[r.id].el.dataset.band.replace('-', ' ')}` : `${panels[r.id].el.dataset.band === 'dragged' ? 'where you put it' : panels[r.id].el.dataset.band.replace('-', ' ')}`) : '';
-    const sound = fs === 'waiting' ? (audio && audio.attached && !audio.ready ? 'sound paused by the browser · tap to resume' : 'waiting for your first tap or key') : fs === 'silent' ? 'no signal' : fs === 'signal' ? 'signal' : '';
+    const sound = fs === 'waiting' ? (audio && audio.attached && (!audio.ready || audio.stalled) ? 'sound paused by the browser · tap to resume' : 'waiting for your first tap or key') : fs === 'silent' ? 'no signal' : fs === 'signal' ? 'signal' : '';
     return [where, sound].filter(Boolean).join(' · ');
   }
 

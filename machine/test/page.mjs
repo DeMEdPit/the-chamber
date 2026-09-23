@@ -488,6 +488,15 @@ try {
     await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     const woke = await until(() => pg.evaluate((n) => { const a = window.machinePage.audio, i = window.machinePage.instruments; return a.state === 'running' && a.pulled > n + 2 && i.faces.scope !== 'waiting' ? { state: a.state, pulled: a.pulled - n, face: i.faces.scope, said: /sound: resumed after the page came back/.test(window.machinePage.report()) } : null; }, pulledHeld), 6000, 100);
     check(!!woke && woke.said, `the page coming back asks for the clock: running again, ${woke ? woke.pulled : 0} buffers pulled since, the scope drawing (${woke ? woke.face : 'waiting'}), said in the log`);
+    // a context that says it runs while its clock stands still (a phone after an interruption): marked stalled as the watch
+    // would, the faces say the sound is paused; the next tap builds a fresh clock, tells the machine the rate again, pulls anew
+    await pg.evaluate(() => window.machinePage.audioStall());
+    const stalled = await until(() => pg.evaluate(() => { const a = window.machinePage.audio, i = window.machinePage.instruments; return a.stalled && !a.ready && a.state === 'running' && i.faces.scope === 'waiting' ? { where: document.getElementById('inst-scope-where').textContent, said: /sound: the browser stalled the clock · tap to resume/.test(window.machinePage.report()) } : null; }), 4000, 50);
+    check(!!stalled && stalled.said && /sound paused by the browser · tap to resume/.test(stalled.where), `a stalled clock, the context still saying it runs: the scope says the sound is paused, the log says tap (${stalled ? stalled.where : 'still drawing'})`);
+    const pulledStalled = await pg.evaluate(() => window.machinePage.audio.pulled);
+    await pg.mouse.click(8, 8);   // a tap anywhere on the page
+    const fresh = await until(() => pg.evaluate((n) => { const a = window.machinePage.audio, i = window.machinePage.instruments; return a.rebuilt === 1 && !a.stalled && a.ready && a.pulled > n + 2 && i.faces.scope !== 'waiting' ? { pulled: a.pulled - n, face: i.faces.scope, said: /sound: restarted on a fresh clock/.test(window.machinePage.report()) } : null; }, pulledStalled), 8000, 100);
+    check(!!fresh && fresh.said, `the next tap builds a fresh clock: the machine told the rate again, ${fresh ? fresh.pulled : 0} buffers pulled on it, the scope drawing (${fresh ? fresh.face : 'waiting'}), said in the log`);
     await pg.evaluate(() => window.machinePage.instrumentsColour('green'));
     await new Promise((r) => setTimeout(r, 300));
     const chG = await panelPixels('scope');
