@@ -824,7 +824,7 @@ function bayLines() {
   const fw = firmwareMode === 'auto' ? (machineFacts ? `AUTO · ${firmwareOn ? 'on' : 'bare'}` : 'AUTO') : firmwareMode.toUpperCase();
   put('keys', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · ${fw} · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
   const last = els.log.lastElementChild;
-  put('log', `${fullLog.length} line${fullLog.length === 1 ? '' : 's'}${last ? ' · ' : ''}`, last ? last.textContent : 'nothing yet', '');
+  put('log', '', last ? last.textContent : 'nothing yet', ` · ${fullLog.length} line${fullLog.length === 1 ? '' : 's'}`);   // the last thing said first, the count after
 }
 
 // ------------------------------------------------------------------ controls

@@ -232,7 +232,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
    screen, where the log is the stage's and does not fold. The body is one grid row from 0fr to 1fr, so the drawer
    opens as one object; the inner box clips it and carries the panel's bottom air, so the closed row is truly empty */
 .panel.bay{padding:0}
-.bay>summary{list-style:none;cursor:pointer;padding:14px 16px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"lab mark" "sum mark";column-gap:14px;row-gap:4px;align-items:center;border-radius:10px;-webkit-tap-highlight-color:transparent}
+.bay>summary{list-style:none;cursor:pointer;padding:14px 16px 10px;display:grid;grid-template-columns:minmax(0,1fr) 32px;grid-template-areas:"lab mark" "sum mark";column-gap:12px;row-gap:4px;align-items:center;border-radius:10px;-webkit-tap-highlight-color:transparent}   /* the mark's rail: a column of its own, 44 with the gap, the mark centred in it, so the longest line ends well before it */
 .bay>summary::-webkit-details-marker{display:none}
 .bay>summary::marker{content:""}
 .bay>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
@@ -242,7 +242,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 .bs .e{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;color:var(--ink)}
 .bs .f{flex:none}
 .bs>span:empty{display:none}
-.bm{grid-area:mark;position:relative;width:12px;height:12px;align-self:center}
+.bm{grid-area:mark;position:relative;width:12px;height:12px;align-self:center;justify-self:center}
 .bm::before,.bm::after{content:"";position:absolute;background:var(--accent2);border-radius:1px;transition:transform 240ms cubic-bezier(.2,.8,.2,1)}
 .bm::before{left:0;top:5px;width:12px;height:2px}
 .bm::after{left:5px;top:0;width:2px;height:12px}
@@ -318,8 +318,8 @@ textarea.json{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;font
 .keys .why{display:block;font:600 .66rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;color:var(--accent2);margin:4px 0 0}
 .keys .how{margin:4px 0 0}
 .keys .how p{margin:2px 0 4px;font-size:inherit;line-height:inherit;color:inherit}   /* the site's paragraph rule would size it as prose */
-.keys .touch-only{display:none}   /* DIAGONALS governs the ring, and the note about a phone on silent is for a phone: shown where the ring shows */
-@media(pointer:coarse){.keys dt.touch-only,.keys dd.touch-only{display:block}.keys span.touch-only{display:inline}}
+.keys .touch-only{display:none}   /* DIAGONALS governs the ring, and the note about a phone on silent is for a phone: shown where the ring shows; the sound's hint has a form for each */
+@media(pointer:coarse){.keys dt.touch-only,.keys dd.touch-only{display:block}.keys span.touch-only{display:inline}.keys .fine-only{display:none}}
 select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}
 .leave a{display:inline-block;font:700 .72rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--accent2);text-decoration:none;border:1px solid #2c3f36;border-radius:6px;padding:10px 14px}
 .leave a:hover{border-color:var(--accent);color:var(--accent)}
@@ -374,8 +374,8 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
       <button type="button" class="fire" data-bit="16">FIRE</button>
     </div>
     <details class="panel bay logbox is-open" id="bay-log" open aria-labelledby="lab-log">
-      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-log">THE LOG</span></span><span class="bs" id="sum-log"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
-      <div class="bb"><div class="bi">
+      <summary class="bh" aria-expanded="true" aria-controls="bay-log-body"><span class="lab"><span id="lab-log">THE LOG</span></span><span class="bs" id="sum-log"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-log-body"><div class="bi">
       <ul class="log" id="log" aria-label="what the page read and checked; the last lines, the whole log copies"></ul>
       <div class="tools">
         <button type="button" class="b" id="copy">COPY PROVENANCE</button>
@@ -388,21 +388,21 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
   </div>
   <aside class="column">
     <details class="panel bay chain is-open" id="bay-chain" open aria-labelledby="lab-chain">
-      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-chain">FROM THE CHAIN</span></span><span class="bs" id="sum-chain"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
-      <div class="bb"><div class="bi">
+      <summary class="bh" aria-expanded="true" aria-controls="bay-chain-body"><span class="lab"><span id="lab-chain">FROM THE CHAIN</span></span><span class="bs" id="sum-chain"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-chain-body"><div class="bi">
       <input class="search" id="search" type="search" placeholder="a number, a character, a colour, a room word, a work" aria-label="search the programs on the chain" autocomplete="off">
       <div class="rows" id="rows" aria-live="polite"></div>
       </div></div>
     </details>
     <details class="panel bay file is-open" id="bay-file" open aria-labelledby="lab-file">
-      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-file">FROM A FILE</span></span><span class="bs" id="sum-file"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
-      <div class="bb"><div class="bi">
+      <summary class="bh" aria-expanded="true" aria-controls="bay-file-body"><span class="lab"><span id="lab-file">FROM A FILE</span></span><span class="bs" id="sum-file"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-file-body"><div class="bi">
       <label class="door" id="door" data-state="idle"><input type="file" id="file" accept=".prg,.d64,.crt" aria-label="choose a program file, a disk image or a cartridge image"><span id="door-text">drop a .prg, a .d64 or a .crt here, or choose one</span></label>
       <div class="disk" id="disk" hidden aria-label="the disk's directory">
         <div class="dh"><span id="disk-name"></span><span class="n" id="disk-count"></span></div>
         <div class="rows" id="disk-rows"></div>
       </div>
-      <details class="fold paste" id="paste-door"><summary aria-expanded="false">OR PASTE</summary><div class="bb"><div class="bi">
+      <details class="fold paste" id="paste-door"><summary aria-expanded="false" aria-controls="paste-door-body">OR PASTE</summary><div class="bb" id="paste-door-body"><div class="bi">
         <textarea class="json" id="paste" spellcheck="false" autocomplete="off" aria-label="a program as hex or base64" placeholder="a program as hex or base64, its load address first"></textarea>
         <div class="tools"><button type="button" class="b" id="run-paste">RUN</button><span class="copied" id="paste-note"></span></div>
       </div></div></details>
@@ -410,28 +410,28 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
       </div></div>
     </details>
     <details class="panel bay now is-open" id="bay-now" open aria-labelledby="lab-now">
-      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-now">NOW PLAYING</span><span class="state" id="state" aria-live="polite">THE MACHINE IS OFF</span></span><span class="bs" id="sum-now"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
-      <div class="bb"><div class="bi">
+      <summary class="bh" aria-expanded="true" aria-controls="bay-now-body"><span class="lab"><span id="lab-now">NOW PLAYING</span><span class="state" id="state" aria-live="polite">THE MACHINE IS OFF</span></span><span class="bs" id="sum-now"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-now-body"><div class="bi">
       <button type="button" class="b" id="retry" hidden>RETRY</button>
       <div class="playing" id="now"></div>
       </div></div>
     </details>
     <details class="panel bay keys is-open" id="bay-keys" open aria-labelledby="lab-keys">
-      <summary class="bh" aria-expanded="true"><span class="lab"><span id="lab-keys">THE KEYS</span></span><span class="bs" id="sum-keys"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
-      <div class="bb"><div class="bi">
+      <summary class="bh" aria-expanded="true" aria-controls="bay-keys-body"><span class="lab"><span id="lab-keys">THE KEYS</span></span><span class="bs" id="sum-keys"><span class="f"></span><span class="e"></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-keys-body"><div class="bi">
       <p class="grp">PLAY</p>
       <dl class="keys">
-        <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed" autocomplete="off"><option value="joystick" selected>joystick in port 2</option><option value="joystick1">joystick in port 1</option><option value="joysticks">joystick in both ports</option><option value="keyboard">the keyboard</option></select> <span class="hint">what the arrows and letters feed; AUTO reads a file for it and takes both ports when it cannot tell</span></dd>
-        <dt>JOYSTICK</dt><dd>arrows move · Z, X or space is FIRE · every other key types <span class="hint">the programs of the series read port 2; a game that wants a key on one screen and the stick on the next has both</span></dd>
-        <dt class="touch-only">DIAGONALS</dt><dd class="touch-only"><select class="mode" id="ways" aria-label="how the ring reads a diagonal" autocomplete="off"><option value="4" selected>one direction</option><option value="8">both directions, eight ways</option></select> <span class="hint">read by angle, the hole is rest; the programs of the series stand still with two directions held, so a diagonal counts as one unless you say both</span></dd>
-        <dt>KEYBOARD</dt><dd>click the machine to give it your keys <span class="hint">Escape is RUN/STOP and never leaves this page · Home is CLR/HOME · F1 to F7 are the function keys</span></dd>
-        <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint">starts with your first tap or key on this page<span class="touch-only"> · a phone on silent stays silent</span></span></dd>
+        <dt>INPUT</dt><dd><select class="mode" id="input-mode" aria-label="what the arrow keys feed" autocomplete="off"><option value="joystick" selected>joystick in port 2</option><option value="joystick1">joystick in port 1</option><option value="joysticks">joystick in both ports</option><option value="keyboard">the keyboard</option></select> <span class="hint">what the arrows feed; AUTO chooses from the file</span></dd>
+        <dt>JOYSTICK</dt><dd>arrows move · Z, X or space FIRE <span class="hint">other keys type; the series' programs read port 2</span></dd>
+        <dt class="touch-only">DIAGONALS</dt><dd class="touch-only"><select class="mode" id="ways" aria-label="how the ring reads a diagonal" autocomplete="off"><option value="4" selected>one direction</option><option value="8">both directions, eight ways</option></select> <span class="hint">one direction suits the series; both for eight ways</span></dd>
+        <dt>KEYBOARD</dt><dd>click the machine to give it your keys <span class="hint">Escape is RUN/STOP · Home is CLR/HOME · F1 to F7</span></dd>
+        <dt>SOUND</dt><dd><button type="button" class="b" id="sound">SOUND ON</button> <span class="hint"><span class="fine-only">starts on your first click or key</span><span class="touch-only">starts on your first tap; silent if the phone is</span></span></dd>
       </dl>
       <p class="grp">MACHINE</p>
       <dl class="keys">
         <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span>
-          <details class="fold how" id="how-auto"><summary aria-expanded="false">HOW AUTO DECIDES</summary><div class="bb"><div class="bi"><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></div></div></details></dd>
-        <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button> <span class="hint">starts the machine over; under the firmware, READY comes back</span></dd>
+          <details class="fold how" id="how-auto"><summary aria-expanded="false" aria-controls="how-auto-body">HOW AUTO DECIDES</summary><div class="bb" id="how-auto-body"><div class="bi"><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></div></div></details></dd>
+        <dt>RESET</dt><dd><button type="button" class="b" id="reset">RESET THE MACHINE</button> <span class="hint">the machine starts over; READY under the firmware</span></dd>
       </dl>
       </div></div>
     </details>
@@ -454,6 +454,7 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
   <p>The words on the provenance line mean what they say: <b>PINNED</b>, the bytes matched a commitment this page held before it asked; <b>CONTRACT-CONSISTENT</b>, they matched what the same node reported in the same session; <b>NODE-REPORTED</b>, a fact one node stated; <b>YOUR FILE</b>, a file of yours, about which the page claims nothing. One node is asked, and it is named. The links in NOW PLAYING open the same contracts, tokens and blocks on Etherscan, in a new tab, so every claim can be checked against a second source while the machine runs on.</p>
   <h3 id="about-controls">Controls and boundaries</h3>
   <p>The firmware is a switch. The programs of the series run bare, as they do on chain, and run the same with the firmware present, because they bank it out as they start. AUTO reads a file of yours for what it needs: a program that calls the KERNAL or BASIC, hooks the KERNAL's interrupt vectors, is BASIC itself or has no stub a bare machine can start it by gets the on-chain OpenROMs and READY first; one that needs none of that runs bare, and a program that banks the ROMs out and sets its own interrupt vectors is read as bare whatever its data looks like. The scan reads byte patterns, and a program can hide a dependency from it, so the switch stays yours: on boots to READY and RESET brings the prompt back; off is bare.</p>
+  <p>INPUT says what the arrows and letters feed: a joystick in port 2, the port the programs of the series read; in port 1; in both ports at once; or the keyboard. AUTO reads a file of yours for what it reads and takes both ports when it cannot tell. Under joystick input the arrows and Z, X and space are the stick and every other key still types, so a game that wants a key on one screen and the stick on the next has both. On a phone the ring is read by angle and its hole is rest; the programs of the series stand still with two directions held, so a diagonal counts as one direction unless DIAGONALS says both. Escape is RUN/STOP and never leaves this page, Home is CLR/HOME, and F1 to F7 are the function keys. The sound starts with your first tap or key on the page, and a phone on silent stays silent. RESET starts the machine over; under the firmware, READY comes back.</p>
   <p>A public node sees the address you read from and the contracts you ask for, nothing else; to use a node of your own, open <a href="standalone.html">the standalone machine</a> with <code>?rpc=</code> and your endpoint.</p>
 </section>
 <footer class="site-foot"><ul><li><a href="https://chamber64.com/">THE CHAMBER</a></li><li><a href="https://chamber64.com/black-paper-00/">BLACK PAPER 00 · THE CHAMBER</a></li><li><a href="https://chamber64.com/black-paper-01/">BLACK PAPER 01 · PERCEPTION CHAMBER</a></li><li><a href="https://chamber64.com/architecture/">ARCHITECTURE</a></li><li><a href="https://chamber64.com/surface/">WHAT IS ON CHAIN</a></li><li><span class="here">THE MACHINE</span></li></ul><p class="repo">The contracts are verified on Etherscan — <a href="https://etherscan.io/address/0x75FD5A9c4440c38561A0099B216F825b7C6db924#code" target="_blank" rel="noopener">the Chamber</a> · <a href="https://etherscan.io/address/0x6f54E1aAE0E9A679A52e5E733645cB11e0cE6127#code" target="_blank" rel="noopener">Perception Chamber</a> — and the pages and these papers are open on <a href="https://github.com/DeMEdPit/the-chamber" target="_blank" rel="noopener">GitHub</a>. MIT, except the machine document (GPL-2.0-only) and the firmware it loads (LGPL-3.0-or-later).</p></footer>
