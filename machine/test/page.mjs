@@ -478,6 +478,16 @@ try {
     const chS = await panelPixels('scope'), chB = await panelPixels('spectrum');
     check(near(chS.body, expected.panel) && near(chS.window, expected.ground) && traced(chS, expected.ink, expected.ground) && glyphHolds(chS, 'S', expected.ink, expected.panel) && near(chB.body, expected.panel) && near(chB.floor, expected.ground),
           `both chassis are drawn in them: the body ${chS.body.join(',')}, the window ${chS.window.join(',')}, the trace ${strongest(chS).join(',')}, the titles in the ink; the spectrum's floor ${chB.floor.join(',')}`);
+    // the audio clock stopped as a phone's browser stops it when the page is left: no stale buffer is drawn as sounding,
+    // the row says the sound is paused; the page coming back asks for the clock and the pulls start again
+    const soundBefore = await pg.evaluate(() => window.machinePage.audio);
+    await pg.evaluate(() => window.machinePage.audioHold(true));
+    const held = await until(() => pg.evaluate(() => { const a = window.machinePage.audio, i = window.machinePage.instruments; return a.state === 'suspended' && i.faces.scope === 'waiting' ? { state: a.state, face: i.faces.scope, where: document.getElementById('inst-scope-where').textContent } : null; }), 4000, 50);
+    check(soundBefore.attached && soundBefore.state === 'running' && !!held && /sound paused by the browser · tap to resume/.test(held.where), `the clock stopped: the scope says the sound is paused, no stale buffer drawn (${held ? held.where : 'still drawing'})`);
+    const pulledHeld = await pg.evaluate(() => window.machinePage.audio.pulled);
+    await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    const woke = await until(() => pg.evaluate((n) => { const a = window.machinePage.audio, i = window.machinePage.instruments; return a.state === 'running' && a.pulled > n + 2 && i.faces.scope !== 'waiting' ? { state: a.state, pulled: a.pulled - n, face: i.faces.scope, said: /sound: resumed after the page came back/.test(window.machinePage.report()) } : null; }, pulledHeld), 6000, 100);
+    check(!!woke && woke.said, `the page coming back asks for the clock: running again, ${woke ? woke.pulled : 0} buffers pulled since, the scope drawing (${woke ? woke.face : 'waiting'}), said in the log`);
     await pg.evaluate(() => window.machinePage.instrumentsColour('green'));
     await new Promise((r) => setTimeout(r, 300));
     const chG = await panelPixels('scope');

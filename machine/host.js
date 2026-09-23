@@ -507,6 +507,11 @@ async function attachSound() {
 for (const ev of ['pointerup', 'click', 'keydown', 'touchend']) {
   document.addEventListener(ev, () => { if (audio.unlock() && machine && machine.alive && !audio.attached && state.phase === 'running') attachSound(); }, { capture: true, passive: true });
 }
+/** The page comes back into view (a phone's browser stops the audio clock while it is away): the clock is asked for back. */
+function wakeSound() { if (document.visibilityState === 'visible' && audio.attached && !audio.ready) audio.wake(); }
+document.addEventListener('visibilitychange', wakeSound);
+window.addEventListener('pageshow', wakeSound);
+window.addEventListener('focus', wakeSound);
 
 /** One ask, whichever door it came through: {work, token} from the chain, {file} from the visitor's own files. A file
  *  is judged before the machine is asked for, so a wrong file costs nothing and leaves whatever is playing alone. */
@@ -1022,7 +1027,7 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get instruments() { return rack ? rack.snapshot() : null; }, instrumentsMode(m) { rack.setMode(m, true); }, instrumentToggle(id) { rack.toggle(id); }, instrumentsColour(c) { rack.setColour(c); }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on, state: audio.state }; }, audioHold(v) { return v ? audio.suspend() : audio.wake(); }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get instruments() { return rack ? rack.snapshot() : null; }, instrumentsMode(m) { rack.setMode(m, true); }, instrumentToggle(id) { rack.toggle(id); }, instrumentsColour(c) { rack.setColour(c); }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
   get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say,
   readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false }, markCuts };
 start();

@@ -50,7 +50,11 @@ recorded.
 - Nothing is read while an instrument is off or the mode is PURE.
 - The sound's instruments read the buffer the page is playing now, kept
   by `audio.js` with its start time, and never ask the machine for
-  samples of their own.
+  samples of their own. While the page's audio clock is stopped (a
+  phone's browser stops it when the page is left) there is no buffer
+  sounding: the faces say the sound is paused rather than drawing a
+  stale buffer, and the page asks for the clock back when it comes
+  into view.
 - A panel sits in one of the picture's four border bands (`top-left`,
   `top-right`, `bottom-left`, `bottom-right`): a work's own instrument
   where its page keeps it, an added one in the next free band; a visitor
