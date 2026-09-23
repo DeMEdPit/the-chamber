@@ -11,6 +11,7 @@ import { scanProgram, needsOf, inputOf, scanWords, loadsMore, hex4, scanCartridg
 import { parseD64, readFile as readDiskFile, D64_SIZES } from './d64.js';
 import { readCRT, isCRT } from './crt.js';
 import { createAudio } from './audio.js';
+import { createReadout } from './readout.js';
 
 const PAGE = 'machine/2b';
 const $ = (id) => document.getElementById(id);
@@ -742,6 +743,9 @@ const BAY_KEYS = ['now', 'chain', 'file', 'keys', 'log'];
 const bays = Object.fromEntries(BAY_KEYS.map((k) => [k, $('bay-' + k)]));
 const NARROW = matchMedia('(max-width:1139px)');
 const STILL = matchMedia('(prefers-reduced-motion: reduce)');
+// the readout: a cut name slides once to show its end on a phone (readout.js); false turns it off whole
+const READOUT_ON = true;
+const readout = READOUT_ON ? createReadout({ narrow: () => NARROW.matches, still: () => STILL.matches, closed: (d) => !!d && !d.classList.contains('is-open') }) : null;
 const bayFixed = (d) => d === bays.log && !NARROW.matches;   // the log is part of the stage on a wide screen
 const bayOpen = (d) => d.classList.contains('is-open');
 function setBay(d, open, instant) {
@@ -760,6 +764,7 @@ function setBay(d, open, instant) {
   }
   if (s) s.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (!open && s && d.contains(document.activeElement) && document.activeElement !== s) s.focus({ preventScroll: true });
+  if (readout && open) readout.resetAll(d);   // an open bay shows everything; nothing needs to slide
   clearTimeout(d.settleTimer);
   if (d.classList.contains('moving')) d.settleTimer = setTimeout(() => { if (d.classList.contains('moving')) settleBay(d); }, 600);   // a transition that never ends (the tab hidden, the element gone) still settles
 }
@@ -787,6 +792,7 @@ function bayInit() {
   const id = location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : '';
   const t = id ? document.getElementById(id) : null;
   for (const k of BAY_KEYS) setBay(bays[k], !NARROW.matches || !!(t && bays[k].contains(t)), true);
+  if (readout) for (const k of BAY_KEYS) readout.watch(bays[k]);
   for (const d of document.querySelectorAll('details.fold')) if (t && d.contains(t)) setBay(d, true, true);
 }
 NARROW.addEventListener('change', () => { if (!NARROW.matches) setBay(bays.log, true, true); });   // a wide window has the log open: it is the stage's there
@@ -801,7 +807,7 @@ function verdictOf(p) {
 }
 /** The five lines, recomputed whole whenever anything they say could have changed. */
 function bayLines() {
-  const put = (k, a, e, c) => { const s = $('sum-' + k); if (!s) return; s.children[0].textContent = a; s.children[1].textContent = e; s.children[2].textContent = c; };
+  const put = (k, a, e, c) => { const s = $('sum-' + k); if (!s) return; s.children[0].textContent = a; const el = s.children[1]; const was = el.textContent; el.textContent = e; s.children[2].textContent = c; if (readout && was !== e) readout.update(el); };
   const reading = state.phase === 'reading' || state.phase === 'checking';
   if (reading) put('now', '', asking || 'the machine', '');
   else if (playing) put('now', '', playing.program.label, ` · ${verdictOf(playing.program)} · ${playing.intervened ? 'INTERVENED' : 'PURE'}`);
@@ -975,5 +981,6 @@ async function start() {
   load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
 window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
-  get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say };
+  get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say,
+  readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false } };
 start();

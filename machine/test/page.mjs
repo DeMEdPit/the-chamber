@@ -535,6 +535,20 @@ try {
   await new Promise((r) => setTimeout(r, 700));   // the site scrolls smoothly
   const seen = await pt.evaluate(() => { const r = document.getElementById('how-auto').getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; });
   check(!!revealed && seen, 'a link into a closed bay opens the bay and the fold it names, and the page goes there');
+  // the readout: NOW PLAYING's name is cut on the phone; asked to show it, the line slides left by exactly the hidden width, holds and returns, the mark of the cut gone while it moves
+  await pt.evaluate(() => { window.machinePage.bay('keys', false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { speed: 600, wait: 10, hold: 150, back: 60 }); });
+  await new Promise((r) => setTimeout(r, 250));
+  const before = await pt.evaluate(() => { window.machinePage.readout.rest(); return window.machinePage.readout.state('now'); });   // every line at rest first: a line already sliding would make this one wait its turn
+  await pt.evaluate(() => window.machinePage.readout.replay('now'));
+  await new Promise((r) => setTimeout(r, 60));
+  const mid = await pt.evaluate(() => ({ ...window.machinePage.readout.state('now'), clip: getComputedStyle(document.querySelector('#sum-now .e')).textOverflow, indentNow: getComputedStyle(document.querySelector('#sum-now .e')).textIndent }));
+  const done = await until(() => pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading ? s : null; }), 4000, 40);
+  check(before.over > 20 && !before.active && mid.active && mid.reading && mid.clip === 'clip' && mid.indent === `-${before.over}px` && parseFloat(mid.indentNow) < 0 && !!done && done.indent === '0px' && done.shown,
+        `the readout: the cut name slides ${before.over}px to show its end, then returns and rests with its mark (indent ${mid.indentNow} mid way)`);
+  check(await pt.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && getComputedStyle(document.querySelector('#sum-now .e')).textOverflow === 'ellipsis' && document.querySelector('#sum-now .f:last-child').getBoundingClientRect().right <= document.getElementById('sum-now').getBoundingClientRect().right + 0.5; }), 'at rest the cut is marked again and the trust words never moved');
+  await pt.evaluate(() => { window.machinePage.bay('now', true); window.machinePage.readout.replay('now'); });
+  await new Promise((r) => setTimeout(r, 120));
+  check(await pt.evaluate(() => !window.machinePage.readout.state('now').active), 'an open bay does not read out: everything is in view');
   check(noiseFree(terrs).length === 0, `no errors on the touch page (${noiseFree(terrs).length})`);
   await pt.close(); await tc.close();
   // under reduced motion the bays open and close at once
@@ -543,7 +557,19 @@ try {
   await pm.goto(`${A.base}/machine/`, { waitUntil: 'load' });
   const still = await pm.evaluate(() => { const d = document.getElementById('bay-keys'); const before = getComputedStyle(d.querySelector(':scope > .bb')).transitionDuration; d.querySelector(':scope > summary').click(); const b = window.machinePage.bays.keys; return { before, moving: b.moving, element: b.element, open: b.open }; });
   check(/^0s/.test(still.before) && !still.moving && !still.element && !still.open, `under reduced motion nothing moves: the bay closes at once (${still.before})`);
+  await pm.setViewportSize({ width: 390, height: 844 });
+  await until(() => pm.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  await pm.evaluate(() => { for (const k of ['now', 'chain', 'file', 'keys', 'log']) window.machinePage.bay(k, false); document.getElementById('bay-now').scrollIntoView({ block: 'center', behavior: 'instant' }); Object.assign(window.machinePage.readout.tune, { wait: 10 }); window.machinePage.readout.replay('now'); });
+  await new Promise((r) => setTimeout(r, 200));
+  check(await pm.evaluate(() => { const s = window.machinePage.readout.state('now'); return s.over > 20 && !s.active && !s.reading; }), 'under reduced motion a cut name stays where it is: no readout');
   await pm.close();
+  const wide = await b.newPage({ viewport: { width: 1180, height: 900 } });
+  await wide.goto(`${A.base}/machine/`, { waitUntil: 'load' });
+  await until(() => wide.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
+  await wide.evaluate(() => { window.machinePage.bay('now', false); Object.assign(window.machinePage.readout.tune, { wait: 10 }); window.machinePage.readout.rest(); window.machinePage.readout.replay('now'); });
+  await new Promise((r) => setTimeout(r, 200));
+  check(await wide.evaluate(() => { const s = window.machinePage.readout.state('now'); return !s.active && !s.reading && !s.queued; }), 'on a wide screen a closed bay\'s cut name stays where it is: the readout is the phone\'s');
+  await wide.close();
   A.close();
 
   // B. a program altered outside its stamp is refused and never runs

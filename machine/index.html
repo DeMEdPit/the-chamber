@@ -240,6 +240,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 .bay>summary .bs{grid-area:sum;display:flex;min-width:0;font:500 .74rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
 .bs>span{white-space:pre}
 .bs .e{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;color:var(--ink)}
+.bs .e.reading{text-overflow:clip}   /* the readout (readout.js): the cut part slides once to show its end; the mark of the cut goes while it moves */
 .bs .f{flex:none}
 .bs>span:empty{display:none}
 .bm{grid-area:mark;position:relative;width:12px;height:12px;align-self:center;justify-self:center}
