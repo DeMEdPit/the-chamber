@@ -2,7 +2,8 @@
 // THE MACHINE, the page: one machine in a frame, a search over the catalogue,
 // the states beside the frame, NOW PLAYING with its provenance, the controls, the
 // ports (the machine's sockets, drawn from ports.json by the build; their live
-// rows here) and the log. Nothing runs until a LOAD is pressed. The machine document is
+// rows here), the instruments (instruments.js, the read-only layers over the
+// picture and their card) and the log. Nothing runs until a LOAD is pressed. The machine document is
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
 import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
@@ -13,6 +14,7 @@ import { parseD64, readFile as readDiskFile, D64_SIZES } from './d64.js';
 import { readCRT, isCRT } from './crt.js';
 import { createAudio } from './audio.js';
 import { createReadout } from './readout.js';
+import { createRack } from './instruments.js';
 
 const PAGE = 'machine/2b';
 const $ = (id) => document.getElementById(id);
@@ -26,6 +28,7 @@ const els = {
   link: $('link'), linkChain: $('link-chain'), linkState: $('link-state'), linkNode: $('link-node'), linkBlock: $('link-block'), linkEndpoints: $('link-endpoints'),
 };
 const audio = createAudio({ onStatus: (t) => say(t) });
+let rack = null;   // THE INSTRUMENTS, made in start() once everything it reports through exists
 
 let catalogue = null, node = null, machine = null, machineFacts = null, playing = null, lastAsk = null;
 let busy = false, pendingAsk = null, pendingFirmware = null;
@@ -392,7 +395,7 @@ async function ensureMachine(d) {
   if (machine) {
     say(fresh ? (cartridgeIn ? 'starting a new machine: a cartridge stays in the port for the life of a machine' : 'starting a new machine for the cartridge: it will stay in its port for the life of that machine')
       : d.on ? `rebuilding the machine with ${FIRMWARE_NAME}: ${d.why}` : `rebuilding the machine bare: ${d.why}`);
-    audio.detach(); machine.destroy(); machine = null; playing = null;
+    audio.detach(); machine.destroy(); machine = null; playing = null; if (rack) rack.programChanged(null);
   }
   cartridgeIn = false; cartridgeNow = null;
   firmwareOn = d.on; firmwareWhy = d.why;
@@ -401,7 +404,7 @@ async function ensureMachine(d) {
     container: els.frame,
     onEvent: (e) => {
       if (e.type === 'status' && e.text) say(`machine: ${e.text}`);
-      if (e.type === 'error') { setState('failed', 'THE MACHINE STOPPED'); say(`the machine document reported an error and was destroyed: ${e.text}`); veil('THE MACHINE STOPPED · press LOAD to start it again'); playing = null; renderNow(); }
+      if (e.type === 'error') { setState('failed', 'THE MACHINE STOPPED'); say(`the machine document reported an error and was destroyed: ${e.text}`); veil('THE MACHINE STOPPED · press LOAD to start it again'); playing = null; if (rack) rack.programChanged(null); renderNow(); }
       if (e.type === 'intervened') { if (playing) { playing.intervened = true; renderNow(); } }
     },
   });
@@ -547,6 +550,7 @@ async function run(ask) {
     const loaded = await machine.request('load', { kind: program.cart ? 'crt' : 'prg', bytes: buf, label: program.label.slice(0, 80) }, { transfer: [buf] });
     if (program.cart) { cartridgeIn = true; cartridgeNow = { title: program.facts.cartridge.title, typeName: program.facts.cartridge.typeName }; }
     playing = { program, loaded, at: new Date().toISOString(), intervened: !!loaded.intervened, file: ask.file || null };
+    if (rack) rack.programChanged(playing.program);
     veil('');
     setState('running', 'RUNNING');
     say(`running ${program.label}`);
@@ -564,12 +568,12 @@ async function run(ask) {
     } else if (code === 'RPC_UNAVAILABLE') {
       setState('failed', 'NO NODE ANSWERED');
       say(`no endpoint answered (${e.message}); RETRY, or read the contract on Etherscan`);
-      playing = null;
+      playing = null; if (rack) rack.programChanged(null);
       renderNow(code, e.message);
     } else {
       setState('refused', `REFUSED · ${code}`);
       say(`refused: ${e.message}`);
-      playing = null;
+      playing = null; if (rack) rack.programChanged(null);
       renderNow(code, e.message);
     }
   } finally {
@@ -607,14 +611,14 @@ function provenance() {
       claim: 'none: a file of yours, read in this browser and sent nowhere, checked for its shape only',
       scan: f.scan, needs: f.needs, known: f.known ? { work: f.known.work, name: f.known.name, words: f.known.words } : null,
       node: null, observation: null, reads: [], nodes: node ? node.facts() : null,
-      machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, mode: 'PURE', intervened: playing.intervened,
+      machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, ...(rack ? rack.record() : { mode: 'PURE', layers: [] }), intervened: playing.intervened,
     };
   }
   const out = {
     page: PAGE, at: playing.at, work: f.workName, workKey: f.work, contract: f.contract, token: f.token, label: p.label,
     program: { bytes: p.bytes.length, sha256: f.sha256, status: p.statuses.program, pins: f.pins },
     node: f.node, observation: f.observation, reads: f.reads, nodes: node ? node.facts() : null,
-    machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, mode: 'PURE', intervened: playing.intervened,
+    machine: machineFacts, firmware: { ...machineFacts.firmware, switch: firmwareMode, why: firmwareWhy }, input: inputMode, inputWhy, ...(rack ? rack.record() : { mode: 'PURE', layers: [] }), intervened: playing.intervened,
   };
   if (p.kind === 'stamped') out.stamp = { status: p.statuses.stamp, block: f.block, stampedAt: f.stampedAt, previousBlockHash: f.prevHash, digits: f.digits, seed: f.seed, row: f.row };
   if (p.kind === 'slotted') out.mind = { status: p.statuses.mind, revision: f.revision, head: f.head, headStatus: p.statuses.head, canonicalHash: f.canonicalHash, brainBlob: f.brainBlob, record: f.record };
@@ -666,7 +670,7 @@ function machineRows() {
     ['EMULATOR', emulator, mf ? '' : 'muted'],
     ['FIRMWARE', firmware, ''],
     ['INPUT', (inputMode === 'keyboard' ? 'keyboard · the C64 matrix' : inputMode === 'joysticks' ? 'joystick in both ports' : `joystick in port ${joyPort()}`) + (inputWhy ? ` · ${inputWhy}` : ''), ''],
-    ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : 'PURE · nothing on this page reaches into the machine', ''],
+    ['MODE', playing && playing.intervened ? 'INTERVENED · a write reached the machine from outside' : rack ? rack.modeWords() : 'PURE · nothing on this page reaches into the machine', ''],
     ['NODE', host || DASH, host ? '' : 'muted'],
   ];
 }
@@ -740,8 +744,8 @@ function renderNow(code, text) {
 // Closed on a phone, open on a wide screen, where the log is the stage's and does not fold; a link into a closed bay
 // opens it; nothing is remembered between visits. The body is one grid row, 0fr to 1fr, and the mark's upright
 // collapses into its bar in the same time; under reduced motion both are instant.
-const BAY_KEYS = ['now', 'chain', 'file', 'controls', 'ports', 'log'];
-const CLOSED_BY_DEFAULT = new Set(['ports']);   // a reference card: closed at every width until it is opened, or a link lands inside it
+const BAY_KEYS = ['now', 'chain', 'file', 'controls', 'ports', 'instruments', 'log'];
+const CLOSED_BY_DEFAULT = new Set(['ports', 'instruments']);   // a reference card: closed at every width until it is opened, or a link lands inside it
 const bays = Object.fromEntries(BAY_KEYS.map((k) => [k, $('bay-' + k)]));
 const NARROW = matchMedia('(max-width:1139px)');
 const STILL = matchMedia('(prefers-reduced-motion: reduce)');
@@ -835,6 +839,7 @@ function bayLines() {
   const stick = inputMode === 'keyboard' ? 'no stick' : inputMode === 'joysticks' ? 'both sticks' : `stick in port ${joyPort()}`;
   put('ports', '', `${stick} · ${cartridgeIn ? 'cartridge in' : 'no cartridge'} · ${firmwareOn ? 'OpenROMs' : 'bare'}`, '');   // short enough for a phone whole; no trust word here, so all of it slides when it is cut
   portRows();
+  put('instruments', '', rack ? rack.line() : 'off · PURE', '');
   const last = els.log.lastElementChild;
   put('log', '', last ? last.textContent : 'nothing yet', ` · ${fullLog.length} line${fullLog.length === 1 ? '' : 's'}`);   // the last thing said first, the count after
 }
@@ -887,7 +892,7 @@ els.reset.addEventListener('click', async () => {
   if (!machine || !machine.alive) return;
   try { await machine.request('reset'); } catch (e) { return; }
   if (playing && playing.program.cart) { say('the machine was reset; the cartridge in its port starts again'); renderNow(); return; }
-  playing = null;
+  playing = null; if (rack) rack.programChanged(null);
   setState('idle', firmwareOn ? 'READY' : 'RESET');
   say(firmwareOn ? `the machine was reset; ${FIRMWARE_NAME} is at READY` : 'the machine was reset; it is on and bare');
   if (!firmwareOn) veil('BARE · press LOAD to run a program');
@@ -984,6 +989,9 @@ els.sound.addEventListener('click', () => {
 // ------------------------------------------------------------------ start
 async function start() {
   els.firmware.value = firmwareMode; els.input.value = inputMode;   // a browser may restore a form's values on reload; the page's state is the page's
+  rack = createRack({ frame: els.frame, layer: $('layer'), card: bays.instruments, audio, badge: els.link, say, onChange: () => { bayLines(); if (playing) renderNow(); } });
+  const askedMode = new URLSearchParams(location.search).get('mode');
+  if (askedMode === 'pure' || askedMode === 'instruments') rack.setMode(askedMode, true);   // a shared link carries the mode; a fresh visit follows the work
   bayInit();
   setState('off', 'THE MACHINE IS OFF');
   renderNow();
@@ -992,6 +1000,7 @@ async function start() {
     if (!res.ok) throw new Error(`http ${res.status}`);
     catalogue = await res.json();
     if (catalogue.schema !== 'chamber-machine-catalogue' || catalogue.version !== 1) throw new Error('not a version 1 catalogue');
+    rack.catalogue = catalogue;
   } catch (e) {
     setState('failed', 'THE CATALOGUE DID NOT LOAD');
     say(`the catalogue did not load: ${e.message}`);
@@ -1011,7 +1020,7 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get instruments() { return rack ? rack.snapshot() : null; }, instrumentsMode(m) { rack.setMode(m, true); }, instrumentToggle(id) { rack.toggle(id); }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
   get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say,
   readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false }, markCuts };
 start();

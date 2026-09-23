@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "about": "the instruments the page can lay over the machine and show in THE INSTRUMENTS card: what each reads, what it needs of the machine and requires of the program, its sizes; drawn from here by the build, wired by instruments.js; an instrument never writes to the machine (INSTRUMENTS.md)",
+  "bands": ["top-left", "top-right", "bottom-left", "bottom-right"],
+  "groups": [
+    {"id": "sound", "label": "FROM THE SOUND"},
+    {"id": "chain", "label": "FROM THE CHAIN"}
+  ],
+  "instruments": [
+    {"id": "scope", "name": "SCOPE", "title": "SID OUTPUT", "group": "sound", "needs": "audio", "requires": null, "module": "scope", "face": "quarter", "compact": true,
+     "reads": "the SID's output, the sound this page already plays, the buffer sounding now · writes nothing"},
+    {"id": "spectrum", "name": "SPECTRUM", "title": "SID SPECTRUM", "group": "sound", "needs": "audio", "requires": null, "module": "spectrum", "face": "quarter", "compact": true,
+     "reads": "the same sound by frequency, the page's own transform · writes nothing"},
+    {"id": "chain", "name": "THE CHAIN STRIP", "title": null, "group": "chain", "needs": null, "requires": null, "module": null, "face": null, "compact": false, "host": true,
+     "reads": "the badge at the frame's corner: this page's own chain session, not a read of the machine · its switch is visibility alone"}
+  ]
+}

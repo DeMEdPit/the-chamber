@@ -1,7 +1,7 @@
 {
  "schema": "chamber-machine-catalogue",
  "version": 1,
- "generated": "2026-09-22T04:42:11Z",
+ "generated": "2026-09-23T18:12:13Z",
  "what": "Every program THE MACHINE can load from Ethereum, how to fetch each one and what it must match. Produced by a private exporter from the deployment records and the frozen bytes; checked, line by line, by machine/verify.py against the chain, which is what makes it trustworthy. machine/CATALOGUE.md describes the fields.",
  "chainId": 1,
  "endpoints": [
@@ -1027,7 +1027,17 @@
     "genesis": {
      "sha256": "b522c1e5af90799f7876c1d0f8268fa3e6fc6091e9899e66f228cbeab71cff05",
      "note": "revision 0 of every token; the blank slot the program ships"
-    }
+    },
+    "instruments": [
+     {
+      "id": "scope",
+      "place": "top-right"
+     },
+     {
+      "id": "mindprint",
+      "place": "top-left"
+     }
+    ]
    },
    "recipes": {
     "frozen": {

@@ -161,7 +161,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 .frame{position:relative;width:100%;aspect-ratio:384/272;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#000}
 .frame:focus-within{outline:2px solid var(--accent);outline-offset:2px}
-.veil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
+.veil{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;pointer-events:none}
 .veil[hidden]{display:none}
 .hint{margin:10px 0 0;font-size:.85rem;color:var(--muted)}
@@ -187,6 +187,7 @@ h1{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}   /* compact on this page:
 @keyframes linkPulse{0%,100%{opacity:.25}50%{opacity:1}}
 @media(prefers-reduced-motion:reduce){.link .ls::before{animation:none}}
 .link .l{display:none}
+.link[hidden]{display:none}   /* THE CHAIN STRIP's switch hides the badge; the page reads and records as before */
 .link .ln,.link .lb{overflow:hidden;text-overflow:ellipsis}
 @media(max-width:1139px){.link{grid-template-columns:11ch 9.5ch auto}}
 @media(min-width:1140px){.link{left:10px;right:auto;grid-template-columns:29ch 34.5ch auto}.link .s{display:none}.link .l{display:inline}}   /* fixed columns: the longest endpoint name, and a block with its short hash; the box never grows */
@@ -330,6 +331,37 @@ textarea.json{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;font
 .ctl .how p{margin:2px 0 4px;font-size:inherit;line-height:inherit;color:inherit}   /* the site's paragraph rule would size it as prose */
 .ctl .touch-only{display:none}   /* DIAGONALS governs the ring, and the note about a phone on silent is for a phone: shown where the ring shows; the sound's hint has a form for each */
 @media(pointer:coarse){.ctl dt.touch-only,.ctl dd.touch-only{display:block}.ctl span.touch-only{display:inline}.ctl .fine-only{display:none}}
+/* THE INSTRUMENTS: the MODE control, two words and one lit; one row an instrument, its lamp, a compact readout and its
+   switch, gated under PURE (the switch disabled, the lamp dark, the readout dim, the positions kept); and the panels laid
+   over the machine's picture, a title bar with the lamp that drags, a face, folded to a pill by the mark. The layer takes
+   no pointer events but on a title bar, so the machine never sees a panel and the keys reach it as before */
+.seg{display:inline-flex;border:1px solid #333;border-radius:6px;overflow:hidden;background:#050505}
+.seg button{font:700 .66rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--muted);background:transparent;border:0;padding:8px 12px;cursor:pointer}
+.seg button.on{color:#050505;background:var(--accent2)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.irow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:8px 0 0;padding:7px 9px;border:1px solid #2a2a2a;border-radius:6px;background:linear-gradient(180deg,#0f0f0f,#080808)}
+.irow .iname{display:flex;align-items:center;gap:8px;font:700 .6rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--ink);white-space:nowrap}
+.lamp{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1d1d1d;border:1px solid #333;flex:none}
+.on>.iname>.lamp,.ipanel .lamp{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px rgba(57,255,136,.55)}
+.irow canvas.icv{display:block;width:100%;height:28px;background:#050505;border:1px solid #303030;border-radius:3px}
+.irow.nocv canvas.icv{display:none}
+.irow .isw{font:700 .58rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--muted);background:#050505;border:1px solid #333;border-radius:5px;padding:5px 8px;cursor:pointer;min-width:42px;justify-self:end}   /* a row without a readout keeps its switch at the right */
+.irow.on .isw{color:var(--accent2);border-color:#2e5a45}
+.irow .isw:disabled{opacity:.45;cursor:default}
+.irow .ireads{grid-column:1/-1;font-size:.72rem;line-height:1.4;color:var(--muted);margin-top:-2px}
+.irow .iwhere:not(:empty)::before{content:" · "}
+.irow:not(.on) canvas.icv{opacity:.3}
+.layer{position:absolute;inset:0;z-index:2;pointer-events:none}
+.layer.dragging{pointer-events:auto;cursor:grabbing}   /* while a panel is dragged the layer takes the pointer, so the frame beneath never does */
+.ipanel{position:absolute;box-sizing:border-box;padding:0;margin:0;background:rgba(10,10,12,.86);border:1px solid #2a2a2a;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.5);overflow:hidden;pointer-events:none}
+.ipanel .ibar{display:flex;align-items:center;gap:6px;height:16px;padding:0 6px;font:700 .5rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--ink);cursor:grab;pointer-events:auto;user-select:none;touch-action:none}
+.ipanel .ibar .lamp{width:5px;height:5px}
+.ipanel .ifold{margin-left:auto;font:700 .6rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);background:transparent;border:0;padding:0 2px;cursor:pointer}
+.ipanel canvas{display:block;width:100%}
+.ipanel.folded canvas{display:none}
+.ipanel.folded{height:auto!important}   /* folded: the title bar alone */
+@media(max-width:1139px){.ipanel .ibar{font-size:.42rem;letter-spacing:.12em;padding:0 4px}}
+@media(prefers-reduced-motion:reduce){.on>.iname>.lamp,.ipanel .lamp{box-shadow:none}}
 select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}
 /* the account under the machine: its sections under their own titles, no heading over them (the owner, 2026-09-23), a rule
    and a little air where it began */
@@ -343,7 +375,7 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
    footer are the way back); the frame fills the column as the phone's does, the badge hung from its
    corner (the owner's word, 2026-09-22: the picture is scaled by the width there, whole multiples kept for two columns,
    where the frame is 768 again) */
-@media(max-width:1139px){.machine{grid-template-columns:1fr;row-gap:14px}.stage,.column{display:contents}.screen{order:1}.touch{order:2;margin:11px 0}.now{order:3}.chain{order:4}.file{order:5}.controls{order:6}.ports{order:7}.logbox{order:8;margin:0}}
+@media(max-width:1139px){.machine{grid-template-columns:1fr;row-gap:14px}.stage,.column{display:contents}.screen{order:1}.touch{order:2;margin:11px 0}.now{order:3}.chain{order:4}.file{order:5}.controls{order:6}.ports{order:7}.instruments{order:8}.logbox{order:9;margin:0}}
 @media(max-width:700px){main{width:calc(100% - 32px)}.rows{height:260px}.nl{grid-template-columns:1fr;gap:0}.playing{min-height:510px}}
 
 
@@ -372,6 +404,7 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
   <div class="stage">
     <div class="screen">
       <div class="frame" id="frame" aria-label="the machine">
+        <div class="layer" id="layer" aria-label="the instruments over the picture"></div>
         <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
       </div>
       <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain" title="no node yet">
@@ -462,6 +495,17 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
         <dt>FIRMWARE</dt><dd><select class="mode" id="firmware" aria-label="the firmware" autocomplete="off"><option value="auto" selected>auto: as the program needs</option><option value="off">off: bare, as on chain</option><option value="on">on: OpenROMs pressing 1, READY first</option></select> <span class="why" id="firmware-why">AUTO · decides when a program loads</span>
           <details class="fold how" id="how-auto"><summary aria-expanded="false" aria-controls="how-auto-body">HOW AUTO DECIDES</summary><div class="bb" id="how-auto-body"><div class="bi"><p>A program of the chain runs bare, as it does on chain. A file of yours is read for what it needs: one that calls the KERNAL or BASIC, hooks its vectors, is BASIC itself or has no stub a bare machine can start gets the on-chain OpenROMs and READY first; one that needs none of that runs bare. The scan reads byte patterns and can miss a dependency, so the switch stays yours: <a href="#about-controls">the whole account</a>.</p></div></div></details></dd>
       </dl>
+      </div></div>
+    </details>
+    <details class="panel bay instruments" id="bay-instruments" aria-labelledby="lab-instruments" data-bands="top-left,top-right,bottom-left,bottom-right">
+      <summary class="bh" aria-expanded="false" aria-controls="bay-instruments-body"><span class="lab"><span id="lab-instruments">THE INSTRUMENTS</span></span><span class="bs" id="sum-instruments"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-instruments-body"><div class="bi">
+      <dl class="ctl"><dt>MODE</dt><dd><div class="seg" id="mode" role="radiogroup" aria-label="the mode"><button type="button" role="radio" aria-checked="true" data-mode="pure">PURE</button><button type="button" role="radio" aria-checked="false" data-mode="instruments">INSTRUMENTS</button></div> <span class="why" id="mode-why">PURE · nothing on this page reads or reaches into the machine</span><span class="hint" id="mode-hint">a fresh visit follows the work · a link carries it</span></dd></dl>
+      <p class="grp">FROM THE SOUND</p>
+      <div class="irow" id="inst-scope" data-inst="scope" data-group="sound" data-needs="audio" data-requires="" data-module="scope" data-face="quarter" data-title="SID OUTPUT"><span class="iname"><span class="lamp" aria-hidden="true"></span>SCOPE</span><canvas class="icv" width="600" height="56" aria-hidden="true"></canvas><button type="button" class="isw" aria-pressed="false" aria-label="SCOPE on or off">OFF</button><span class="ireads">the SID&#x27;s output, the sound this page already plays, the buffer sounding now · writes nothing<span class="iwhere" id="inst-scope-where"></span></span></div>
+      <div class="irow" id="inst-spectrum" data-inst="spectrum" data-group="sound" data-needs="audio" data-requires="" data-module="spectrum" data-face="quarter" data-title="SID SPECTRUM"><span class="iname"><span class="lamp" aria-hidden="true"></span>SPECTRUM</span><canvas class="icv" width="600" height="56" aria-hidden="true"></canvas><button type="button" class="isw" aria-pressed="false" aria-label="SPECTRUM on or off">OFF</button><span class="ireads">the same sound by frequency, the page&#x27;s own transform · writes nothing<span class="iwhere" id="inst-spectrum-where"></span></span></div>
+      <p class="grp">FROM THE CHAIN</p>
+      <div class="irow nocv" id="inst-chain" data-inst="chain" data-group="chain" data-needs="" data-requires="" data-module="" data-face="" data-host="1"><span class="iname"><span class="lamp" aria-hidden="true"></span>THE CHAIN STRIP</span><canvas class="icv" width="600" height="56" aria-hidden="true"></canvas><button type="button" class="isw" aria-pressed="false" aria-label="THE CHAIN STRIP on or off">OFF</button><span class="ireads">the badge at the frame&#x27;s corner: this page&#x27;s own chain session, not a read of the machine · its switch is visibility alone<span class="iwhere" id="inst-chain-where"></span></span></div>
       </div></div>
     </details>
   </aside>

@@ -278,7 +278,8 @@ export async function programFromChain(node, catalogue, workKey, tokenId, onStat
   // a malformed return is the node's, not the page's: a BAD_RETURN sets it aside
   const decode = (what, f) => { try { return f(); } catch (e) { throw new MachineError('BAD_RETURN', `${what}: ${e.message}`); } };
   return node.observe(async (s) => {
-    const facts = { work: work.key, workName: work.name, contract: work.address, token: tokenId, node: s.host, observation: s.facts(), reads: [] };
+    const facts = { work: work.key, workName: work.name, contract: work.address, token: tokenId, node: s.host, observation: s.facts(), reads: [],
+      instruments: work.program && Array.isArray(work.program.instruments) ? work.program.instruments : [] };   // the work's own instruments and where its page keeps them, a catalogue fact
     const statuses = {};
     let bytes, label;
     if (kind === 'stamped') {

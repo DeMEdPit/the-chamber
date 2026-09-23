@@ -198,7 +198,7 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 .frame{{position:relative;width:100%;aspect-ratio:384/272;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}}
 .frame iframe{{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#000}}
 .frame:focus-within{{outline:2px solid var(--accent);outline-offset:2px}}
-.veil{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
+.veil{{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
   background:rgba(0,0,0,.72);color:var(--ink);font:700 .8rem/1.6 {MONO};letter-spacing:.16em;pointer-events:none}}
 .veil[hidden]{{display:none}}
 .hint{{margin:10px 0 0;font-size:.85rem;color:var(--muted)}}
@@ -224,6 +224,7 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 @keyframes linkPulse{{0%,100%{{opacity:.25}}50%{{opacity:1}}}}
 @media(prefers-reduced-motion:reduce){{.link .ls::before{{animation:none}}}}
 .link .l{{display:none}}
+.link[hidden]{{display:none}}   /* THE CHAIN STRIP's switch hides the badge; the page reads and records as before */
 .link .ln,.link .lb{{overflow:hidden;text-overflow:ellipsis}}
 @media(max-width:1139px){{.link{{grid-template-columns:11ch 9.5ch auto}}}}
 @media(min-width:1140px){{.link{{left:10px;right:auto;grid-template-columns:29ch 34.5ch auto}}.link .s{{display:none}}.link .l{{display:inline}}}}   /* fixed columns: the longest endpoint name, and a block with its short hash; the box never grows */
@@ -367,6 +368,37 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .ctl .how p{{margin:2px 0 4px;font-size:inherit;line-height:inherit;color:inherit}}   /* the site's paragraph rule would size it as prose */
 .ctl .touch-only{{display:none}}   /* DIAGONALS governs the ring, and the note about a phone on silent is for a phone: shown where the ring shows; the sound's hint has a form for each */
 @media(pointer:coarse){{.ctl dt.touch-only,.ctl dd.touch-only{{display:block}}.ctl span.touch-only{{display:inline}}.ctl .fine-only{{display:none}}}}
+/* THE INSTRUMENTS: the MODE control, two words and one lit; one row an instrument, its lamp, a compact readout and its
+   switch, gated under PURE (the switch disabled, the lamp dark, the readout dim, the positions kept); and the panels laid
+   over the machine's picture, a title bar with the lamp that drags, a face, folded to a pill by the mark. The layer takes
+   no pointer events but on a title bar, so the machine never sees a panel and the keys reach it as before */
+.seg{{display:inline-flex;border:1px solid #333;border-radius:6px;overflow:hidden;background:#050505}}
+.seg button{{font:700 .66rem/1 {MONO};letter-spacing:.14em;color:var(--muted);background:transparent;border:0;padding:8px 12px;cursor:pointer}}
+.seg button.on{{color:#050505;background:var(--accent2)}}
+.seg button:focus-visible{{outline:2px solid var(--accent);outline-offset:-2px}}
+.irow{{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:8px 0 0;padding:7px 9px;border:1px solid #2a2a2a;border-radius:6px;background:linear-gradient(180deg,#0f0f0f,#080808)}}
+.irow .iname{{display:flex;align-items:center;gap:8px;font:700 .6rem/1.6 {MONO};letter-spacing:.16em;color:var(--ink);white-space:nowrap}}
+.lamp{{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1d1d1d;border:1px solid #333;flex:none}}
+.on>.iname>.lamp,.ipanel .lamp{{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px rgba(57,255,136,.55)}}
+.irow canvas.icv{{display:block;width:100%;height:28px;background:#050505;border:1px solid #303030;border-radius:3px}}
+.irow.nocv canvas.icv{{display:none}}
+.irow .isw{{font:700 .58rem/1 {MONO};letter-spacing:.14em;color:var(--muted);background:#050505;border:1px solid #333;border-radius:5px;padding:5px 8px;cursor:pointer;min-width:42px;justify-self:end}}   /* a row without a readout keeps its switch at the right */
+.irow.on .isw{{color:var(--accent2);border-color:#2e5a45}}
+.irow .isw:disabled{{opacity:.45;cursor:default}}
+.irow .ireads{{grid-column:1/-1;font-size:.72rem;line-height:1.4;color:var(--muted);margin-top:-2px}}
+.irow .iwhere:not(:empty)::before{{content:" · "}}
+.irow:not(.on) canvas.icv{{opacity:.3}}
+.layer{{position:absolute;inset:0;z-index:2;pointer-events:none}}
+.layer.dragging{{pointer-events:auto;cursor:grabbing}}   /* while a panel is dragged the layer takes the pointer, so the frame beneath never does */
+.ipanel{{position:absolute;box-sizing:border-box;padding:0;margin:0;background:rgba(10,10,12,.86);border:1px solid #2a2a2a;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.5);overflow:hidden;pointer-events:none}}
+.ipanel .ibar{{display:flex;align-items:center;gap:6px;height:16px;padding:0 6px;font:700 .5rem/1 {MONO};letter-spacing:.16em;color:var(--ink);cursor:grab;pointer-events:auto;user-select:none;touch-action:none}}
+.ipanel .ibar .lamp{{width:5px;height:5px}}
+.ipanel .ifold{{margin-left:auto;font:700 .6rem/1 {MONO};color:var(--muted);background:transparent;border:0;padding:0 2px;cursor:pointer}}
+.ipanel canvas{{display:block;width:100%}}
+.ipanel.folded canvas{{display:none}}
+.ipanel.folded{{height:auto!important}}   /* folded: the title bar alone */
+@media(max-width:1139px){{.ipanel .ibar{{font-size:.42rem;letter-spacing:.12em;padding:0 4px}}}}
+@media(prefers-reduced-motion:reduce){{.on>.iname>.lamp,.ipanel .lamp{{box-shadow:none}}}}
 select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}}
 /* the account under the machine: its sections under their own titles, no heading over them (the owner, 2026-09-23), a rule
    and a little air where it began */
@@ -380,7 +412,7 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
    footer are the way back); the frame fills the column as the phone's does, the badge hung from its
    corner (the owner's word, 2026-09-22: the picture is scaled by the width there, whole multiples kept for two columns,
    where the frame is 768 again) */
-@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{order:1}}.touch{{order:2;margin:11px 0}}.now{{order:3}}.chain{{order:4}}.file{{order:5}}.controls{{order:6}}.ports{{order:7}}.logbox{{order:8;margin:0}}}}
+@media(max-width:1139px){{.machine{{grid-template-columns:1fr;row-gap:14px}}.stage,.column{{display:contents}}.screen{{order:1}}.touch{{order:2;margin:11px 0}}.now{{order:3}}.chain{{order:4}}.file{{order:5}}.controls{{order:6}}.ports{{order:7}}.instruments{{order:8}}.logbox{{order:9;margin:0}}}}
 @media(max-width:700px){{main{{width:calc(100% - 32px)}}.rows{{height:260px}}.nl{{grid-template-columns:1fr;gap:0}}.playing{{min-height:510px}}}}
 """
 
@@ -389,6 +421,7 @@ select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};col
 CARD = "machine/card.png"
 BOOT_SCREEN = HERE / "boot-screen.json"
 PORTS = HERE / "ports.json"      # the machine's ports, as this build has them: THE PORTS is drawn from it
+INSTRUMENTS = HERE / "instruments.json"   # the instruments the page can lay over the machine: THE INSTRUMENTS is drawn from it
 CARD_SIZE = (2400, 1260)          # twice 1200 x 630, the shape share previews take
 CARD_SCALE = 6                    # one screen pixel is six card pixels
 CARD_GREEN = (0x39, 0xFF, 0x88)   # the site's accent, site.css --accent
@@ -549,6 +582,70 @@ def ports():
     return d, by_id
 
 
+def instruments():
+    """The description of the instruments, checked for its shape."""
+    d = json.loads(INSTRUMENTS.read_text(encoding="utf-8"))
+    if d.get("version") != 1 or not isinstance(d.get("groups"), list) or not isinstance(d.get("instruments"), list) or not isinstance(d.get("bands"), list):
+        die("instruments.json is not what the card expects")
+    groups = {g["id"]: g for g in d["groups"] if isinstance(g, dict) and isinstance(g.get("id"), str) and isinstance(g.get("label"), str)}
+    if len(groups) != len(d["groups"]):
+        die("instruments.json: a group lacks its id or its label")
+    seen = set()
+    for i in d["instruments"]:
+        for k in ("id", "name", "group", "reads"):
+            if not isinstance(i.get(k), str) or not i[k]:
+                die(f"instruments.json: an instrument lacks {k}")
+        if not re.fullmatch(r"[a-z0-9]+", i["id"]) or i["id"] in seen:
+            die(f"instruments.json: instrument id {i['id']!r} is not a fresh lowercase word")
+        seen.add(i["id"])
+        if i["group"] not in groups:
+            die(f"instruments.json: {i['id']} names an unknown group {i['group']!r}")
+        if i.get("face") not in (None, "quarter", "wide"):
+            die(f"instruments.json: {i['id']} names a face this build cannot lay out: {i.get('face')!r}")
+    if any(b not in ("top-left", "top-right", "bottom-left", "bottom-right") for b in d["bands"]):
+        die("instruments.json: a band is not one of the picture's four")
+    return d, groups
+
+
+MODE_CONTROL = ('<dl class="ctl"><dt>MODE</dt><dd><div class="seg" id="mode" role="radiogroup" aria-label="the mode">'
+                '<button type="button" role="radio" aria-checked="true" data-mode="pure">PURE</button>'
+                '<button type="button" role="radio" aria-checked="false" data-mode="instruments">INSTRUMENTS</button></div> '
+                '<span class="why" id="mode-why">PURE · nothing on this page reads or reaches into the machine</span>'
+                '<span class="hint" id="mode-hint">a fresh visit follows the work · a link carries it</span></dd></dl>')
+
+
+def instruments_card():
+    d, groups = instruments()
+    parts = []
+    for gid, g in groups.items():
+        rows = [i for i in d["instruments"] if i["group"] == gid]
+        if not rows:
+            continue
+        lines = []
+        for i in rows:
+            attrs = f'data-inst="{esc(i["id"])}" data-group="{esc(gid)}" data-needs="{esc(i.get("needs") or "")}" data-requires="{esc(i.get("requires") or "")}" data-module="{esc(i.get("module") or "")}" data-face="{esc(i.get("face") or "")}"'
+            if i.get("title"):
+                attrs += f' data-title="{esc(i["title"])}"'
+            if i.get("host"):
+                attrs += ' data-host="1"'
+            cls = "irow" + ("" if i.get("compact") else " nocv")
+            lines.append(f'      <div class="{cls}" id="inst-{esc(i["id"])}" {attrs}>'
+                         f'<span class="iname"><span class="lamp" aria-hidden="true"></span>{esc(i["name"])}</span>'
+                         f'<canvas class="icv" width="600" height="56" aria-hidden="true"></canvas>'
+                         f'<button type="button" class="isw" aria-pressed="false" aria-label="{esc(i["name"])} on or off">OFF</button>'
+                         f'<span class="ireads">{esc(i["reads"])}<span class="iwhere" id="inst-{esc(i["id"])}-where"></span></span></div>')
+        parts.append(f'      <p class="grp">{esc(g["label"])}</p>\n' + "\n".join(lines))
+    body = "\n".join(parts)
+    return f"""    <details class="panel bay instruments" id="bay-instruments" aria-labelledby="lab-instruments" data-bands="{esc(",".join(d["bands"]))}">
+      <summary class="bh" aria-expanded="false" aria-controls="bay-instruments-body"><span class="lab"><span id="lab-instruments">THE INSTRUMENTS</span></span><span class="bs" id="sum-instruments"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>
+      <div class="bb" id="bay-instruments-body"><div class="bi">
+      {MODE_CONTROL}
+{body}
+      </div></div>
+    </details>
+"""
+
+
 def ports_card():
     d, by_id = ports()
     groups = []
@@ -577,6 +674,7 @@ def page_body():
   <div class="stage">
     <div class="screen">
       <div class="frame" id="frame" aria-label="the machine">
+        <div class="layer" id="layer" aria-label="the instruments over the picture"></div>
         <div class="veil" id="veil"><span id="veil-text">THE MACHINE IS OFF</span></div>
       </div>
       <div class="link" id="link" data-phase="off" aria-live="polite" aria-label="the link to the chain" title="no node yet">
@@ -644,7 +742,7 @@ def page_body():
       </dl>
       </div></div>
     </details>
-{ports_card()}  </aside>
+{ports_card()}{instruments_card()}  </aside>
 </div>
 <section class="about" aria-label="the account of the page">
   <h3 id="about-machine">The machine</h3>

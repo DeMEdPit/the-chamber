@@ -5,9 +5,14 @@
 // port (protocol: audio, samples) and this module schedules them on the
 // page's own audio clock, pacing the pulls as nopsta's player does: one
 // buffer ahead is scheduled whenever less than two are queued, a timer of
-// empty quarter buffers keeps the pulls coming, and a stall re-syncs.
+// empty quarter buffers keeps the pulls coming, and a stall re-syncs. The
+// last few buffers are kept with their start times, so an instrument can
+// draw the buffer that is sounding now rather than the one just scheduled,
+// which starts about three buffer-lengths later (the workbench's scope ran
+// that far ahead of its sound; instruments.js reads `current()`).
 export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => {} } = {}) {
   let ctx = null, gain = null, machine = null, next = 0, lastPush = 0, pause = 0, timer = null, on = true, pulled = 0, inflight = 0;
+  const recent = [];   // { at, data }: the buffers scheduled, newest last, the last six kept
   const dur = () => bufferSize / ctx.sampleRate;
 
   function unlock() {
@@ -65,11 +70,15 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
       if (!ctx) return;
       const src = ctx.createBufferSource();
       const buf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      buf.getChannelData(0).set(new Float32Array(r.bytes));
+      const data = new Float32Array(r.bytes);
+      buf.getChannelData(0).set(data);
       src.buffer = buf;
       src.connect(gain);
       src.addEventListener('ended', push);
-      src.start(Math.max(at, ctx.currentTime));
+      const start = Math.max(at, ctx.currentTime);
+      src.start(start);
+      recent.push({ at: start, data });
+      while (recent.length > 6) recent.shift();
       pulled++;
     }).catch(() => { inflight--; });
   }
@@ -95,8 +104,18 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
     });
   }
 
+  /** The buffer sounding now by the page's own audio clock: the newest whose start is past, or null before any has started. */
+  function current() {
+    if (!ctx || !recent.length) return null;
+    const now = ctx.currentTime;
+    let cur = null;
+    for (const r of recent) if (r.at <= now) cur = r;
+    return cur;
+  }
+
   return {
-    unlock, attach, detach, settle,
+    unlock, attach, detach, settle, current,
+    get sampleRate() { return ctx ? ctx.sampleRate : 0; },
     get ready() { return !!ctx && ctx.state === 'running'; },
     get attached() { return !!(machine && machine.alive); },
     get pulled() { return pulled; },
