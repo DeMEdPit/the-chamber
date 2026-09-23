@@ -66,7 +66,10 @@ recorded.
   glyph a whole number of device pixels per ROM pixel, as large as the
   title's room on the panel allows and never larger than the device's own,
   one size across the rack's panels, a title that does not fit even at one
-  trimmed as the token trims its own), the
+  trimmed as the token trims its own; the green lamp before the title six
+  tenths of the letters' height and never larger than the desktop's 4.5
+  CSS pixels, a gap of 0.45 of the letters to the title, the same on every
+  instrument's panel), the
   minus in the corner (a plus when folded to the title), and a rounded
   window in the ground with the instrument's face clipped inside. The
   green lamp before the title is the page's own. The scope's window shows

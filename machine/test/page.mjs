@@ -727,6 +727,9 @@ try {
     const fits = (p, text) => p.title.text === text && p.title.g === 2 && p.title.x + text.length * 8 * p.title.g <= p.minus.x - 2 * p.k + 1e-6 && p.left + p.width <= fit.layer + 1;
     check(!!fit && fit.dpr === 3 && fits(fit.p.spectrum, 'SID SPECTRUM') && fits(fit.p.scope, 'SID OUTPUT') && fit.p.scope.title.g === fit.p.spectrum.title.g,
           `on a phone at three device pixels a CSS pixel both titles fit their panels whole at ${fit && fit.p.spectrum.title.g} device pixels a ROM pixel, one size, the minus clear (${fit ? Math.round(fit.p.spectrum.title.x + 96 * fit.p.spectrum.title.g) + ' of ' + Math.round(fit.p.spectrum.minus.x) : 'no panels'})`);
+    const lampP = await fp.evaluate(() => { const l = document.querySelector('#layer .ipanel[data-inst="spectrum"] .ibar .lamp'), cs = getComputedStyle(l); const p = window.machinePage.instruments.panels.spectrum; return { width: cs.width, colour: cs.backgroundColor, size: p.lamp.size, gap: p.lamp.gap, x: p.lamp.x }; });
+    check(Math.abs(parseFloat(lampP.width) - 3.2) < 0.05 && lampP.colour === 'rgb(57, 255, 136)' && Math.abs(lampP.size - 9.6) < 1e-6 && lampP.gap >= 6.5 && lampP.gap <= 8,   // 0.45 of the letters, 7.2 device px, less the rounding of the title's origin to a whole pixel
+          `on the phone the lamp is ${lampP.width} (six tenths of the letters, under the desktop's 4.5) and green, ${(lampP.gap / 3).toFixed(1)} CSS px before the title`);
     await fp.close(); await fc.close();
   }
   // under reduced motion the bays open and close at once

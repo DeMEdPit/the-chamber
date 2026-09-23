@@ -7,7 +7,10 @@
 // token's, and scaled to the device: the body a rounded rectangle of radius 4
 // in the panel colour under a soft shadow; a pad of 2.25; the title in the
 // character ROM, four picture pixels tall, at (pad, pad + 0.5) after the
-// lamp's room; the minus a rounded square 0.055 of the panel's width in the
+// lamp's room (the page's green lamp, six tenths of the letters' height and
+// never larger than the desktop's 4.5 CSS pixels, half a picture pixel in
+// from the pad, then a gap of 0.45 of the letters' height: the owner's eye
+// on his phone, 2026-09-23); the minus a rounded square 0.055 of the panel's width in the
 // corner at 0.55 alpha (a plus when the panel is folded to its title); the
 // window a rounded rectangle of radius 2 in the ground, from pad + glyph +
 // pad down to pad above the bottom, the face clipped inside it. The glyph is
@@ -20,15 +23,21 @@
 // the room, never past the room.
 import { drawText } from './romfont.js';
 
-export const PAD = 2.25, GLYPH = 4, BODY_R = 4, WINDOW_R = 2, LAMP_ROOM = 5, MARGIN = 8;
+export const PAD = 2.25, GLYPH = 4, BODY_R = 4, WINDOW_R = 2, MARGIN = 8;
+export const LAMP = { css: 4.5, ofGlyph: 0.6, gap: 0.45, inset: 0.5 };   // the lamp's most in CSS px, its share of the letters' height, the gap's share, its inset in picture px
 export const SHADOW = { blur: 5, offset: 2, colour: 'rgba(0,0,0,0.35)' };
 export const MINUS = { min: 2.5, share: 0.055, alpha: 0.55 };
 
 /** The glyph the device would have: the token's four picture pixels as whole device pixels allow, at least six CSS pixels. */
 export function glyphScale(k, dpr) { return Math.max(1, Math.round(GLYPH / 8 * k), Math.ceil(0.75 * dpr)); }
-/** The room a title has on a panel `pw` wide, in device pixels: between the lamp's room and the minus, less a gap of two picture pixels. */
+/** The lamp for letters of `g` device pixels a ROM pixel: its size, where it starts, and the room it and its gap take before the title. */
+export function lampFor(k, dpr, g) {
+  const size = Math.min(LAMP.css * dpr, LAMP.ofGlyph * 8 * g), x = PAD * k + LAMP.inset * k;
+  return { size, x, room: LAMP.inset * k + size + LAMP.gap * 8 * g };
+}
+/** The room a title has on a panel `pw` wide, in device pixels: after the lamp's room at the device's own glyph (its largest), before the minus, less a gap of two picture pixels. */
 export function titleRoom(pw, k, dpr) {
-  const pad = PAD * k, lampRoom = Math.max(LAMP_ROOM * k, 6 * dpr), size = Math.max(MINUS.min * k, pw * MINUS.share);
+  const pad = PAD * k, lampRoom = lampFor(k, dpr, glyphScale(k, dpr)).room, size = Math.max(MINUS.min * k, pw * MINUS.share);
   return pw - pad - lampRoom - size - pad - 2 * k;
 }
 /** The glyph a title fits at on a panel: the device's, or fewer device pixels a ROM pixel when the title would run into the minus; never under one. */
@@ -46,9 +55,9 @@ export function fitTitle(title, room, g) {
 
 /** The layout in device pixels for a body `pw` by `ph` at `k` device pixels per picture pixel; `g` overrides the glyph (a rack shares one across its panels). */
 export function layout(pw, ph, k, dpr, { title = '', g = null } = {}) {
-  const pad = PAD * k, gg = g || glyphFor(pw, k, dpr, title), bar = pad + 8 * gg + pad, lampRoom = Math.max(LAMP_ROOM * k, 6 * dpr);
+  const pad = PAD * k, gg = g || glyphFor(pw, k, dpr, title), bar = pad + 8 * gg + pad, lamp = lampFor(k, dpr, gg);
   const size = Math.max(MINUS.min * k, pw * MINUS.share), room = titleRoom(pw, k, dpr);
-  return { pad, g: gg, bar, lampRoom, room, title: { x: Math.round(pad + lampRoom), y: Math.round(pad + 0.5 * k), text: fitTitle(title, room, gg) },
+  return { pad, g: gg, bar, lamp, lampRoom: lamp.room, room, title: { x: Math.round(pad + lamp.room), y: Math.round(pad + 0.5 * k), text: fitTitle(title, room, gg) },
     minus: { x: pw - pad - size, y: pad, size }, window: { x: pad, y: bar, w: pw - pad * 2, h: ph - bar - pad } };
 }
 

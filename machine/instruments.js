@@ -35,7 +35,6 @@ import { MARGIN, drawChassis, layout as chassisLayout, glyphFor } from './instru
 // is where a token's own page keeps its panels (the top band) and where an added one goes (the next free band)
 const PICTURE_W = 384, SIDE = 32 / 384, BAND = 36 / 272, EDGE_R = 352 / 384;
 const FACE_W = { quarter: 0.245, wide: (352 - 32) / 384 - 0.245 - 0.005 };
-const LAMP = 4.5;             // the lamp's size in CSS pixels, a touch under the card's 7
 const SCENE = { every: 1000 };   // the picture read once a second while SCENE and a tinted instrument is live; the rule is scene.js
 
 export function createRack({ frame, layer, card, audio, badge, machineOf = () => null, font = null, say = () => {}, onChange = () => {} }) {
@@ -189,7 +188,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     p.geom = { k, g: L.g, ox: m, oy: m, pw, ph, L, folded };
     p.bar.style.height = `${L.bar / dpr}px`;
     Object.assign(p.fold.style, { left: `${L.minus.x / dpr}px`, top: `${L.minus.y / dpr}px`, width: `${L.minus.size / dpr}px`, height: `${L.minus.size / dpr}px` });
-    Object.assign(p.lamp.style, { left: `${L.pad / dpr + (L.lampRoom / dpr - LAMP) / 2}px`, top: `${(L.bar / dpr - LAMP) / 2}px` });
+    Object.assign(p.lamp.style, { left: `${L.lamp.x / dpr}px`, top: `${(L.bar - L.lamp.size) / 2 / dpr}px`, width: `${L.lamp.size / dpr}px`, height: `${L.lamp.size / dpr}px` });
     paint(p, null, 0);
   }
   /** Draw a panel: the chassis in the colours of the moment, the instrument in its window. */
@@ -322,7 +321,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     return { mode: state.mode, chosen: state.chosen, on: { ...state.on }, available: { ...state.available }, own: { ...state.own }, layers: layers(), faces: { ...state.faceState },
       colour: state.colour, colours: { ink: c.ink, ground: c.ground, panel: c.panel }, from: from(), learned: adoption.learned, sceneWhy: state.sceneWhy, reads: state.reads, tinting: tinting(), font: { ...fontFacts },
       panels: Object.fromEntries(Object.entries(panels).map(([k, p]) => [k, { band: p.el.dataset.band, pill: p.el.classList.contains('folded'), left: p.el.offsetLeft, top: p.el.offsetTop, width: p.el.offsetWidth, height: p.el.offsetHeight,
-        ...(p.geom ? { k: p.geom.k, canvas: { w: p.cv.width, h: p.cv.height }, body: { x: p.geom.ox, y: p.geom.oy, w: p.geom.pw, h: p.geom.ph }, bar: p.geom.L.bar, pad: p.geom.L.pad, title: { x: p.geom.ox + p.geom.L.title.x, y: p.geom.oy + p.geom.L.title.y, g: p.geom.L.g, text: p.geom.L.title.text, room: p.geom.L.room }, minus: { x: p.geom.ox + p.geom.L.minus.x, size: p.geom.L.minus.size },
+        ...(p.geom ? { k: p.geom.k, canvas: { w: p.cv.width, h: p.cv.height }, body: { x: p.geom.ox, y: p.geom.oy, w: p.geom.pw, h: p.geom.ph }, bar: p.geom.L.bar, pad: p.geom.L.pad, title: { x: p.geom.ox + p.geom.L.title.x, y: p.geom.oy + p.geom.L.title.y, g: p.geom.L.g, text: p.geom.L.title.text, room: p.geom.L.room }, minus: { x: p.geom.ox + p.geom.L.minus.x, size: p.geom.L.minus.size }, lamp: { x: p.geom.L.lamp.x, size: p.geom.L.lamp.size, gap: p.geom.L.title.x - (p.geom.L.lamp.x + p.geom.L.lamp.size) },
           window: { x: p.geom.ox + p.geom.L.window.x, y: p.geom.oy + p.geom.L.window.y, w: p.geom.L.window.w, h: p.geom.L.window.h } } : {}) }])) };
   }
 
