@@ -264,7 +264,7 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 .panel .lab>span:first-child{{flex:none}}
 /* a bay: a panel that folds. Its header is the whole button: the name, and one live line, what is true now in the page's
    own words, the thing in ink and its qualifiers muted, the thing the only part that can be cut short (the trust words are
-   never cut); the mark a drawn plus whose upright collapses into the bar as the drawer opens, in the body's own time.
+   never cut); the mark a drawn plus whose upright falls onto the bar as the drawer opens, and rises as it closes.
    Open, the controls and the record; the account under the page is the third depth. Closed on a phone, open on a wide
    screen, where the log is the stage's and does not fold. The body is one grid row from 0fr to 1fr, so the drawer
    opens as one object; the inner box clips it and carries the panel's bottom air, so the closed row is truly empty */
@@ -286,10 +286,10 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 .bs .f{{flex:none}}
 .bs>span:empty{{display:none}}
 .bm{{grid-area:mark;position:relative;width:12px;height:12px;align-self:center;justify-self:center}}
-.bm::before,.bm::after{{content:"";position:absolute;background:var(--accent2);border-radius:1px;transition:transform 240ms cubic-bezier(.2,.8,.2,1)}}
+.bm::before,.bm::after{{content:"";position:absolute;background:var(--accent2);border-radius:1px}}
 .bm::before{{left:0;top:5px;width:12px;height:2px}}
-.bm::after{{left:5px;top:0;width:2px;height:12px}}
-.bay.is-open>summary .bm::after{{transform:scaleY(0)}}
+.bm::after{{left:5px;top:0;width:2px;height:12px;transform-origin:50% 50%;transition:transform 320ms cubic-bezier(.45,0,.55,1)}}   /* the upright falls a quarter turn onto the bar as the card opens, and rises as it closes: one soft motion, a little longer than the drawer (the owner's ask, 2026-09-23, after a site whose plus falls into a minus) */
+.bay.is-open>summary .bm::after{{transform:rotate(90deg)}}
 .bb{{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 240ms cubic-bezier(.2,.8,.2,1),opacity 180ms ease}}
 .is-open>.bb{{grid-template-rows:1fr;opacity:1}}
 .bi{{min-height:0;overflow:hidden}}
