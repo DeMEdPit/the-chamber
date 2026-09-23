@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // THE MACHINE, the page: one machine in a frame, a search over the catalogue,
-// the states beside the frame, NOW PLAYING with its provenance, the keys, and
+// the states beside the frame, NOW PLAYING with its provenance, the controls, and
 // the way out. Nothing runs until a LOAD is pressed. The machine document is
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
@@ -739,7 +739,7 @@ function renderNow(code, text) {
 // Closed on a phone, open on a wide screen, where the log is the stage's and does not fold; a link into a closed bay
 // opens it; nothing is remembered between visits. The body is one grid row, 0fr to 1fr, and the mark's upright
 // collapses into its bar in the same time; under reduced motion both are instant.
-const BAY_KEYS = ['now', 'chain', 'file', 'keys', 'log'];
+const BAY_KEYS = ['now', 'chain', 'file', 'controls', 'log'];
 const bays = Object.fromEntries(BAY_KEYS.map((k) => [k, $('bay-' + k)]));
 const NARROW = matchMedia('(max-width:1139px)');
 const STILL = matchMedia('(prefers-reduced-motion: reduce)');
@@ -829,7 +829,7 @@ function bayLines() {
   else if (disk) put('file', '', disk.file.name, ` · ${programs} program${programs === 1 ? '' : 's'} · pick one`);
   else put('file', '.prg · .d64 · .crt', '', '');
   const fw = firmwareMode === 'auto' ? (machineFacts ? `AUTO · ${firmwareOn ? 'on' : 'bare'}` : 'AUTO') : firmwareMode.toUpperCase();
-  put('keys', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · ${fw} · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
+  put('controls', '', inputMode === 'keyboard' ? 'keyboard' : inputMode === 'joysticks' ? 'both joysticks' : `joystick ${joyPort()}`, ` · ${fw} · sound ${audio.on ? 'on' : 'off'}`);   // the short forms, so the line fits a phone whole
   const last = els.log.lastElementChild;
   put('log', '', last ? last.textContent : 'nothing yet', ` · ${fullLog.length} line${fullLog.length === 1 ? '' : 's'}`);   // the last thing said first, the count after
   markCuts();
@@ -882,7 +882,7 @@ document.addEventListener('drop', (e) => e.preventDefault());
 // ------------------------------------------------------------------ the touch controls
 // The ring is read as an ANGLE from its centre, so every part of it outside the
 // hole is live and a thumb slides between directions without lifting; the hole
-// is rest. It reads a diagonal two ways, chosen in THE KEYS:
+// is rest. It reads a diagonal two ways, chosen in THE CONTROLS:
 //   one direction (the default): the programs of the series stand still when two
 //     directions are pressed together (measured on the Perception page, whose
 //     ring settled the split): left and right take 120 degrees each, up and
