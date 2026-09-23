@@ -1,33 +1,19 @@
 // SPDX-License-Identifier: MIT
-// SCOPE: the SID's output as a trace, the way an oscilloscope shows it. It
-// draws the buffer the page is playing now (audio.js `current()`) and
-// asks the machine for nothing. The recipe is the workbench's, learned
-// over August and September 2026 (docs in the private repository; the
-// site's study §11): a fixed window rather than the whole buffer, so a
-// note is a few cycles and not a picket fence; a rising-edge trigger with
-// hysteresis, so the trace does not jump sideways on every buffer; one
-// vertex per pixel at a fractional stride up to six samples a pixel and
-// the true extremes of each column beyond that; and a held scale, the
-// largest peak of the last `hold` frames, so a quiet passage still reads
-// as quiet and nothing pumps. The chain's machine has no voice state to
-// fit a window to, so the window is a stated number of milliseconds.
-import { pale } from './colour.js';
-
+// SCOPE: the SID's output as a trace. It draws the buffer the page is
+// playing now (audio.js `current()`) and asks the machine for nothing. Two
+// drawings, one instrument. In the card's small readout, the workbench's
+// recipe, learned over August and September 2026 (docs in the private
+// repository; the site's study §11): a fixed window rather than the whole
+// buffer, so a note is a few cycles and not a picket fence; a rising-edge
+// trigger with hysteresis, so the trace does not jump sideways on every
+// buffer; one vertex per pixel at a fractional stride up to six samples a
+// pixel and the true extremes of each column beyond that; and a held scale,
+// the largest peak of the last `hold` frames, so a quiet passage still reads
+// as quiet and nothing pumps. The chain's machine has no voice state to fit
+// a window to, so the window is a stated number of milliseconds. Over the
+// picture, in the token's chassis, the token's own wave (`wave`, below).
 export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '#39ff88', ground = '#050505', grid = '#181818', ink = '#aaa9a3' } = {}) {
   const peaks = new Float32Array(hold); let peakAt = 0, peakN = 0;
-  let gradFor = null, grad = null, gradH = 0;
-
-  /** The trace's colour: the stroke, or under an ink the one colour paler towards the extremes, one gradient kept per ink and height. */
-  function traceStyle(ctx, h, tint) {
-    if (!tint) return stroke;
-    if (tint !== gradFor || h !== gradH) {
-      grad = ctx.createLinearGradient(0, 0, 0, h);
-      const p = pale(tint);
-      grad.addColorStop(0, p); grad.addColorStop(0.5, tint); grad.addColorStop(1, p);
-      gradFor = tint; gradH = h;
-    }
-    return grad;
-  }
 
   /** Rising-edge trigger with hysteresis: arm below the midpoint less a band, fire above it plus the band, searched only across the slack the window leaves; silence locks onto nothing. */
   function trigger(data, win) {
@@ -63,11 +49,10 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
   }
 
   /**
-   * Draw into a canvas already sized in device pixels. `data` is the buffer sounding now or null; `rate` its sample
-   * rate. Returns the state drawn: waiting, silent or signal. `words` false leaves the state unwritten (a small face);
-   * `tint`, a #rrggbb, draws the trace in that one colour instead of the stroke (the picture's, under SCENE).
+   * The card's readout: draw into a canvas already sized in device pixels. `data` is the buffer sounding now or null;
+   * `rate` its sample rate. Returns the state drawn: waiting, silent or signal. `words` false leaves the state unwritten.
    */
-  function draw(cv, data, rate, { words = true, lineWidth = 2, tint = null } = {}) {
+  function draw(cv, data, rate, { words = true, lineWidth = 2 } = {}) {
     const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
     ctx.fillStyle = ground; ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = grid; ctx.lineWidth = 1; ctx.beginPath();
@@ -76,7 +61,7 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
     ctx.stroke();
     const state = judge(data);
     const mid = h / 2, amp = (h / 2) * 0.86;
-    ctx.strokeStyle = traceStyle(ctx, h, tint); ctx.lineWidth = lineWidth; ctx.beginPath();
+    ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.beginPath();
     if (state !== 'signal') {
       ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
     } else {
@@ -112,5 +97,33 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
     return state;
   }
 
-  return { draw, judge, get windowMs() { return windowMs; } };
+  /** The panel over the picture: the token's wave in the chassis window, in the ink, `k` device pixels per picture pixel. */
+  function window(ctx, x, y, w, h, data, rate, { colours, k = 4 }) {
+    wave(ctx, x, y, w, h, data, colours.ink, Math.max(1, Math.round(k / 4)));
+    return judge(data);
+  }
+
+  return { draw, window, judge, wave, get windowMs() { return windowMs; } };
+}
+
+/**
+ * The token's own wave (the workbench's 83a-sid-face `sid_drawWave`, the pill-scale trace lifted onto the token's face):
+ * one line through the whole buffer at one point per pixel of width, an integer stride, each sample clamped to ±1 at
+ * 0.9 of the window's half height, a thin line at 0.85 alpha; no window, no trigger, no gain, no grid; a flat line
+ * with no data. The midline is snapped to the pixel grid so a silent line is one crisp row. `lineWidth` in device
+ * pixels; on the token it is one pixel of a canvas four times the picture.
+ */
+export function wave(ctx, x, y, w, h, data, stroke, lineWidth = 1) {
+  const n = data ? data.length : 0, mid = Math.round(y + h / 2) + (lineWidth % 2 ? 0.5 : 0);
+  ctx.save();
+  ctx.strokeStyle = stroke; ctx.globalAlpha = 0.85; ctx.lineWidth = lineWidth; ctx.beginPath();
+  if (n) {
+    const step = Math.max(1, Math.floor(n / w));
+    for (let i = 0, px = 0; i < n; i += step, px++) {
+      const v = Math.max(-1, Math.min(1, data[i])), yy = mid - v * (h / 2) * 0.9;
+      if (px === 0) ctx.moveTo(x, yy); else ctx.lineTo(x + px, yy);
+    }
+  } else { ctx.moveTo(x, mid); ctx.lineTo(x + w, mid); }
+  ctx.stroke();
+  ctx.restore();
 }

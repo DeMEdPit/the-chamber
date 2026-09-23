@@ -52,6 +52,9 @@ jobs:
       - name: The cartridge reader's gate
         run: node machine/test/crt.mjs
 
+      - name: The instruments' gate (the token's colour rule, wave, chassis and titles, ported)
+        run: node machine/test/instruments.mjs
+
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save playwright@1.56.1

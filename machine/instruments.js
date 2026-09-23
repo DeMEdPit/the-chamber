@@ -15,28 +15,30 @@
 // visit and are gated under PURE. THE CHAIN STRIP is a status instrument
 // over the page, not a read of the machine: visible under PURE, its switch
 // visibility alone. An instrument never writes to the machine; the ones
-// here read only the sound the page plays (INSTRUMENTS.md). COLOUR (the
-// owner, 2026-09-23): the instruments marked `tint` draw in the site's
-// green, or under SCENE in the picture's main colour, which the page reads
-// from the machine document (`colours`, a count of its painted pixels) about
-// once a second while such an instrument is on, and adopts when two readings
-// in a row agree; the lamp stays green.
+// here read only the sound the page plays (INSTRUMENTS.md).
+//
+// THE CHASSIS (the owner, 2026-09-23): a panel over the picture is drawn as
+// the token's own page draws its instruments, through instruments/chassis.js
+// (the body, the title in the character ROM, the minus, the window), the
+// scope's panel with the token's own wave; the card beside the frame keeps
+// its own readouts. COLOUR: GREEN is the site's green on the token's default
+// chassis; SCENE is the token's whole rule (instruments/scene.js): the
+// ground, the ink and the panel's body from the picture, read through the
+// machine document's `colours` about once a second while such an instrument
+// is on and adopted when two readings agree; the lamp stays green.
 import { createScope } from './instruments/scope.js';
 import { createSpectrum } from './instruments/spectrum.js';
-import { luminance } from './instruments/colour.js';
+import { SITE, pickColours, createAdoption } from './instruments/scene.js';
+import { MARGIN, drawChassis, layout as chassisLayout } from './instruments/chassis.js';
 
 // the picture's own geometry: 384 by 272 with the C64's border, 32 px at the sides and 36 above and below, which
 // is where a token's own page keeps its panels (the top band) and where an added one goes (the next free band)
-const SIDE = 32 / 384, BAND = 36 / 272, EDGE_R = 352 / 384;
+const PICTURE_W = 384, SIDE = 32 / 384, BAND = 36 / 272, EDGE_R = 352 / 384;
 const FACE_W = { quarter: 0.245, wide: (352 - 32) / 384 - 0.245 - 0.005 };
-const BAR_H = 16;   // the title bar's height in CSS pixels
-// SCENE: the picture read once a second, a colour adopted when two readings agree: of the machine's own screen (the border
-// left out) the commonest colour drawn over its ground (the ground is the commonest colour of all), if bright enough to
-// read on a panel's dark ground, else the ground itself if it is; relative luminance 0.045 or more keeps the C64's dark
-// grey and its white and drops its black. The READY screen's white over blue gives white, not the blue behind it
-const TINT = { every: 1000, agree: 2, floor: 0.045 };
+const LAMP = 4.5;             // the lamp's size in CSS pixels, a touch under the card's 7
+const SCENE = { every: 1000 };   // the picture read once a second while SCENE and a tinted instrument is live; the rule is scene.js
 
-export function createRack({ frame, layer, card, audio, badge, machineOf = () => null, say = () => {}, onChange = () => {} }) {
+export function createRack({ frame, layer, card, audio, badge, machineOf = () => null, font = null, say = () => {}, onChange = () => {} }) {
   const rows = [...card.querySelectorAll('.irow')].map((el) => ({
     id: el.dataset.inst, el, name: el.querySelector('.iname').textContent.trim(), title: el.dataset.title || null, group: el.dataset.group,
     needs: el.dataset.needs || null, requires: el.dataset.requires || null, module: el.dataset.module || null, face: el.dataset.face || null,
@@ -53,12 +55,20 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     on: Object.fromEntries(rows.map((r) => [r.id, r.host])),   // each switch's position, kept for the visit; the strip starts on
     available: {},                                   // what the machine and the loaded program allow; the sound's two need only the machine
     own: {},                                         // id -> band: the loaded work's own instruments and where its page keeps them
-    colour: 'green', ink: null, inkWhy: '', reads: 0,   // COLOUR: green or scene; the ink adopted from the picture, why, and how many readings were made
+    colour: 'green', sceneWhy: '', reads: 0,         // COLOUR: green or scene; what the last adoption said; how many readings were made
     program: null, catalogue: null, faceState: {},
   };
   for (const r of rows) state.available[r.id] = meets(r, { instruments: [], kind: null });
-  const panels = {};    // id -> { el, cv, pos: {x, y} fractions or null (its band), band }
+  const adoption = createAdoption();                 // SCENE's colours, learned from the picture
+  const panels = {};    // id -> { el, cv, bar, lamp, fold, pos: {x, y} fractions or null (its band), band, geom }
   let raf = 0, dpr = window.devicePixelRatio || 1;
+  // the titles' font: the pressing's character ROM as the page holds it to its pin; a plain font stands in until it comes
+  let chargen = null, fontFacts = { status: font ? 'LOADING' : 'FALLBACK', sha256: null };
+  Promise.resolve(font).then((f) => {
+    if (f && f.bytes) { chargen = new Uint8Array(f.bytes); fontFacts = { status: f.status || 'PINNED', sha256: f.sha256 || null }; }
+    else fontFacts = { status: 'FALLBACK', sha256: null };
+    layout();
+  }).catch(() => { fontFacts = { status: 'FALLBACK', sha256: null }; layout(); });
 
   // ---- what a program allows
   function factsOf(program) {
@@ -84,7 +94,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     state.program = program;
     const facts = factsOf(program);
     state.own = {};
-    state.ink = null; state.inkWhy = ''; pendingKey = null; pendingN = 0;   // a new picture: the colour is read again
+    adoption.reset(); state.sceneWhy = '';        // a new picture: its colours are learned again
     for (const x of facts.instruments) if (x && byId[x.id] && bands.includes(x.place)) state.own[x.id] = x.place;
     for (const r of rows) state.available[r.id] = meets(r, facts);
     const ownIds = Object.keys(state.own);
@@ -113,47 +123,38 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
   const live = (r) => !r.host && state.mode === 'instruments' && state.on[r.id] && state.available[r.id];
   const layers = () => rows.filter(live).map((r) => r.id);
 
-  // ---- COLOUR: the picture's main colour, read from the machine document while SCENE and a tinted instrument is on
-  let tintTimer = 0, tintBusy = false, pendingKey = null, pendingN = 0;
+  // ---- COLOUR: the token's rule, read from the machine document while SCENE and a tinted instrument is on
+  let sceneTimer = 0, sceneBusy = false;
   const tinting = () => state.mode === 'instruments' && state.colour === 'scene' && rows.some((r) => r.tint && live(r));
-  const inkOf = (r) => (r.tint && state.colour === 'scene' && state.ink) || null;
+  const coloursNow = () => (state.colour === 'scene' ? adoption.current : SITE);
+  const from = () => (state.colour === 'green' ? 'site' : adoption.learned ? 'picture' : adoption.current.synthetic ? 'contrast' : 'defaults');
   function setColour(c) {
     if ((c !== 'green' && c !== 'scene') || c === state.colour) return;
     state.colour = c;
-    say(c === 'scene' ? 'colour: SCENE · the scope and the spectrum take the picture\'s main colour, read once a second' : 'colour: GREEN · the site\'s green');
+    say(c === 'scene' ? 'colour: SCENE · the panels take the picture\'s colours, read once a second' : 'colour: GREEN · the site\'s green on the token\'s chassis');
     render();
-  }
-  /** From the document's count: the commonest colour drawn over the screen's ground, bright enough to read; else the ground; none for a one-colour screen. */
-  function pickInk(rep) {
-    const seen = (rep && Array.isArray(rep.colours) ? rep.colours : []).filter((c) => c && c.inner > 0 && /^#[0-9a-f]{6}$/.test(c.rgb)).sort((a, b) => b.inner - a.inner);
-    if (seen.length < 2) return { ink: null, why: 'one colour on screen · the site\'s green' };
-    const bright = (c) => luminance(c.rgb) >= TINT.floor;
-    const figure = seen.slice(1).find(bright);
-    if (figure) return { ink: figure.rgb, why: `the picture's main colour ${figure.rgb} over ${seen[0].rgb}` };
-    if (bright(seen[0])) return { ink: seen[0].rgb, why: `the picture's ground ${seen[0].rgb}, nothing bright over it` };
-    return { ink: null, why: 'nothing bright enough on screen · the site\'s green' };
   }
   function sample() {
     const m = machineOf();
-    if (!tinting() || tintBusy || !m || !m.alive) return;
-    tintBusy = true;
+    if (!tinting() || sceneBusy || !m || !m.alive) return;
+    sceneBusy = true;
     m.request('colours').then((rep) => {
       state.reads++;
-      const pick = pickInk(rep), key = pick.ink || pick.why;
-      if (key === pendingKey) pendingN++; else { pendingKey = key; pendingN = 1; }
-      if (pendingN >= TINT.agree && (pick.ink !== state.ink || pick.why !== state.inkWhy)) {
-        state.ink = pick.ink; state.inkWhy = pick.why;
-        say(`colour: ${pick.why}`);
-        renderInk(); onChange();
+      const pick = pickColours(rep && rep.colours), changed = adoption.offer(pick), c = adoption.current;
+      if (pick && pick.ink + pick.ground === c.ink + c.ground) {   // what is drawn is what the picture says, adopted now or before (or the defaults it agrees with)
+        const words = pick.synthetic ? `one colour on screen · a contrast ink ${pick.ink} on ${pick.ground}` : `the picture's colours: ink ${pick.ink} on ${pick.ground}, the panel ${pick.panel}`;
+        if (changed) say(`colour: ${words}`);
+        if (words !== state.sceneWhy) { state.sceneWhy = words; renderColour(); }
+        if (changed) onChange();
       }
-    }).catch(() => {}).then(() => { tintBusy = false; });
+    }).catch(() => {}).then(() => { sceneBusy = false; });
   }
-  function renderInk() {
+  function renderColour() {
     for (const b of inkButtons) { const is = b.dataset.ink === state.colour; b.classList.toggle('on', is); b.setAttribute('aria-checked', is ? 'true' : 'false'); }
-    if (inkWhy) inkWhy.textContent = state.colour === 'green' ? 'GREEN · the site\'s green' : `SCENE · ${state.ink || state.inkWhy ? state.inkWhy : tinting() ? 'reading the picture' : 'the picture, read while a scope is on'}`;
+    if (inkWhy) inkWhy.textContent = state.colour === 'green' ? 'GREEN · the site\'s green' : `SCENE · ${state.sceneWhy || (tinting() ? 'reading the picture' : 'the picture\'s colours, read while a scope is on')}`;
     const want = tinting();
-    if (want && !tintTimer) { tintTimer = setInterval(sample, TINT.every); sample(); }
-    else if (!want && tintTimer) { clearInterval(tintTimer); tintTimer = 0; tintBusy = false; }
+    if (want && !sceneTimer) { sceneTimer = setInterval(sample, SCENE.every); sample(); }
+    else if (!want && sceneTimer) { clearInterval(sceneTimer); sceneTimer = 0; sceneBusy = false; }
   }
 
   // ---- the panels over the picture
@@ -163,25 +164,42 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     for (const b of bands) if (!taken.has(b)) return b;
     return bands[bands.length - 1];
   }
+  /** Size and place one panel: the element is the body in CSS pixels; the canvas around it carries the chassis and its shadow. */
   function place(p, W, H) {
-    const w = FACE_W[byId[p.id].face] || FACE_W.quarter, h = BAND;
+    const r = byId[p.id], w = FACE_W[r.face] || FACE_W.quarter, h = BAND;
     let x, y;
     if (p.pos) { x = p.pos.x; y = p.pos.y; } else {
       x = p.band.endsWith('left') ? SIDE : EDGE_R - w;
       y = p.band.startsWith('top') ? 0 : 1 - h;
     }
-    Object.assign(p.el.style, { left: `${x * W}px`, top: `${y * H}px`, width: `${w * W}px`, height: p.el.classList.contains('folded') ? '' : `${h * H}px` });
-    const cw = Math.max(1, Math.round(w * W * dpr)), ch = Math.max(1, Math.round((h * H - BAR_H) * dpr));
+    const bw = w * W, bh = h * H, k = W / PICTURE_W * dpr;                // the body in CSS px; device px per picture px
+    const pw = Math.round(bw * dpr), ph = Math.round(bh * dpr), L = chassisLayout(pw, ph, k, dpr);
+    const folded = p.el.classList.contains('folded'), m = Math.ceil(MARGIN * k);
+    Object.assign(p.el.style, { left: `${x * W}px`, top: `${y * H}px`, width: `${bw}px`, height: `${folded ? L.bar / dpr : bh}px` });
+    const cw = pw + 2 * m, ch = (folded ? Math.round(L.bar) : ph) + 2 * m;
     if (p.cv.width !== cw || p.cv.height !== ch) { p.cv.width = cw; p.cv.height = ch; }
-    p.cv.style.height = `${h * H - BAR_H}px`;
+    Object.assign(p.cv.style, { left: `${-m / dpr}px`, top: `${-m / dpr}px`, width: `${cw / dpr}px`, height: `${ch / dpr}px` });
+    p.geom = { k, ox: m, oy: m, pw, ph, L, folded };
+    p.bar.style.height = `${L.bar / dpr}px`;
+    Object.assign(p.fold.style, { left: `${L.minus.x / dpr}px`, top: `${L.minus.y / dpr}px`, width: `${L.minus.size / dpr}px`, height: `${L.minus.size / dpr}px` });
+    Object.assign(p.lamp.style, { left: `${L.pad / dpr + (L.lampRoom / dpr - LAMP) / 2}px`, top: `${(L.bar / dpr - LAMP) / 2}px` });
+    paint(p, null, 0);
+  }
+  /** Draw a panel: the chassis in the colours of the moment, the instrument in its window. */
+  function paint(p, data, rate) {
+    const g = p.geom; if (!g) return;
+    const ctx = p.cv.getContext('2d'), r = byId[p.id], d = drawers[r.module], col = coloursNow();
+    ctx.clearRect(0, 0, p.cv.width, p.cv.height);
+    drawChassis(ctx, { pw: g.pw, ph: g.ph, k: g.k, dpr, ox: g.ox, oy: g.oy, colours: col, title: r.title || r.name, font: chargen, folded: g.folded,
+      face: d && d.window ? (c, x, y, w, h) => d.window(c, x, y, w, h, data, rate, { colours: col, k: g.k }) : null });
   }
   function makePanel(r) {
     const el = document.createElement('div');
     el.className = 'ipanel'; el.dataset.inst = r.id;
-    el.innerHTML = `<div class="ibar"><span class="lamp" aria-hidden="true"></span><span class="ititle">${r.title || r.name}</span><button type="button" class="ifold" aria-label="fold ${r.name} to its title">–</button></div><canvas class="iface" aria-hidden="true"></canvas>`;
-    const p = { id: r.id, el, cv: el.querySelector('canvas'), pos: null, band: bandOf(r.id) };
+    el.innerHTML = `<canvas class="ichassis" aria-hidden="true"></canvas><div class="ibar"><span class="lamp" aria-hidden="true"></span><span class="ititle">${r.title || r.name}</span><button type="button" class="ifold" aria-label="fold ${r.name} to its title"></button></div>`;
+    const p = { id: r.id, el, cv: el.querySelector('canvas'), bar: el.querySelector('.ibar'), lamp: el.querySelector('.lamp'), fold: el.querySelector('.ifold'), pos: null, band: bandOf(r.id), geom: null };
     el.dataset.band = p.band;
-    const bar = el.querySelector('.ibar');
+    const bar = p.bar;
     // the drag: from the pointer's own movement since it went down, so no rectangle is trusted. While a panel is dragged
     // the layer itself takes the pointer (`dragging`), so the moves and the release land on this page and never on the
     // machine's frame beneath, whose document is another origin and hears nothing of ours; the pointer is captured by
@@ -211,7 +229,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     });
     bar.addEventListener('pointermove', move);
     bar.addEventListener('pointerup', end); bar.addEventListener('pointercancel', end);
-    el.querySelector('.ifold').addEventListener('click', () => { el.classList.toggle('folded'); el.querySelector('.ifold').textContent = el.classList.contains('folded') ? '+' : '–'; layout(); });
+    p.fold.addEventListener('click', () => { el.classList.toggle('folded'); p.fold.setAttribute('aria-label', el.classList.contains('folded') ? `open ${r.name}` : `fold ${r.name} to its title`); layout(); });
     return p;
   }
   function layout() {
@@ -230,9 +248,8 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
       if (r.host || !r.module) continue;
       const d = drawers[r.module]; if (!d) continue;
       const on = live(r), p = panels[r.id];
-      const tint = inkOf(r);
-      if (on && r.compact && r.compact.width) { state.faceState[r.id] = d.draw(r.compact, data, rate, { segments: 10, tint }); any = true; }
-      if (on && p && !p.el.classList.contains('folded')) { d.draw(p.cv, data, rate, { words: false, lineWidth: Math.max(1.5, 1.6 * dpr), segments: 8, tint }); any = true; }
+      if (on && r.compact && r.compact.width) { state.faceState[r.id] = d.draw(r.compact, data, rate, { segments: 10 }); any = true; }
+      if (on && p) { paint(p, data, rate); any = true; }   // folded too: the title strip alone, so a colour change shows on it
       if (on && r.where) r.where.textContent = words(r);
     }
     if (any) raf = requestAnimationFrame(tick);
@@ -270,7 +287,7 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
     }
     layer.dataset.mode = state.mode;
     layout();
-    renderInk();
+    renderColour();
     if (!raf && layers().length) raf = requestAnimationFrame(tick);
     onChange();
   }
@@ -284,18 +301,21 @@ export function createRack({ frame, layer, card, audio, badge, machineOf = () =>
 
   /** For the header line: what is on, in the page's own words. */
   function line() { return state.mode === 'instruments' ? `${layers().join(' · ') || 'nothing on'} · INSTRUMENTS` : 'off · PURE'; }
-  /** For NOW PLAYING and the provenance: the mode and the layers; under INSTRUMENTS the colour too, and the ink taken from the picture. */
+  /** For NOW PLAYING and the provenance: the mode and the layers; under INSTRUMENTS the colour, the three colours drawn and where they came from. */
   function record() {
     const r = { mode: state.mode === 'instruments' ? 'INSTRUMENTS' : 'PURE', layers: layers() };
-    if (state.mode === 'instruments') { r.colour = state.colour === 'scene' ? 'SCENE' : 'GREEN'; r.ink = state.colour === 'scene' ? state.ink : null; }
+    if (state.mode === 'instruments') { const c = coloursNow(); r.colour = state.colour === 'scene' ? 'SCENE' : 'GREEN'; r.ink = c.ink; r.ground = c.ground; r.panel = c.panel; r.from = from(); }
     return r;
   }
   function modeWords() { const l = layers(); return state.mode === 'instruments' ? `INSTRUMENTS · ${l.length ? l.join(', ') : 'nothing on'} · reads only, nothing written` : 'PURE · nothing on this page reaches into the machine'; }
   /** For the gate. */
   function snapshot() {
+    const c = coloursNow();
     return { mode: state.mode, chosen: state.chosen, on: { ...state.on }, available: { ...state.available }, own: { ...state.own }, layers: layers(), faces: { ...state.faceState },
-      colour: state.colour, ink: state.ink, inkWhy: state.inkWhy, reads: state.reads, tinting: tinting(),
-      panels: Object.fromEntries(Object.entries(panels).map(([k, p]) => [k, { band: p.el.dataset.band, pill: p.el.classList.contains('folded'), left: p.el.offsetLeft, top: p.el.offsetTop, width: p.el.offsetWidth, height: p.el.offsetHeight }])) };
+      colour: state.colour, colours: { ink: c.ink, ground: c.ground, panel: c.panel }, from: from(), learned: adoption.learned, sceneWhy: state.sceneWhy, reads: state.reads, tinting: tinting(), font: { ...fontFacts },
+      panels: Object.fromEntries(Object.entries(panels).map(([k, p]) => [k, { band: p.el.dataset.band, pill: p.el.classList.contains('folded'), left: p.el.offsetLeft, top: p.el.offsetTop, width: p.el.offsetWidth, height: p.el.offsetHeight,
+        ...(p.geom ? { k: p.geom.k, canvas: { w: p.cv.width, h: p.cv.height }, body: { x: p.geom.ox, y: p.geom.oy, w: p.geom.pw, h: p.geom.ph }, bar: p.geom.L.bar, pad: p.geom.L.pad, title: { x: p.geom.ox + p.geom.L.title.x, y: p.geom.oy + p.geom.L.title.y, g: p.geom.L.g },
+          window: { x: p.geom.ox + p.geom.L.window.x, y: p.geom.oy + p.geom.L.window.y, w: p.geom.L.window.w, h: p.geom.L.window.h } } : {}) }])) };
   }
 
   render();

@@ -390,16 +390,18 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .irow:not(.on) canvas.icv{{opacity:.3}}
 .layer{{position:absolute;inset:0;z-index:2;pointer-events:none}}
 .layer.dragging{{pointer-events:auto;cursor:grabbing}}   /* while a panel is dragged the layer takes the pointer, so the frame beneath never does */
-.ipanel{{position:absolute;box-sizing:border-box;padding:0;margin:0;background:rgba(10,10,12,.86);border:1px solid #2a2a2a;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.5);overflow:hidden;pointer-events:none}}
-.ipanel .ibar{{display:flex;align-items:center;gap:6px;height:16px;padding:0 6px;font:700 .5rem/1 {MONO};letter-spacing:.16em;color:var(--ink);cursor:grab;pointer-events:auto;user-select:none;touch-action:none}}
-.ipanel .ibar .lamp{{width:4.5px;height:4.5px}}   /* a touch smaller than the card's, his eye */
+/* a panel is the token's chassis, drawn on its own canvas (instruments/chassis.js: the body and its shadow, the title in
+   the character ROM, the minus, the window); the element is the body's box, the canvas around it carries the shadow, and
+   a transparent bar over the title strip takes the drag and holds the lamp and the fold button */
+.ipanel{{position:absolute;box-sizing:border-box;padding:0;margin:0;background:transparent;border:0;overflow:visible;pointer-events:none}}
+.ipanel canvas.ichassis{{position:absolute;display:block;pointer-events:none}}
+.ipanel .ibar{{position:absolute;left:0;top:0;width:100%;cursor:grab;pointer-events:auto;user-select:none;touch-action:none}}
+.ipanel .ibar .lamp{{position:absolute;width:4.5px;height:4.5px}}   /* a touch smaller than the card's, his eye */
+.ipanel .ititle{{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}   /* the title is drawn; this names the panel for a reader */
+.ipanel .ifold{{position:absolute;background:transparent;border:0;padding:0;cursor:pointer;color:transparent;font-size:0}}
+.ipanel .ifold:focus-visible{{outline:2px solid var(--accent);outline-offset:1px}}
 .icol{{margin-top:6px}}
 .icol dt{{margin-top:0}}
-.ipanel .ifold{{margin-left:auto;font:700 .6rem/1 {MONO};color:var(--muted);background:transparent;border:0;padding:0 2px;cursor:pointer}}
-.ipanel canvas{{display:block;width:100%}}
-.ipanel.folded canvas{{display:none}}
-.ipanel.folded{{height:auto!important}}   /* folded: the title bar alone */
-@media(max-width:1139px){{.ipanel .ibar{{font-size:.42rem;letter-spacing:.12em;padding:0 4px}}}}
 @media(prefers-reduced-motion:reduce){{.on>.iname>.lamp,.ipanel .lamp{{box-shadow:none}}}}
 select.mode{{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 {MONO};color:var(--ink);background:#050505;border:1px solid #333;border-radius:6px;padding:6px 8px}}
 /* the account under the machine: its sections under their own titles, no heading over them (the owner, 2026-09-23), a rule
@@ -619,12 +621,13 @@ MODE_CONTROL = ('<dl class="ctl"><dt>MODE</dt><dd><div class="seg" id="mode" rol
 
 
 # the colour of the instruments that may take the picture's: one control, drawn with the group it governs (the rule of
-# THE PORTS: a switch sits with what it governs); GREEN is the site's, SCENE the picture's main colour, read once a second
+# THE PORTS: a switch sits with what it governs); GREEN is the site's green on the token's chassis, SCENE the token's own
+# rule, the ground, the ink and the body from the picture, read once a second
 COLOUR_CONTROL = ('<dl class="ctl icol"><dt>COLOUR</dt><dd><div class="seg" id="ink" role="radiogroup" aria-label="the colour of {names}">'
                   '<button type="button" role="radio" aria-checked="true" data-ink="green">GREEN</button>'
                   '<button type="button" role="radio" aria-checked="false" data-ink="scene">SCENE</button></div> '
                   '<span class="why" id="ink-why">GREEN · the site\'s green</span>'
-                  '<span class="hint" id="ink-hint">SCENE: the picture\'s colour, read once a second</span></dd></dl>')   # one line on a phone; the names are in the label
+                  '<span class="hint" id="ink-hint">SCENE: the panels take the picture\'s colours</span></dd></dl>')   # one line on a phone; the names are in the label
 
 
 def instruments_card():

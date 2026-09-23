@@ -38,6 +38,7 @@ import { browser } from './pw.mjs';
 import { start } from './serve.mjs';
 import { makeD64 } from './make-d64.mjs';
 import { makeCRT, PROBE, probe16K } from './make-crt.mjs';
+import { pickColours, DEFAULTS } from '../instruments/scene.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EVIDENCE = join(HERE, 'evidence');
@@ -106,18 +107,46 @@ try {
         `INSTRUMENTS by the control: the sound's two come on, laid in the free bands top left and top right, named in NOW PLAYING and the provenance (${inst1 ? inst1.line : 'not on'})`);
   const geom = await pg.evaluate(() => { const f = document.getElementById('layer').getBoundingClientRect(); const p = document.querySelector('#layer .ipanel[data-inst="spectrum"]').getBoundingClientRect(); const cv = document.querySelector('#layer .ipanel[data-inst="spectrum"] canvas'); return { right: Math.round((f.right - p.right) / f.width * 384), top: Math.round((p.top - f.top) / f.height * 272), width: Math.round(p.width / f.width * 1000) / 1000, height: Math.round(p.height / f.height * 272), dpr: cv.width >= p.width - 2, face: window.machinePage.instruments.faces.scope }; });
   check(geom.right === 32 && geom.top === 0 && Math.abs(geom.width - 0.245) < 0.01 && geom.height === 36 && geom.dpr && geom.face === 'waiting', `a panel sits in the picture's own top border band at the token's geometry (right edge 32 of 384, ${geom.height} of 272 tall, 0.245 wide), its face at the device's ratio, saying it waits for sound (${geom.face})`);
+  // THE CHASSIS: a panel over the picture is the token's own, drawn on its canvas: the body in the panel colour, the title
+  // in the character ROM held to its pin, the window in the ground with the trace in the ink; the lamp the page's own
+  const pins = await pg.evaluate(() => import('/machine/bridge-client.js').then((m) => m.PINS.firmware.chargen.sha256));
+  const chargen = new Uint8Array(await (await fetch(`${A.base}/machine/parts/chargen.rom`)).arrayBuffer());
+  const glyphOf = (ch) => { const sc = ch.charCodeAt(0) - 64; return [...Array(8)].map((_, r) => [...Array(8)].map((__, b) => !!(chargen[sc * 8 + r] & (128 >> b)))); };
+  const panelPixels = (id) => pg.evaluate((q) => { const i = window.machinePage.instruments, p = i.panels[q]; const cv = document.querySelector(`#layer .ipanel[data-inst="${q}"] canvas.ichassis`), ctx = cv.getContext('2d');
+    const at = (x, y) => [...ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data].slice(0, 3);
+    const col = [...Array(Math.floor(p.window.h) - 4)].map((_, r) => at(p.window.x + p.window.w / 2, Math.floor(p.window.y) + 2 + r));   // the window's centre column, top to bottom
+    return { body: at(p.body.x + p.body.w / 2, p.body.y + 2), window: at(p.window.x + 4, p.window.y + 4), floor: at(p.window.x + p.window.w / 2, p.window.y + p.window.h - 1.5), column: col,   // `floor`: the window's last row, below the spectrum's bars
+      glyph: [...Array(8)].map((_, r) => [...Array(8)].map((__, b) => at(p.title.x + b * p.title.g + p.title.g / 2, p.title.y + r * p.title.g + p.title.g / 2))), title: document.querySelector(`#layer .ipanel[data-inst="${q}"] .ititle`).textContent, colours: i.colours, from: i.from, font: i.font, g: p.title.g, k: p.k }; }, id);
+  const rgb = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16));
+  const near = (px, h, tol = 8) => !!px && px.every((v, k) => Math.abs(v - rgb(h)[k]) <= tol);
+  // the trace: the SID's silent output sits a fraction off the midline (its own offset), so the column under the window's centre is scanned:
+  // every pixel a blend of the ink and the ground, and one row at least 40 percent of the way from the ground to the ink
+  const traced = (px, ink, ground) => { const I = rgb(ink), G = rgb(ground); const t = (p) => Math.max(...p.map((v, k) => (I[k] === G[k] ? 0 : (v - G[k]) / (I[k] - G[k])))); const blendy = (p) => p.every((v, k) => v >= Math.min(I[k], G[k]) - 6 && v <= Math.max(I[k], G[k]) + 6); return px.column.every(blendy) && px.column.some((p) => t(p) >= 0.4); };
+  const strongest = (px) => px.column.reduce((a, p) => (p.reduce((x, y) => x + y, 0) > a.reduce((x, y) => x + y, 0) ? p : a), px.column[0]);
+  const glyphHolds = (px, ch, ink, panel) => { const g = glyphOf(ch); return px.glyph.every((row, r) => row.every((p, b) => near(p, g[r][b] ? ink : panel, 10))); };
+  const ch0 = await panelPixels('scope');
+  check(ch0.font.status === 'PINNED' && ch0.font.sha256 === pins && ch0.title === 'SID OUTPUT' && ch0.g >= 1 && Number.isInteger(ch0.g), `the titles are set in the pressing's character ROM, held to its pin (${String(ch0.font.sha256).slice(0, 12)}…, ${ch0.g} px a ROM pixel)`);
+  check(near(ch0.body, '#262626') && near(ch0.window, '#000000') && traced(ch0, '#39ff88', '#000000') && ch0.colours.ink === '#39ff88' && ch0.from === 'site',
+        `under GREEN the chassis is the token's default, the site's green as the ink: the body ${ch0.body.join(',')}, the window ${ch0.window.join(',')}, the trace ${strongest(ch0).join(',')}`);
+  check(glyphHolds(ch0, 'S', '#39ff88', '#262626'), 'the title\'s first glyph is the ROM\'s S, pixel for pixel, in the ink on the body');
   // COLOUR: the control sits with the sound's rows it governs; GREEN reads nothing of the picture; SCENE reads it through the
-  // document's `colours` about once a second and answers in words, a one-colour screen keeping the green (the bare machine
-  // paints one colour here; the adoption of a real colour is proved under the firmware below); the panel's lamp a touch
-  // smaller than the card's and green whatever the colour
+  // document's `colours` about once a second and takes the token's own rule, ground, ink and panel from the whole picture,
+  // adopted when two readings agree (the bare machine's picture, whatever it is, judged by the same rule from a direct count);
+  // the panel's lamp a touch smaller than the card's and green whatever the colour
   const colour0 = await pg.evaluate(() => { const c = document.querySelector('#bay-instruments .icol'); const i = window.machinePage.instruments; const lamp = document.querySelector('#layer .ipanel .ibar .lamp'); return { after: c && c.previousElementSibling && c.previousElementSibling.id, group: c && c.closest('.bi') && [...c.closest('.bi').children].indexOf(c) > [...c.closest('.bi').children].findIndex((e) => e.id === 'inst-spectrum'), hint: document.getElementById('ink-hint').textContent, label: document.getElementById('ink').getAttribute('aria-label'), why: document.getElementById('ink-why').textContent, on: document.querySelector('#ink button.on').dataset.ink, colour: i.colour, reads: i.reads, tinting: i.tinting, prov: JSON.parse(document.getElementById('provenance-json').value), lamp: lamp && getComputedStyle(lamp).width, lampColour: lamp && getComputedStyle(lamp).backgroundColor, cardLamp: getComputedStyle(document.querySelector('#inst-scope .lamp')).width }; });
-  check(colour0.after === 'inst-spectrum' && colour0.group && colour0.hint === 'SCENE: the picture\'s colour, read once a second' && colour0.label === 'the colour of SCOPE and SPECTRUM' && colour0.why === 'GREEN · the site\'s green' && colour0.on === 'green' && colour0.colour === 'green' && colour0.reads === 0 && !colour0.tinting && colour0.prov.colour === 'GREEN' && colour0.prov.ink === null,
-        `COLOUR sits under the sound's two rows it governs, GREEN by default, nothing of the picture read, the provenance saying GREEN (${colour0.why})`);
+  check(colour0.after === 'inst-spectrum' && colour0.group && colour0.hint === 'SCENE: the panels take the picture\'s colours' && colour0.label === 'the colour of SCOPE and SPECTRUM' && colour0.why === 'GREEN · the site\'s green' && colour0.on === 'green' && colour0.colour === 'green' && colour0.reads === 0 && !colour0.tinting && colour0.prov.colour === 'GREEN' && colour0.prov.ink === '#39ff88' && colour0.prov.ground === '#000000' && colour0.prov.panel === '#262626' && colour0.prov.from === 'site',
+        `COLOUR sits under the sound's two rows it governs, GREEN by default, nothing of the picture read, the provenance saying the site's colours (${colour0.why})`);
   check(colour0.lamp === '4.5px' && colour0.cardLamp === '7px' && colour0.lampColour === 'rgb(57, 255, 136)', `the panel's lamp is 4.5 px to the card's 7, and green (${colour0.lamp}, ${colour0.lampColour})`);
   await pg.click('#ink button[data-ink="scene"]');
-  const colour1 = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; return i.reads >= 2 && i.inkWhy ? { ...i, why: document.getElementById('ink-why').textContent, prov: JSON.parse(document.getElementById('provenance-json').value) } : null; }), 8000, 100);
-  check(!!colour1 && colour1.colour === 'scene' && colour1.tinting && /^(one colour on screen · the site's green|nothing bright enough on screen · the site's green|the picture's main colour #[0-9a-f]{6} over #[0-9a-f]{6}|the picture's ground #[0-9a-f]{6}, nothing bright over it)$/.test(colour1.inkWhy) && (colour1.ink === null) === !/#/.test(colour1.inkWhy) && colour1.why === `SCENE · ${colour1.inkWhy}` && colour1.prov.colour === 'SCENE' && colour1.prov.ink === colour1.ink,
-        `SCENE reads the picture through the document and answers in words, the provenance carrying the choice and the ink (${colour1 ? colour1.inkWhy : 'no reading'}; ${colour1 ? colour1.reads : 0} reads)`);
+  const colour1 = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; return i.reads >= 2 && i.sceneWhy ? { ...i, why: document.getElementById('ink-why').textContent, prov: JSON.parse(document.getElementById('provenance-json').value) } : null; }), 8000, 100);
+  const bareCount = await pg.evaluate(() => window.machinePage.machine.request('colours'));
+  const barePick = pickColours(bareCount.colours);
+  check(!!colour1 && colour1.colour === 'scene' && colour1.tinting && /^(one colour on screen · a contrast ink #[0-9a-f]{6} on #[0-9a-f]{6}|the picture's colours: ink #[0-9a-f]{6} on #[0-9a-f]{6}, the panel #[0-9a-f]{6})$/.test(colour1.sceneWhy) && colour1.why === `SCENE · ${colour1.sceneWhy}` &&
+        colour1.colours.ink === barePick.ink && colour1.colours.ground === barePick.ground && colour1.colours.panel === barePick.panel && colour1.from === (barePick.synthetic ? (barePick.ink + barePick.ground === DEFAULTS.ink + DEFAULTS.ground ? 'defaults' : 'contrast') : 'picture') && colour1.prov.colour === 'SCENE' && colour1.prov.ink === barePick.ink && colour1.prov.ground === barePick.ground && colour1.prov.panel === barePick.panel && colour1.prov.from === colour1.from,
+        `SCENE reads the picture through the document and takes the token's rule on the whole count, said and in the provenance (${colour1 ? colour1.sceneWhy : 'no reading'}; ${colour1 ? colour1.reads : 0} reads; ${bareCount.distinct} colours on the bare machine)`);
+  const ch1 = await panelPixels('scope');
+  check(near(ch1.body, barePick.panel) && near(ch1.window, barePick.ground) && traced(ch1, barePick.ink, barePick.ground) && glyphHolds(ch1, 'S', barePick.ink, barePick.panel),
+        `the chassis is drawn in them: the body ${ch1.body.join(',')} for ${barePick.panel}, the window ${ch1.window.join(',')} for ${barePick.ground}, the trace ${strongest(ch1).join(',')} for ${barePick.ink}, the title in the ink`);
   await pg.click('#ink button[data-ink="green"]');
   const readsAtGreen = await pg.evaluate(() => window.machinePage.instruments.reads);
   await new Promise((r) => setTimeout(r, 2400));
@@ -436,22 +465,23 @@ try {
   const fwProv = await pg.evaluate(() => { const p = window.machinePage.provenance(); return p && p.firmware && p.firmware.mode === 'on' && p.firmware.status === 'PINNED' && /ethereum/.test(p.firmware.source); });
   check(fwProv, 'the provenance says firmware on, PINNED, from ethereum');
   // with a program playing under the firmware the screen keeps the boot's blue and white and the provenance exists:
-  // SCENE takes the picture's main colour and the provenance carries it
+  // SCENE takes the token's rule on the document's own count (white on the boot blue, the panel the blue shaded), the
+  // provenance carries the three colours and where they came from, the chassis is drawn in them; GREEN again is the site's
   {
     await pg.evaluate(() => { window.machinePage.instrumentsMode('instruments'); if (!window.machinePage.instruments.on.spectrum) window.machinePage.instrumentToggle('spectrum'); window.machinePage.instrumentsColour('scene'); });
-    const expected = await pg.evaluate(async () => { const rep = await window.machinePage.machine.request('colours'); const lum = (h) => { const n = parseInt(h.slice(1), 16), lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); }; const seen = rep.colours.filter((c) => c.inner > 0).sort((a, b) => b.inner - a.inner); const bright = (c) => lum(c.rgb) >= 0.045; const figure = seen.slice(1).find(bright); return { distinct: rep.distinct, screen: seen.map((c) => c.rgb), ground: seen[0].rgb, ink: figure ? figure.rgb : bright(seen[0]) ? seen[0].rgb : null }; });
-    const scene = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; const pv = document.getElementById('provenance-json').value; return i.ink && pv ? { ...i, prov: JSON.parse(pv) } : null; }), 8000, 100);
-    const dominant = (sel) => pg.evaluate((q) => { const cv = document.querySelector(q), d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, n = {}; for (let i = 0; i < d.length; i += 4) { if (d[i] + d[i + 1] + d[i + 2] < 90) continue; const k = `${d[i]},${d[i + 1]},${d[i + 2]}`; n[k] = (n[k] || 0) + 1; } const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0]; return top ? top[0].split(',').map(Number) : null; }, sel);
-    const near = (rgb, hex, tol) => !!rgb && !!hex && rgb.every((v, k) => Math.abs(v - parseInt(hex.slice(1 + 2 * k, 3 + 2 * k), 16)) <= tol);
-    const faceScene = await dominant('#layer .ipanel[data-inst="scope"] canvas'), barsScene = await dominant('#layer .ipanel[data-inst="spectrum"] canvas');
-    check(!!scene && expected.ink && scene.ink === expected.ink && scene.inkWhy === `the picture's main colour ${expected.ink} over ${expected.ground}` && scene.prov.colour === 'SCENE' && scene.prov.ink === expected.ink && expected.distinct >= 2 && expected.ink !== expected.ground,
-          `under the firmware with a program playing, SCENE takes the picture's main colour: the commonest colour drawn over the screen's ground in the document's count (${expected.ink} over ${expected.ground}, of ${expected.screen.join(', ')}), said and in the provenance`);
-    check(near(faceScene, expected.ink, 64) && !near(faceScene, '#39ff88', 64), `the scope's trace is drawn in it (${faceScene && faceScene.join(',')} for ${expected.ink})`);
-    console.log(`info the spectrum's bars at rest: ${barsScene ? barsScene.join(',') : 'none lit'}`);
+    const count = await pg.evaluate(() => window.machinePage.machine.request('colours'));
+    const expected = pickColours(count.colours);
+    const scene = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; const pv = document.getElementById('provenance-json').value; return i.learned && pv ? { ...i, prov: JSON.parse(pv) } : null; }), 8000, 100);
+    check(!!scene && expected && !expected.synthetic && scene.colours.ink === expected.ink && scene.colours.ground === expected.ground && scene.colours.panel === expected.panel && scene.from === 'picture' && scene.sceneWhy === `the picture's colours: ink ${expected.ink} on ${expected.ground}, the panel ${expected.panel}` &&
+          scene.prov.colour === 'SCENE' && scene.prov.ink === expected.ink && scene.prov.ground === expected.ground && scene.prov.panel === expected.panel && scene.prov.from === 'picture' && count.distinct >= 2,
+          `under the firmware with a program playing, SCENE takes the token's rule on the document's count: ink ${expected && expected.ink} on ${expected && expected.ground}, the panel ${expected && expected.panel}, said and in the provenance`);
+    const chS = await panelPixels('scope'), chB = await panelPixels('spectrum');
+    check(near(chS.body, expected.panel) && near(chS.window, expected.ground) && traced(chS, expected.ink, expected.ground) && glyphHolds(chS, 'S', expected.ink, expected.panel) && near(chB.body, expected.panel) && near(chB.floor, expected.ground),
+          `both chassis are drawn in them: the body ${chS.body.join(',')}, the window ${chS.window.join(',')}, the trace ${strongest(chS).join(',')}, the titles in the ink; the spectrum's floor ${chB.floor.join(',')}`);
     await pg.evaluate(() => window.machinePage.instrumentsColour('green'));
     await new Promise((r) => setTimeout(r, 300));
-    const faceGreen = await dominant('#layer .ipanel[data-inst="scope"] canvas');
-    check(near(faceGreen, '#39ff88', 64) && (await pg.evaluate(() => JSON.parse(document.getElementById('provenance-json').value).ink === null)), `GREEN draws the site's green again and the provenance's ink is null (${faceGreen && faceGreen.join(',')})`);
+    const chG = await panelPixels('scope');
+    check(near(chG.body, '#262626') && near(chG.window, '#000000') && traced(chG, '#39ff88', '#000000') && (await pg.evaluate(() => { const p = JSON.parse(document.getElementById('provenance-json').value); return p.colour === 'GREEN' && p.ink === '#39ff88' && p.from === 'site'; })), `GREEN draws the site's green on the token's chassis again and the provenance says so (${strongest(chG).join(',')})`);
     await pg.evaluate(() => window.machinePage.instrumentsMode('pure'));
   }
   await pg.click('#reset');

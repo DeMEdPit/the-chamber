@@ -179,7 +179,31 @@ export function createMachine({ container, src, onEvent = () => {}, timeout = 10
   return machine;
 }
 
-let siteCache = null;
+let siteCache = null, manifestCache = null;
+
+/** The site's manifest of its copies, read as a record: version 1, its rows by file. Cached after the first call. */
+async function siteManifest(root) {
+  if (manifestCache && manifestCache.root === root) return manifestCache;
+  const res0 = await fetch(root + 'MANIFEST.json', { cache: 'force-cache' });
+  if (!res0.ok) throw new MachineError('SITE_COPY_MISSING', `MANIFEST.json: http ${res0.status}`);
+  const manifest = await res0.json();
+  if (manifest.version !== 1) throw new MachineError('MANIFEST_VERSION', `manifest version ${manifest.version}; this client knows 1`);
+  manifestCache = { root, manifest, byFile: Object.fromEntries((manifest.parts || []).map((p) => [p.file, p])) };
+  return manifestCache;
+}
+/** One of the site's copies, fetched and held to `pin` (and the manifest's row must agree with the pin first). */
+async function pinned(root, byFile, pin) {
+  const rec = byFile[pin.file];
+  if (!rec || rec.sha256 !== pin.sha256 || (rec.chain || {}).address.toLowerCase() !== pin.address.toLowerCase()) {
+    throw new MachineError('MANIFEST_DRIFT', `${pin.file}: the manifest does not agree with the pin in bridge-client.js`);
+  }
+  const res = await fetch(root + pin.file, { cache: 'force-cache' });
+  if (!res.ok) throw new MachineError('SITE_COPY_MISSING', `${pin.file}: http ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const h = await sha256Hex(buf);
+  if (h !== pin.sha256) throw new MachineError('HASH_MISMATCH', `${pin.file}: sha256 ${h.slice(0, 12)}…, the pin is ${pin.sha256.slice(0, 12)}…`);
+  return buf;
+}
 
 /**
  * The site's own copies of the machine's bytes, each held to the pins in
@@ -191,29 +215,26 @@ let siteCache = null;
 export async function partsFromSite(base) {
   if (siteCache) return siteCache;
   const root = base || new URL('./parts/', import.meta.url).href;
-  const res0 = await fetch(root + 'MANIFEST.json', { cache: 'force-cache' });
-  if (!res0.ok) throw new MachineError('SITE_COPY_MISSING', `MANIFEST.json: http ${res0.status}`);
-  const manifest = await res0.json();
-  if (manifest.version !== 1) throw new MachineError('MANIFEST_VERSION', `manifest version ${manifest.version}; this client knows 1`);
-  const byFile = Object.fromEntries((manifest.parts || []).map((p) => [p.file, p]));
-  async function pinned(pin) {
-    const rec = byFile[pin.file];
-    if (!rec || rec.sha256 !== pin.sha256 || (rec.chain || {}).address.toLowerCase() !== pin.address.toLowerCase()) {
-      throw new MachineError('MANIFEST_DRIFT', `${pin.file}: the manifest does not agree with the pin in bridge-client.js`);
-    }
-    const res = await fetch(root + pin.file, { cache: 'force-cache' });
-    if (!res.ok) throw new MachineError('SITE_COPY_MISSING', `${pin.file}: http ${res.status}`);
-    const buf = await res.arrayBuffer();
-    const h = await sha256Hex(buf);
-    if (h !== pin.sha256) throw new MachineError('HASH_MISMATCH', `${pin.file}: sha256 ${h.slice(0, 12)}…, the pin is ${pin.sha256.slice(0, 12)}…`);
-    return buf;
-  }
+  const { manifest, byFile } = await siteManifest(root);
   const parts = [];
-  for (const pin of PINS.emulator) parts.push(await pinned(pin));
+  for (const pin of PINS.emulator) parts.push(await pinned(root, byFile, pin));
   const roms = {};
-  for (const k of ROM_NAMES) roms[k] = await pinned(PINS.firmware[k]);
+  for (const k of ROM_NAMES) roms[k] = await pinned(root, byFile, PINS.firmware[k]);
   siteCache = { manifest, parts, roms, status: STATUS.PINNED, source: 'the site\'s copies, held to the pins in bridge-client.js' };
   return siteCache;
+}
+
+/**
+ * One ROM of the site's copies (`kernal`, `basic` or `chargen`), held to its pin, for the page's own uses: the
+ * instruments' titles are drawn from the character ROM. Returns `{bytes, sha256, status}`, status PINNED.
+ */
+export async function romFromSite(name, base) {
+  const pin = PINS.firmware[name];
+  if (!pin) throw new MachineError('BAD_MESSAGE', `no ROM named ${name}`);
+  if (siteCache) return { bytes: siteCache.roms[name], sha256: pin.sha256, status: STATUS.PINNED };
+  const root = base || new URL('./parts/', import.meta.url).href;
+  const { byFile } = await siteManifest(root);
+  return { bytes: await pinned(root, byFile, pin), sha256: pin.sha256, status: STATUS.PINNED };
 }
 
 /**

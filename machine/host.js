@@ -6,7 +6,7 @@
 // picture and their card) and the log. Nothing runs until a LOAD is pressed. The machine document is
 // sandboxed and fed over the bridge (bridge-client.js); every read from the
 // chain and every claim about it is chain.js's; this file is the page.
-import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS } from './bridge-client.js';
+import { createMachine, bootMachine, partsFromSite, sha256Hex, STATUS, romFromSite } from './bridge-client.js';
 import { Node, machineFromChain, firmwareFromChain, programFromChain, revisionsOf, zeroWindow } from './chain.js';
 import { keccakHex } from './keccak.js';
 import { scanProgram, needsOf, inputOf, scanWords, loadsMore, hex4, scanCartridge, needsOfCartridge, cartridgeWords } from './scan.js';
@@ -989,7 +989,8 @@ els.sound.addEventListener('click', () => {
 // ------------------------------------------------------------------ start
 async function start() {
   els.firmware.value = firmwareMode; els.input.value = inputMode;   // a browser may restore a form's values on reload; the page's state is the page's
-  rack = createRack({ frame: els.frame, layer: $('layer'), card: bays.instruments, audio, badge: els.link, machineOf: () => machine, say, onChange: () => { bayLines(); if (playing) renderNow(); } });
+  const font = romFromSite('chargen').catch((e) => { say(`the instruments' titles: the site's copy of the character ROM did not load (${e.code || e.message}); a plain font stands in`); return null; });   // the titles in the machine's own letters, held to the pin
+  rack = createRack({ frame: els.frame, layer: $('layer'), card: bays.instruments, audio, badge: els.link, machineOf: () => machine, font, say, onChange: () => { bayLines(); if (playing) renderNow(); } });
   const asked = new URLSearchParams(location.search), askedMode = asked.get('mode'), askedColour = asked.get('colour');
   if (askedMode === 'pure' || askedMode === 'instruments') rack.setMode(askedMode, true);   // a shared link carries the mode; a fresh visit follows the work
   if (askedColour === 'green' || askedColour === 'scene') rack.setColour(askedColour);      // and the colour

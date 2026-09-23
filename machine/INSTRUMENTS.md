@@ -41,7 +41,7 @@ recorded.
 | `compact` | whether the card's row carries a readout |
 | `reads` | one line, in the page's words, of what it reads and that it writes nothing |
 | `host` | true for a status instrument over the page itself |
-| `tint` | true for an instrument that draws in the site's green or, under SCENE, in the picture's main colour |
+| `tint` | true for an instrument whose panel takes the picture's colours under SCENE (the page reads the picture only while one is live) |
 
 ## Rules
 
@@ -57,18 +57,34 @@ recorded.
   may drag it anywhere, and it stays there for the visit.
 - The layer over the sandboxed frame takes no pointer events but on a
   panel's title bar; the machine never sees a panel.
-- COLOUR, drawn with the group it governs: GREEN is the site's green;
-  SCENE draws every instrument marked `tint` in the picture's main colour:
-  of the machine's own screen (the border left out), the commonest colour
-  drawn over its ground (the ground being the commonest colour of all) if
-  bright enough to read on a panel (relative luminance 0.045 or more: the
-  C64's dark grey and its white pass, its black does not), else the ground
-  itself if it is bright enough; white text on the boot screen's blue
-  gives white.
-  The page reads it through the protocol's `colours`, a count of the
-  document's painted pixels that touches nothing in the emulator, about
-  once a second while INSTRUMENTS is on and such an instrument is live,
-  and adopts a colour when two readings in a row agree; a one-colour
-  screen keeps the green and says so. GREEN and PURE read nothing. The
-  lamp stays green. A shared link carries the choice (`?colour=scene`);
-  the provenance carries `colour` and the `ink` taken.
+- A panel over the picture is the token's chassis (`instruments/chassis.js`,
+  the token's own drawing kept in the picture's pixels and scaled to the
+  device): a rounded body in the panel colour under a soft shadow, a pad of
+  2.25 picture pixels, the title in the C64's character ROM four picture
+  pixels tall (`instruments/romfont.js`, from the pressing's ROM as the page
+  holds it to its pin; a plain font stands in and the page says so), the
+  minus in the corner (a plus when folded to the title), and a rounded
+  window in the ground with the instrument's face clipped inside. The
+  green lamp before the title is the page's own. The scope's window shows
+  the token's own wave (`scope.js` `wave`: the whole buffer at one point
+  per pixel, raw amplitude, a thin line, no window, trigger, gain or
+  grid); the card's readout beside the frame keeps the site's closer,
+  windowed drawing. An instrument's `window(ctx, x, y, w, h, data, rate,
+  {colours, k})` draws it in the chassis; its `draw(cv, data, rate)` the
+  card's readout.
+- COLOUR, drawn with the group it governs. GREEN: the site's green as the
+  ink on the token's default chassis (black window, the panel `#262626`).
+  SCENE: the token's own colour rule (`instruments/scene.js`, the rule its
+  page uses): from the machine document's `colours`, a count of the painted
+  picture per colour that touches nothing in the emulator, the ground is
+  the commonest colour, the ink the next with at least 256 pixels, the
+  panel the ground shaded one step (darker when light, lighter when dark);
+  a one-colour picture gives a contrast ink, white on dark and black on
+  light, marked synthetic and never allowed to replace colours learned
+  from the picture. The page reads about once a second while INSTRUMENTS
+  is on and an instrument marked `tint` is live, and adopts a reading when
+  two in a row agree; a new program starts from the token's defaults
+  (white on black) and learns its picture. GREEN and PURE read nothing.
+  The lamp stays green. A shared link carries the choice (`?colour=scene`);
+  the provenance carries `colour`, `ink`, `ground`, `panel` and `from`
+  (`site`, `picture`, `contrast` or `defaults`).
