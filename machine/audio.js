@@ -30,10 +30,20 @@
 // the log whether it did; the schedule is re-synced whenever the context
 // runs again; and `current()` offers no buffer while the clock is stopped
 // or stalled, so an instrument says the sound is paused rather than
-// drawing a stale buffer as sounding.
+// drawing a stale buffer as sounding. One more lie no watch can see: on an
+// iPhone, Safari can keep a context running, its clock advancing, and
+// produce silence after an interruption. So a context is SUSPECT from the
+// moment the page is hidden or its state leaves running while the sound is
+// attached; on a browser that answers the return honestly the suspicion
+// clears when the clock is seen to move again, but on an iPhone it stays,
+// and the first gesture after the return builds a fresh clock whatever the
+// old one says of itself.
+const IOS = typeof navigator !== 'undefined' && (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
 export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => {} } = {}) {
   let ctx = null, gain = null, machine = null, next = 0, lastPush = 0, pause = 0, timer = null, on = true, pulled = 0, inflight = 0, wasRunning = false;
-  let stalled = false, seenTime = -1, frozenSince = 0, rebuilt = 0;
+  let stalled = false, suspect = false, seenTime = -1, frozenSince = 0, rebuilt = 0;
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden && machine) suspect = true; });
   const recent = [];   // { at, data }: the buffers scheduled, newest last, the last six kept
   const dur = () => bufferSize / ctx.sampleRate;
 
@@ -45,6 +55,7 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
   }
   function onState() {
     const running = ctx.state === 'running';
+    if (!running && machine) suspect = true;            // it stopped while attached: what it says of itself afterwards is not trusted
     if (running && !wasRunning && machine) resync();   // the clock is back: the pulls start again from now
     wasRunning = running;
   }
@@ -56,7 +67,7 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
     gain.gain.value = on ? volume : 0;
     gain.connect(ctx.destination);
     ctx.addEventListener('statechange', onState);
-    seenTime = -1; frozenSince = 0; stalled = false;
+    seenTime = -1; frozenSince = 0; stalled = false; suspect = false;
     return true;
   }
   /** The clock watched: a context that says it runs while its time has stood still for a second, the page in view, is stalled. */
@@ -94,10 +105,10 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
     }
   }
 
-  /** A gesture: the context made or resumed; a stalled clock rebuilt instead, since asking it does nothing. */
+  /** A gesture: the context made or resumed; a stalled or suspect clock rebuilt instead, since asking it proves nothing. */
   function unlock() {
     if (!ctx) return makeContext();
-    if (stalled) { rebuild(); return true; }
+    if (stalled || suspect) { rebuild(); return true; }
     if (ctx.state !== 'running') ctx.resume().catch(() => {});
     return true;
   }
@@ -110,9 +121,12 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
   async function wake() {
     if (!ctx || !machine || !machine.alive) return false;
     const wasStopped = ctx.state !== 'running';
-    if (wasStopped) { try { await ctx.resume(); } catch (e) { /* refused: a gesture is needed */ } }
+    if (wasStopped) { try { await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 1000))]); } catch (e) { /* refused: a gesture is needed */ } }
     const ok = ctx.state === 'running' && await advances(800);
-    if (ok) { if (wasStopped || stalled) { stalled = false; seenTime = -1; frozenSince = 0; onStatus('sound: resumed after the page came back'); } }
+    if (ok) {
+      if (!IOS) suspect = false;                       // an honest return: the clock moves; an iPhone's may move and stay silent, so its suspicion stands for the next tap
+      if (wasStopped || stalled) { stalled = false; seenTime = -1; frozenSince = 0; onStatus(IOS ? 'sound: resumed after the page came back · your next tap makes it sure' : 'sound: resumed after the page came back'); }
+    }
     else if (!stalled) { stalled = true; onStatus('sound: the browser kept the clock stopped while the page was away · tap to resume'); }
     return ok;
   }
@@ -217,7 +231,9 @@ export function createAudio({ bufferSize = 4096, volume = 0.8, onStatus = () => 
     get ready() { return !!ctx && ctx.state === 'running' && !stalled; },
     get state() { return ctx ? ctx.state : 'off'; },
     get stalled() { return stalled; },
+    get suspect() { return suspect; },
     get rebuilt() { return rebuilt; },
+    get ios() { return IOS; },
     get attached() { return !!(machine && machine.alive); },
     get pulled() { return pulled; },
     get on() { return on; },

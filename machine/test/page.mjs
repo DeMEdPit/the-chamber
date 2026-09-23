@@ -486,7 +486,7 @@ try {
     check(soundBefore.attached && soundBefore.state === 'running' && !!held && /sound paused by the browser · tap to resume/.test(held.where), `the clock stopped: the scope says the sound is paused, no stale buffer drawn (${held ? held.where : 'still drawing'})`);
     const pulledHeld = await pg.evaluate(() => window.machinePage.audio.pulled);
     await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-    const woke = await until(() => pg.evaluate((n) => { const a = window.machinePage.audio, i = window.machinePage.instruments; return a.state === 'running' && a.pulled > n + 2 && i.faces.scope !== 'waiting' ? { state: a.state, pulled: a.pulled - n, face: i.faces.scope, said: /sound: resumed after the page came back/.test(window.machinePage.report()) } : null; }, pulledHeld), 6000, 100);
+    const woke = await until(() => pg.evaluate((n) => { const a = window.machinePage.audio, i = window.machinePage.instruments; const said = /sound: resumed after the page came back/.test(window.machinePage.report()); return a.state === 'running' && a.pulled > n + 2 && i.faces.scope !== 'waiting' && said ? { state: a.state, pulled: a.pulled - n, face: i.faces.scope, said } : null; }, pulledHeld), 6000, 100);   // the pulls restart on the state change before the wake has watched the clock move and said so
     check(!!woke && woke.said, `the page coming back asks for the clock: running again, ${woke ? woke.pulled : 0} buffers pulled since, the scope drawing (${woke ? woke.face : 'waiting'}), said in the log`);
     // a context that says it runs while its clock stands still (a phone after an interruption): marked stalled as the watch
     // would, the faces say the sound is paused; the next tap builds a fresh clock, tells the machine the rate again, pulls anew
@@ -737,7 +737,7 @@ try {
   // a phone at three device pixels a CSS pixel: the panels' titles fit their panels at one glyph size, the smaller a title
   // needs (the six-CSS-pixel floor gives way to the room), the whole title drawn, the minus clear of it, the panel in the picture
   {
-    const fc = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+    const fc = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' });
     const fp = await fc.newPage();
     await fp.goto(`${A.base}/machine/`, { waitUntil: 'load' });
     await until(() => fp.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
@@ -749,6 +749,19 @@ try {
     const lampP = await fp.evaluate(() => { const l = document.querySelector('#layer .ipanel[data-inst="spectrum"] .ibar .lamp'), cs = getComputedStyle(l); const p = window.machinePage.instruments.panels.spectrum; return { width: cs.width, colour: cs.backgroundColor, size: p.lamp.size, gap: p.lamp.gap, x: p.lamp.x }; });
     check(Math.abs(parseFloat(lampP.width) - 3.2) < 0.05 && lampP.colour === 'rgb(57, 255, 136)' && Math.abs(lampP.size - 9.6) < 1e-6 && lampP.gap >= 6.5 && lampP.gap <= 8,   // 0.45 of the letters, 7.2 device px, less the rounding of the title's origin to a whole pixel
           `on the phone the lamp is ${lampP.width} (six tenths of the letters, under the desktop's 4.5) and green, ${(lampP.gap / 3).toFixed(1)} CSS px before the title`);
+    // on a phone that says it is an iPhone: the sound attached by a tap; the clock stopped and brought back by the page's
+    // return, moving again, is still suspect there (Safari can run a context silently), and the next tap builds a fresh one
+    await fp.tap('body', { position: { x: 8, y: 8 } });
+    const soundP = await until(() => fp.evaluate(() => { const a = window.machinePage.audio; return a.ios && a.attached && a.pulled > 3 ? a : null; }), 10000, 100);
+    check(!!soundP && !soundP.suspect, `the iPhone context: the sound attached on a tap, ${soundP ? soundP.pulled : 0} buffers pulled, nothing suspect yet`);
+    await fp.evaluate(() => window.machinePage.audioHold(true));
+    await until(() => fp.evaluate(() => window.machinePage.audio.state === 'suspended' && window.machinePage.audio.suspect), 3000, 50);
+    await fp.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    const backP = await until(() => fp.evaluate(() => { const a = window.machinePage.audio; return a.state === 'running' && /your next tap makes it sure/.test(window.machinePage.report()) ? a : null; }), 6000, 100);
+    check(!!backP && backP.suspect && backP.rebuilt === 0, 'the page\'s return brings the clock back and says the next tap makes it sure: the context stays suspect on an iPhone');
+    await fp.tap('body', { position: { x: 8, y: 8 } });
+    const freshP = await until(() => fp.evaluate(() => { const a = window.machinePage.audio; return a.rebuilt === 1 && !a.suspect && a.ready && /sound: restarted on a fresh clock/.test(window.machinePage.report()) ? a : null; }), 8000, 100);
+    check(!!freshP, 'the first tap after the return builds a fresh clock on an iPhone, whatever the old one said of itself');
     await fp.close(); await fc.close();
   }
   // under reduced motion the bays open and close at once
