@@ -70,7 +70,7 @@ try {
   check(h.protocol === 1 && h.machine === 'minimal64-2022' && h.build === 'embedded', `hello: protocol ${h.protocol}, machine ${h.machine}, build ${h.build}`);
   const c = h.capabilities || {};
   check(Array.isArray(c.loads) && c.loads.includes('prg') && c.loads.includes('crt') && c.input.includes('keyboard') && c.input.includes('joystick2') && c.input.includes('joystick1') &&
-        c.firmware === true && c.screenText === true && c.peek === true && c.poke === true && c.snapshots === false,
+        c.firmware === true && c.screenText === true && c.peek === true && c.poke === true && c.colours === true && c.snapshots === false,
         `capabilities as stated: ${JSON.stringify(c)}`);
   check(h.phase === 'waiting', `the embedded document waits for the host (phase ${h.phase})`);
   check(r.type === 'ready' && r.emulatorStatus === 'PINNED' && r.firmware === true, `ready: emulator ${r.emulatorStatus}, firmware ${r.firmware}, ${r.ms} ms`);
@@ -107,6 +107,18 @@ try {
   check(readyRows.length === bootScreen.rows.length && bootScreen.rows.every((r, i) => readyRows[i] === r),
         'the READY screen is row for row what machine/boot-screen.json records, which the share card is drawn from');
   await pg.screenshot({ path: join(EVIDENCE, 'embedded-ready.png') });
+  // the colours of the painted frame: at READY the firmware's text is one colour on another, the border one solid colour,
+  // the sums whole, every colour a hex, the commonest first, no register read (the document counts its own canvas)
+  const col = await pg.evaluate(() => window.harness.request('colours'));
+  const cr = col.ok ? col.r : {};
+  const inner = (cr.colours || []).filter((c) => c.inner > 0).sort((a, b) => b.inner - a.inner);
+  const border = (cr.colours || []).map((c) => ({ rgb: c.rgb, n: c.count - c.inner })).filter((c) => c.n > 0).sort((a, b) => b.n - a.n);
+  check(col.ok && cr.type === 'colours' && cr.width === 384 && cr.height === 272 && cr.total === 384 * 272 && cr.inner.width === 320 && cr.inner.height === 200 && cr.inner.x === 32 && cr.inner.y === 36 &&
+        cr.distinct === cr.colours.length && cr.distinct >= 2 && cr.distinct <= 16 && cr.colours.every((c) => /^#[0-9a-f]{6}$/.test(c.rgb) && c.inner <= c.count) &&
+        cr.colours.reduce((a, c) => a + c.count, 0) === cr.total && cr.colours.reduce((a, c) => a + c.inner, 0) === 320 * 200 &&
+        cr.colours[0].count >= cr.colours[1].count && inner.length >= 2 && border.length === 1 && border[0].n === cr.total - 320 * 200,
+        `colours at READY: ${cr.distinct} distinct over ${cr.width}×${cr.height}, the screen ${inner[0] && inner[0].rgb} with ${inner[1] && inner[1].rgb} on it, the border ${border[0] && border[0].rgb} alone, the sums whole`);
+  results.coloursAtReady = cr;
   const loaded = await pg.evaluate((p) => window.harness.load(p, 'a test program'), PRG);
   check(loaded.ok && loaded.r.type === 'loaded' && loaded.r.load === 0x0801 && loaded.r.bytes === 20 && loaded.r.intervened === false,
         `loaded: ${JSON.stringify(loaded.r || loaded)}`);

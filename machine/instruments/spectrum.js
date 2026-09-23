@@ -11,8 +11,10 @@
 // over a 55 dB range; the transform once per buffer and cached; and
 // ballistics at draw time only, a bar rising at once and falling a little
 // each frame, the measurement never altered.
+import { pale } from './colour.js';
+
 export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.022, decay = 0.992, lit = '#39ff88', top = '#9dffd0', off = '#151515', ground = '#050505' } = {}) {
-  let re = null, im = null, ref = 1e-6, lastData = null, lastCols = 0, mags = null, disp = null;
+  let re = null, im = null, ref = 1e-6, lastData = null, lastCols = 0, mags = null, disp = null, paleFor = null, paleOf = null;
 
   function fft(r, i) {
     const n = r.length;
@@ -66,9 +68,14 @@ export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.02
     return disp;
   }
 
-  /** Draw into a canvas sized in device pixels: bars of lit segments, the top two paler. Returns the state: waiting, silent or signal. */
-  function draw(cv, data, rate, { segments = 10 } = {}) {
+  /**
+   * Draw into a canvas sized in device pixels: bars of lit segments, the top two paler. Returns the state: waiting, silent
+   * or signal. `tint`, a #rrggbb, lights the bars in that one colour, the top two its paler tint (the picture's, under SCENE).
+   */
+  function draw(cv, data, rate, { segments = 10, tint = null } = {}) {
     const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+    if (tint && tint !== paleFor) { paleFor = tint; paleOf = pale(tint); }
+    const litC = tint || lit, topC = tint ? paleOf : top;
     ctx.fillStyle = ground; ctx.fillRect(0, 0, w, h);
     const cols = Math.max(12, Math.min(48, Math.round(w / 14)));
     const gapx = Math.max(1, Math.round(w / 220)), bw = (w - gapx * (cols + 1)) / cols, segh = (h - 4) / segments;
@@ -83,7 +90,7 @@ export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.02
       const level = d ? d[i] : 0, n = Math.round(level * segments);
       for (let s = 0; s < segments; s++) {
         const on = s < n;
-        ctx.fillStyle = on ? (s >= segments - 2 ? top : lit) : off;
+        ctx.fillStyle = on ? (s >= segments - 2 ? topC : litC) : off;
         ctx.globalAlpha = on ? 0.55 + 0.45 * (s / segments) : 1;
         ctx.fillRect(gapx + i * (bw + gapx), h - 2 - (s + 1) * segh + 1, Math.max(1, bw), Math.max(1, segh - 2));
       }

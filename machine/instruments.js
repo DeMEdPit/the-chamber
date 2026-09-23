@@ -15,26 +15,37 @@
 // visit and are gated under PURE. THE CHAIN STRIP is a status instrument
 // over the page, not a read of the machine: visible under PURE, its switch
 // visibility alone. An instrument never writes to the machine; the ones
-// here read only the sound the page plays (INSTRUMENTS.md).
+// here read only the sound the page plays (INSTRUMENTS.md). COLOUR (the
+// owner, 2026-09-23): the instruments marked `tint` draw in the site's
+// green, or under SCENE in the picture's main colour, which the page reads
+// from the machine document (`colours`, a count of its painted pixels) about
+// once a second while such an instrument is on, and adopts when two readings
+// in a row agree; the lamp stays green.
 import { createScope } from './instruments/scope.js';
 import { createSpectrum } from './instruments/spectrum.js';
+import { luminance } from './instruments/colour.js';
 
 // the picture's own geometry: 384 by 272 with the C64's border, 32 px at the sides and 36 above and below, which
 // is where a token's own page keeps its panels (the top band) and where an added one goes (the next free band)
 const SIDE = 32 / 384, BAND = 36 / 272, EDGE_R = 352 / 384;
 const FACE_W = { quarter: 0.245, wide: (352 - 32) / 384 - 0.245 - 0.005 };
 const BAR_H = 16;   // the title bar's height in CSS pixels
+// SCENE: the picture read once a second, a colour adopted when two readings agree: of the machine's own screen (the border
+// left out) the commonest colour drawn over its ground (the ground is the commonest colour of all), if bright enough to
+// read on a panel's dark ground, else the ground itself if it is; relative luminance 0.045 or more keeps the C64's dark
+// grey and its white and drops its black. The READY screen's white over blue gives white, not the blue behind it
+const TINT = { every: 1000, agree: 2, floor: 0.045 };
 
-export function createRack({ frame, layer, card, audio, badge, say = () => {}, onChange = () => {} }) {
+export function createRack({ frame, layer, card, audio, badge, machineOf = () => null, say = () => {}, onChange = () => {} }) {
   const rows = [...card.querySelectorAll('.irow')].map((el) => ({
     id: el.dataset.inst, el, name: el.querySelector('.iname').textContent.trim(), title: el.dataset.title || null, group: el.dataset.group,
     needs: el.dataset.needs || null, requires: el.dataset.requires || null, module: el.dataset.module || null, face: el.dataset.face || null,
-    host: el.dataset.host === '1', compact: el.querySelector('canvas.icv'), sw: el.querySelector('.isw'), where: el.querySelector('.iwhere'),
+    host: el.dataset.host === '1', tint: el.dataset.tint === '1', compact: el.querySelector('canvas.icv'), sw: el.querySelector('.isw'), where: el.querySelector('.iwhere'),
   }));
   const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
   const bands = (card.dataset.bands || 'top-left,top-right,bottom-left,bottom-right').split(',');
-  const modeButtons = [...card.querySelectorAll('#mode button')];
-  const why = card.querySelector('#mode-why'), hint = card.querySelector('#mode-hint');
+  const modeButtons = [...card.querySelectorAll('#mode button')], inkButtons = [...card.querySelectorAll('#ink button')];
+  const why = card.querySelector('#mode-why'), hint = card.querySelector('#mode-hint'), inkWhy = card.querySelector('#ink-why');
   const drawers = { scope: createScope(), spectrum: createSpectrum() };
 
   const state = {
@@ -42,6 +53,7 @@ export function createRack({ frame, layer, card, audio, badge, say = () => {}, o
     on: Object.fromEntries(rows.map((r) => [r.id, r.host])),   // each switch's position, kept for the visit; the strip starts on
     available: {},                                   // what the machine and the loaded program allow; the sound's two need only the machine
     own: {},                                         // id -> band: the loaded work's own instruments and where its page keeps them
+    colour: 'green', ink: null, inkWhy: '', reads: 0,   // COLOUR: green or scene; the ink adopted from the picture, why, and how many readings were made
     program: null, catalogue: null, faceState: {},
   };
   for (const r of rows) state.available[r.id] = meets(r, { instruments: [], kind: null });
@@ -72,6 +84,7 @@ export function createRack({ frame, layer, card, audio, badge, say = () => {}, o
     state.program = program;
     const facts = factsOf(program);
     state.own = {};
+    state.ink = null; state.inkWhy = ''; pendingKey = null; pendingN = 0;   // a new picture: the colour is read again
     for (const x of facts.instruments) if (x && byId[x.id] && bands.includes(x.place)) state.own[x.id] = x.place;
     for (const r of rows) state.available[r.id] = meets(r, facts);
     const ownIds = Object.keys(state.own);
@@ -99,6 +112,49 @@ export function createRack({ frame, layer, card, audio, badge, say = () => {}, o
   }
   const live = (r) => !r.host && state.mode === 'instruments' && state.on[r.id] && state.available[r.id];
   const layers = () => rows.filter(live).map((r) => r.id);
+
+  // ---- COLOUR: the picture's main colour, read from the machine document while SCENE and a tinted instrument is on
+  let tintTimer = 0, tintBusy = false, pendingKey = null, pendingN = 0;
+  const tinting = () => state.mode === 'instruments' && state.colour === 'scene' && rows.some((r) => r.tint && live(r));
+  const inkOf = (r) => (r.tint && state.colour === 'scene' && state.ink) || null;
+  function setColour(c) {
+    if ((c !== 'green' && c !== 'scene') || c === state.colour) return;
+    state.colour = c;
+    say(c === 'scene' ? 'colour: SCENE · the scope and the spectrum take the picture\'s main colour, read once a second' : 'colour: GREEN · the site\'s green');
+    render();
+  }
+  /** From the document's count: the commonest colour drawn over the screen's ground, bright enough to read; else the ground; none for a one-colour screen. */
+  function pickInk(rep) {
+    const seen = (rep && Array.isArray(rep.colours) ? rep.colours : []).filter((c) => c && c.inner > 0 && /^#[0-9a-f]{6}$/.test(c.rgb)).sort((a, b) => b.inner - a.inner);
+    if (seen.length < 2) return { ink: null, why: 'one colour on screen · the site\'s green' };
+    const bright = (c) => luminance(c.rgb) >= TINT.floor;
+    const figure = seen.slice(1).find(bright);
+    if (figure) return { ink: figure.rgb, why: `the picture's main colour ${figure.rgb} over ${seen[0].rgb}` };
+    if (bright(seen[0])) return { ink: seen[0].rgb, why: `the picture's ground ${seen[0].rgb}, nothing bright over it` };
+    return { ink: null, why: 'nothing bright enough on screen · the site\'s green' };
+  }
+  function sample() {
+    const m = machineOf();
+    if (!tinting() || tintBusy || !m || !m.alive) return;
+    tintBusy = true;
+    m.request('colours').then((rep) => {
+      state.reads++;
+      const pick = pickInk(rep), key = pick.ink || pick.why;
+      if (key === pendingKey) pendingN++; else { pendingKey = key; pendingN = 1; }
+      if (pendingN >= TINT.agree && (pick.ink !== state.ink || pick.why !== state.inkWhy)) {
+        state.ink = pick.ink; state.inkWhy = pick.why;
+        say(`colour: ${pick.why}`);
+        renderInk(); onChange();
+      }
+    }).catch(() => {}).then(() => { tintBusy = false; });
+  }
+  function renderInk() {
+    for (const b of inkButtons) { const is = b.dataset.ink === state.colour; b.classList.toggle('on', is); b.setAttribute('aria-checked', is ? 'true' : 'false'); }
+    if (inkWhy) inkWhy.textContent = state.colour === 'green' ? 'GREEN · the site\'s green' : `SCENE · ${state.ink || state.inkWhy ? state.inkWhy : tinting() ? 'reading the picture' : 'the picture, read while a scope is on'}`;
+    const want = tinting();
+    if (want && !tintTimer) { tintTimer = setInterval(sample, TINT.every); sample(); }
+    else if (!want && tintTimer) { clearInterval(tintTimer); tintTimer = 0; tintBusy = false; }
+  }
 
   // ---- the panels over the picture
   function bandOf(id) {
@@ -174,8 +230,9 @@ export function createRack({ frame, layer, card, audio, badge, say = () => {}, o
       if (r.host || !r.module) continue;
       const d = drawers[r.module]; if (!d) continue;
       const on = live(r), p = panels[r.id];
-      if (on && r.compact && r.compact.width) { state.faceState[r.id] = d.draw(r.compact, data, rate, { segments: 10 }); any = true; }
-      if (on && p && !p.el.classList.contains('folded')) { d.draw(p.cv, data, rate, { words: false, lineWidth: Math.max(1.5, 1.6 * dpr), segments: 8 }); any = true; }
+      const tint = inkOf(r);
+      if (on && r.compact && r.compact.width) { state.faceState[r.id] = d.draw(r.compact, data, rate, { segments: 10, tint }); any = true; }
+      if (on && p && !p.el.classList.contains('folded')) { d.draw(p.cv, data, rate, { words: false, lineWidth: Math.max(1.5, 1.6 * dpr), segments: 8, tint }); any = true; }
       if (on && r.where) r.where.textContent = words(r);
     }
     if (any) raf = requestAnimationFrame(tick);
@@ -213,27 +270,34 @@ export function createRack({ frame, layer, card, audio, badge, say = () => {}, o
     }
     layer.dataset.mode = state.mode;
     layout();
+    renderInk();
     if (!raf && layers().length) raf = requestAnimationFrame(tick);
     onChange();
   }
 
   // ---- the wiring
   for (const b of modeButtons) b.addEventListener('click', () => setMode(b.dataset.mode, true));
+  for (const b of inkButtons) b.addEventListener('click', () => setColour(b.dataset.ink));
   for (const r of rows) r.sw.addEventListener('click', () => toggle(r.id));
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => { dpr = window.devicePixelRatio || 1; layout(); }).observe(frame);
   window.addEventListener('resize', () => { dpr = window.devicePixelRatio || 1; layout(); });
 
   /** For the header line: what is on, in the page's own words. */
   function line() { return state.mode === 'instruments' ? `${layers().join(' · ') || 'nothing on'} · INSTRUMENTS` : 'off · PURE'; }
-  /** For NOW PLAYING and the provenance. */
-  function record() { return { mode: state.mode === 'instruments' ? 'INSTRUMENTS' : 'PURE', layers: layers() }; }
+  /** For NOW PLAYING and the provenance: the mode and the layers; under INSTRUMENTS the colour too, and the ink taken from the picture. */
+  function record() {
+    const r = { mode: state.mode === 'instruments' ? 'INSTRUMENTS' : 'PURE', layers: layers() };
+    if (state.mode === 'instruments') { r.colour = state.colour === 'scene' ? 'SCENE' : 'GREEN'; r.ink = state.colour === 'scene' ? state.ink : null; }
+    return r;
+  }
   function modeWords() { const l = layers(); return state.mode === 'instruments' ? `INSTRUMENTS · ${l.length ? l.join(', ') : 'nothing on'} · reads only, nothing written` : 'PURE · nothing on this page reaches into the machine'; }
   /** For the gate. */
   function snapshot() {
     return { mode: state.mode, chosen: state.chosen, on: { ...state.on }, available: { ...state.available }, own: { ...state.own }, layers: layers(), faces: { ...state.faceState },
+      colour: state.colour, ink: state.ink, inkWhy: state.inkWhy, reads: state.reads, tinting: tinting(),
       panels: Object.fromEntries(Object.entries(panels).map(([k, p]) => [k, { band: p.el.dataset.band, pill: p.el.classList.contains('folded'), left: p.el.offsetLeft, top: p.el.offsetTop, width: p.el.offsetWidth, height: p.el.offsetHeight }])) };
   }
 
   render();
-  return { programChanged, setMode, toggle, line, record, modeWords, snapshot, layout, set catalogue(c) { state.catalogue = c; }, get mode() { return state.mode; } };
+  return { programChanged, setMode, setColour, toggle, line, record, modeWords, snapshot, layout, set catalogue(c) { state.catalogue = c; }, get mode() { return state.mode; } };
 }

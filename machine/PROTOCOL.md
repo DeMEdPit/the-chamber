@@ -49,7 +49,7 @@ The machine sends `hello` as soon as it holds the port:
  "build": "embedded", "phase": "waiting",
  "capabilities": {"loads": ["prg", "crt"], "input": ["keyboard", "joystick2", "joystick1"],
                   "firmware": true, "screenText": true, "peek": true,
-                  "poke": true, "audio": true, "snapshots": false},
+                  "poke": true, "audio": true, "colours": true, "snapshots": false},
  "limits": {"prg": 65538, "crt": 525376, "text": 4096, "machine": 1048576, "peek": 65536}}
 ```
 
@@ -74,6 +74,7 @@ disk is a `prg`. A host offers only what it lists.
 | `lab` | `on`: boolean | `ok {lab}` |
 | `audio` | `on`: boolean; `sampleRate`: integer 8000..192000 (required when on); `bufferSize`: 512, 1024, 2048, 4096 or 8192, default 4096 | `ok {audio, bufferSize, sampleRate}`. On, the host takes the sound: the document plays nothing of its own, and hands its samples over on request. A browser lets sound start only on a gesture in the document that plays it, and a host's controls are not in this one, which is why the host plays |
 | `samples` | | `samples {bytes, count}` — the next `bufferSize` samples as a transferred `ArrayBuffer` of 32-bit floats at the rate given; refused `AUDIO_OFF` until `audio` is on. The host asks once per buffer it schedules, at the pace of its own audio clock, as nopsta's player does |
+| `colours` | | `colours {width, height, inner, total, distinct, colours}` — the colours of the last painted frame: `colours` is a list of `{rgb, count, inner}`, the commonest first and at most 64, `rgb` a `#rrggbb` string, `count` its pixels over the whole picture and `inner` its pixels within `inner` `{x, y, width, height}`, the machine's own screen at the picture's centre (320 by 200 on this machine; the rest is the border); `total` is `width × height`; `distinct` the number of colours seen. A read of the document's own painted canvas, made only when asked: nothing in the emulator is touched and no register is read. A host's instrument uses it to take the picture's colour; refused `NOT_READY` before the machine runs |
 | `state` | | `state {phase, build, mode, input, firmware, program, intervened, lab, error}` |
 
 Any request may be answered with `refused {code, text}` instead. The text
@@ -106,8 +107,8 @@ destroys a machine whose reported firmware hashes differ from them
 
 ## Reads, writes and INTERVENED
 
-Reads (`screen`, `peek`, `state`) are always allowed: an instrument reads
-and never writes. A write (`poke`) is refused with `LAB_OFF` until the host
+Reads (`screen`, `peek`, `state`, `colours`) are always allowed: an
+instrument reads and never writes. A write (`poke`) is refused with `LAB_OFF` until the host
 sends `lab {on: true}`. The first write that lands makes the document
 INTERVENED for its whole life: `loaded`, `state` and the `intervened` event
 say so, and a run reached through such a state is not the program's own

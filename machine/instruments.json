@@ -7,9 +7,9 @@
     {"id": "chain", "label": "FROM THE CHAIN"}
   ],
   "instruments": [
-    {"id": "scope", "name": "SCOPE", "title": "SID OUTPUT", "group": "sound", "needs": "audio", "requires": null, "module": "scope", "face": "quarter", "compact": true,
+    {"id": "scope", "name": "SCOPE", "title": "SID OUTPUT", "group": "sound", "needs": "audio", "requires": null, "module": "scope", "face": "quarter", "compact": true, "tint": true,
      "reads": "the SID's output, the sound this page already plays, the buffer sounding now · writes nothing"},
-    {"id": "spectrum", "name": "SPECTRUM", "title": "SID SPECTRUM", "group": "sound", "needs": "audio", "requires": null, "module": "spectrum", "face": "quarter", "compact": true,
+    {"id": "spectrum", "name": "SPECTRUM", "title": "SID SPECTRUM", "group": "sound", "needs": "audio", "requires": null, "module": "spectrum", "face": "quarter", "compact": true, "tint": true,
      "reads": "the same sound by frequency, the page's own transform · writes nothing"},
     {"id": "chain", "name": "THE CHAIN STRIP", "title": null, "group": "chain", "needs": null, "requires": null, "module": null, "face": null, "compact": false, "host": true,
      "reads": "the badge at the frame's corner: this page's own chain session, not a read of the machine · its switch is visibility alone"}

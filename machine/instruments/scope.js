@@ -11,8 +11,23 @@
 // largest peak of the last `hold` frames, so a quiet passage still reads
 // as quiet and nothing pumps. The chain's machine has no voice state to
 // fit a window to, so the window is a stated number of milliseconds.
+import { pale } from './colour.js';
+
 export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '#39ff88', ground = '#050505', grid = '#181818', ink = '#aaa9a3' } = {}) {
   const peaks = new Float32Array(hold); let peakAt = 0, peakN = 0;
+  let gradFor = null, grad = null, gradH = 0;
+
+  /** The trace's colour: the stroke, or under an ink the one colour paler towards the extremes, one gradient kept per ink and height. */
+  function traceStyle(ctx, h, tint) {
+    if (!tint) return stroke;
+    if (tint !== gradFor || h !== gradH) {
+      grad = ctx.createLinearGradient(0, 0, 0, h);
+      const p = pale(tint);
+      grad.addColorStop(0, p); grad.addColorStop(0.5, tint); grad.addColorStop(1, p);
+      gradFor = tint; gradH = h;
+    }
+    return grad;
+  }
 
   /** Rising-edge trigger with hysteresis: arm below the midpoint less a band, fire above it plus the band, searched only across the slack the window leaves; silence locks onto nothing. */
   function trigger(data, win) {
@@ -49,9 +64,10 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
 
   /**
    * Draw into a canvas already sized in device pixels. `data` is the buffer sounding now or null; `rate` its sample
-   * rate. Returns the state drawn: waiting, silent or signal. `words` false leaves the state unwritten (a small face).
+   * rate. Returns the state drawn: waiting, silent or signal. `words` false leaves the state unwritten (a small face);
+   * `tint`, a #rrggbb, draws the trace in that one colour instead of the stroke (the picture's, under SCENE).
    */
-  function draw(cv, data, rate, { words = true, lineWidth = 2 } = {}) {
+  function draw(cv, data, rate, { words = true, lineWidth = 2, tint = null } = {}) {
     const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
     ctx.fillStyle = ground; ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = grid; ctx.lineWidth = 1; ctx.beginPath();
@@ -60,7 +76,7 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
     ctx.stroke();
     const state = judge(data);
     const mid = h / 2, amp = (h / 2) * 0.86;
-    ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.beginPath();
+    ctx.strokeStyle = traceStyle(ctx, h, tint); ctx.lineWidth = lineWidth; ctx.beginPath();
     if (state !== 'signal') {
       ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
     } else {

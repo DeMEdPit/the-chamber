@@ -148,6 +148,7 @@ var CAPABILITIES = {
   peek: true,
   poke: true,
   audio: true,
+  colours: true,
   snapshots: false
 };
 var LIMITS = { prg: 65538, crt: 525376, text: 4096, machine: 1048576, peek: 65536 };   // crt: a 64-byte header and 64 CHIP packets of 8K, the machine's ROML banks
@@ -779,6 +780,7 @@ var SCHEMA = {
   poke: { addr: 'integer', value: 'integer' },
   audio: { on: 'boolean', sampleRate: 'integer?', bufferSize: 'integer?' },
   samples: {},
+  colours: {},
   lab: { on: 'boolean' },
   state: {}
 };
@@ -826,6 +828,28 @@ function reply(req, body) {
   send(m);
 }
 function refuse(req, code, text) { reply(req, { type: 'refused', code: code, text: text || code }); }
+/* The colours of the last painted frame: the pixels counted per colour over
+   the whole picture and over the inner screen (320 by 200 at the picture's
+   centre, the C64's own; the rest is the border), the commonest first. A
+   read of this document's own canvas data, made only when asked: nothing
+   in the emulator is touched, and no register is read. */
+function colourReport() {
+  var d = imageData.data, w = pixelWidth, h = pixelHeight, iw = 320, ih = 200, ix = (w - iw) >> 1, iy = (h - ih) >> 1;
+  var counts = {}, inner = {}, keys = [];
+  for (var y = 0; y < h; y++) {
+    var inRow = y >= iy && y < iy + ih;
+    for (var x = 0; x < w; x++) {
+      var o = (y * w + x) * 4, k = (d[o] << 16) | (d[o + 1] << 8) | d[o + 2];
+      if (counts[k] === undefined) { counts[k] = 0; inner[k] = 0; keys.push(k); }
+      counts[k]++;
+      if (inRow && x >= ix && x < ix + iw) inner[k]++;
+    }
+  }
+  keys.sort(function (a, b) { return counts[b] - counts[a] || a - b; });
+  var out = [];
+  for (var i = 0; i < keys.length && i < 64; i++) out.push({ rgb: '#' + ('00000' + keys[i].toString(16)).slice(-6), count: counts[keys[i]], inner: inner[keys[i]] });
+  return { type: 'colours', width: w, height: h, inner: { x: ix, y: iy, width: iw, height: ih }, total: w * h, distinct: keys.length, colours: out };
+}
 function stateReport() {
   return { type: 'state', phase: STATE.phase, build: BUILD, mode: MODE, input: INPUT, port: JOYPORT, cartridge: cartridgeIn, firmware: !!ROMS,
            program: STATE.program, intervened: intervened, lab: labOn, error: STATE.error };
@@ -931,6 +955,9 @@ async function onRequest(m) {
       if (port) { try { port.postMessage(sres, [samples.buffer]); } catch (e) {} }
       return;
     }
+    case 'colours':
+      if (!m64 || !imageData) { refuse(m, 'NOT_READY', 'the machine is not running'); return; }
+      reply(m, colourReport()); return;
     case 'lab':
       labOn = m.on; STATE.lab = labOn; reply(m, { type: 'ok', lab: labOn }); return;
     case 'state':

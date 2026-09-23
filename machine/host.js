@@ -989,9 +989,10 @@ els.sound.addEventListener('click', () => {
 // ------------------------------------------------------------------ start
 async function start() {
   els.firmware.value = firmwareMode; els.input.value = inputMode;   // a browser may restore a form's values on reload; the page's state is the page's
-  rack = createRack({ frame: els.frame, layer: $('layer'), card: bays.instruments, audio, badge: els.link, say, onChange: () => { bayLines(); if (playing) renderNow(); } });
-  const askedMode = new URLSearchParams(location.search).get('mode');
+  rack = createRack({ frame: els.frame, layer: $('layer'), card: bays.instruments, audio, badge: els.link, machineOf: () => machine, say, onChange: () => { bayLines(); if (playing) renderNow(); } });
+  const asked = new URLSearchParams(location.search), askedMode = asked.get('mode'), askedColour = asked.get('colour');
   if (askedMode === 'pure' || askedMode === 'instruments') rack.setMode(askedMode, true);   // a shared link carries the mode; a fresh visit follows the work
+  if (askedColour === 'green' || askedColour === 'scene') rack.setColour(askedColour);      // and the colour
   bayInit();
   setState('off', 'THE MACHINE IS OFF');
   renderNow();
@@ -1020,7 +1021,7 @@ async function start() {
   revealRow(els.rows.querySelector(`.row[data-work="${work}"][data-token="${token}"]`));
   load(work, token, allRows.find((r) => r.work === work && r.token === token).revisions ? revision : undefined);
 }
-window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get instruments() { return rack ? rack.snapshot() : null; }, instrumentsMode(m) { rack.setMode(m, true); }, instrumentToggle(id) { rack.toggle(id); }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
+window.machinePage = { get machine() { return machine; }, get playing() { return playing; }, get catalogue() { return catalogue; }, get audio() { return { ready: audio.ready, attached: audio.attached, pulled: audio.pulled, on: audio.on }; }, get pad() { return { held: ringHeld, ways, pressed: ringPointer !== null }; }, get firmware() { return { switch: firmwareMode, on: firmwareOn, why: firmwareWhy }; }, get input() { return inputMode; }, get cartridgeIn() { return cartridgeIn; }, get instruments() { return rack ? rack.snapshot() : null; }, instrumentsMode(m) { rack.setMode(m, true); }, instrumentToggle(id) { rack.toggle(id); }, instrumentsColour(c) { rack.setColour(c); }, get ports() { return Object.fromEntries(Object.entries(portEls).map(([k, e]) => [k, e.textContent])); }, get nodes() { return node ? node.facts() : { setAside: [], demoted: [] }; }, provenance, report, STATUS,
   get bays() { return Object.fromEntries(BAY_KEYS.map((k) => [k, { open: bayOpen(bays[k]), element: bays[k].open, moving: bays[k].classList.contains('moving'), line: $('sum-' + k).textContent }])); }, bay(k, open) { setBay(bays[k], open, true); }, say,
   readout: readout ? { on: true, tune: readout.tune, state: (k) => readout.state($('sum-' + k).children[1]), replay: (k) => readout.replay($('sum-' + k).children[1]), rest: () => readout.resetAll(document) } : { on: false }, markCuts };
 start();

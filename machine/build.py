@@ -392,7 +392,9 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .layer.dragging{{pointer-events:auto;cursor:grabbing}}   /* while a panel is dragged the layer takes the pointer, so the frame beneath never does */
 .ipanel{{position:absolute;box-sizing:border-box;padding:0;margin:0;background:rgba(10,10,12,.86);border:1px solid #2a2a2a;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.5);overflow:hidden;pointer-events:none}}
 .ipanel .ibar{{display:flex;align-items:center;gap:6px;height:16px;padding:0 6px;font:700 .5rem/1 {MONO};letter-spacing:.16em;color:var(--ink);cursor:grab;pointer-events:auto;user-select:none;touch-action:none}}
-.ipanel .ibar .lamp{{width:5px;height:5px}}
+.ipanel .ibar .lamp{{width:4.5px;height:4.5px}}   /* a touch smaller than the card's, his eye */
+.icol{{margin-top:6px}}
+.icol dt{{margin-top:0}}
 .ipanel .ifold{{margin-left:auto;font:700 .6rem/1 {MONO};color:var(--muted);background:transparent;border:0;padding:0 2px;cursor:pointer}}
 .ipanel canvas{{display:block;width:100%}}
 .ipanel.folded canvas{{display:none}}
@@ -602,6 +604,8 @@ def instruments():
             die(f"instruments.json: {i['id']} names an unknown group {i['group']!r}")
         if i.get("face") not in (None, "quarter", "wide"):
             die(f"instruments.json: {i['id']} names a face this build cannot lay out: {i.get('face')!r}")
+        if not isinstance(i.get("tint", False), bool):
+            die(f"instruments.json: {i['id']}'s tint is not true or false")
     if any(b not in ("top-left", "top-right", "bottom-left", "bottom-right") for b in d["bands"]):
         die("instruments.json: a band is not one of the picture's four")
     return d, groups
@@ -614,6 +618,15 @@ MODE_CONTROL = ('<dl class="ctl"><dt>MODE</dt><dd><div class="seg" id="mode" rol
                 '<span class="hint" id="mode-hint">a fresh visit follows the work · a link carries it</span></dd></dl>')
 
 
+# the colour of the instruments that may take the picture's: one control, drawn with the group it governs (the rule of
+# THE PORTS: a switch sits with what it governs); GREEN is the site's, SCENE the picture's main colour, read once a second
+COLOUR_CONTROL = ('<dl class="ctl icol"><dt>COLOUR</dt><dd><div class="seg" id="ink" role="radiogroup" aria-label="the colour of {names}">'
+                  '<button type="button" role="radio" aria-checked="true" data-ink="green">GREEN</button>'
+                  '<button type="button" role="radio" aria-checked="false" data-ink="scene">SCENE</button></div> '
+                  '<span class="why" id="ink-why">GREEN · the site\'s green</span>'
+                  '<span class="hint" id="ink-hint">SCENE: the picture\'s colour, read once a second</span></dd></dl>')   # one line on a phone; the names are in the label
+
+
 def instruments_card():
     d, groups = instruments()
     parts = []
@@ -621,9 +634,12 @@ def instruments_card():
         rows = [i for i in d["instruments"] if i["group"] == gid]
         if not rows:
             continue
+        tinted = [i["name"] for i in rows if i.get("tint")]
         lines = []
         for i in rows:
             attrs = f'data-inst="{esc(i["id"])}" data-group="{esc(gid)}" data-needs="{esc(i.get("needs") or "")}" data-requires="{esc(i.get("requires") or "")}" data-module="{esc(i.get("module") or "")}" data-face="{esc(i.get("face") or "")}"'
+            if i.get("tint"):
+                attrs += ' data-tint="1"'
             if i.get("title"):
                 attrs += f' data-title="{esc(i["title"])}"'
             if i.get("host"):
@@ -634,6 +650,8 @@ def instruments_card():
                          f'<canvas class="icv" width="600" height="56" aria-hidden="true"></canvas>'
                          f'<button type="button" class="isw" aria-pressed="false" aria-label="{esc(i["name"])} on or off">OFF</button>'
                          f'<span class="ireads">{esc(i["reads"])}<span class="iwhere" id="inst-{esc(i["id"])}-where"></span></span></div>')
+        if tinted:
+            lines.append("      " + COLOUR_CONTROL.format(names=esc(" and ".join(tinted))))
         parts.append(f'      <p class="grp">{esc(g["label"])}</p>\n' + "\n".join(lines))
     body = "\n".join(parts)
     return f"""    <details class="panel bay instruments" id="bay-instruments" aria-labelledby="lab-instruments" data-bands="{esc(",".join(d["bands"]))}">

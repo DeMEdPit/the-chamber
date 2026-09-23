@@ -106,6 +106,22 @@ try {
         `INSTRUMENTS by the control: the sound's two come on, laid in the free bands top left and top right, named in NOW PLAYING and the provenance (${inst1 ? inst1.line : 'not on'})`);
   const geom = await pg.evaluate(() => { const f = document.getElementById('layer').getBoundingClientRect(); const p = document.querySelector('#layer .ipanel[data-inst="spectrum"]').getBoundingClientRect(); const cv = document.querySelector('#layer .ipanel[data-inst="spectrum"] canvas'); return { right: Math.round((f.right - p.right) / f.width * 384), top: Math.round((p.top - f.top) / f.height * 272), width: Math.round(p.width / f.width * 1000) / 1000, height: Math.round(p.height / f.height * 272), dpr: cv.width >= p.width - 2, face: window.machinePage.instruments.faces.scope }; });
   check(geom.right === 32 && geom.top === 0 && Math.abs(geom.width - 0.245) < 0.01 && geom.height === 36 && geom.dpr && geom.face === 'waiting', `a panel sits in the picture's own top border band at the token's geometry (right edge 32 of 384, ${geom.height} of 272 tall, 0.245 wide), its face at the device's ratio, saying it waits for sound (${geom.face})`);
+  // COLOUR: the control sits with the sound's rows it governs; GREEN reads nothing of the picture; SCENE reads it through the
+  // document's `colours` about once a second and answers in words, a one-colour screen keeping the green (the bare machine
+  // paints one colour here; the adoption of a real colour is proved under the firmware below); the panel's lamp a touch
+  // smaller than the card's and green whatever the colour
+  const colour0 = await pg.evaluate(() => { const c = document.querySelector('#bay-instruments .icol'); const i = window.machinePage.instruments; const lamp = document.querySelector('#layer .ipanel .ibar .lamp'); return { after: c && c.previousElementSibling && c.previousElementSibling.id, group: c && c.closest('.bi') && [...c.closest('.bi').children].indexOf(c) > [...c.closest('.bi').children].findIndex((e) => e.id === 'inst-spectrum'), hint: document.getElementById('ink-hint').textContent, label: document.getElementById('ink').getAttribute('aria-label'), why: document.getElementById('ink-why').textContent, on: document.querySelector('#ink button.on').dataset.ink, colour: i.colour, reads: i.reads, tinting: i.tinting, prov: JSON.parse(document.getElementById('provenance-json').value), lamp: lamp && getComputedStyle(lamp).width, lampColour: lamp && getComputedStyle(lamp).backgroundColor, cardLamp: getComputedStyle(document.querySelector('#inst-scope .lamp')).width }; });
+  check(colour0.after === 'inst-spectrum' && colour0.group && colour0.hint === 'SCENE: the picture\'s colour, read once a second' && colour0.label === 'the colour of SCOPE and SPECTRUM' && colour0.why === 'GREEN · the site\'s green' && colour0.on === 'green' && colour0.colour === 'green' && colour0.reads === 0 && !colour0.tinting && colour0.prov.colour === 'GREEN' && colour0.prov.ink === null,
+        `COLOUR sits under the sound's two rows it governs, GREEN by default, nothing of the picture read, the provenance saying GREEN (${colour0.why})`);
+  check(colour0.lamp === '4.5px' && colour0.cardLamp === '7px' && colour0.lampColour === 'rgb(57, 255, 136)', `the panel's lamp is 4.5 px to the card's 7, and green (${colour0.lamp}, ${colour0.lampColour})`);
+  await pg.click('#ink button[data-ink="scene"]');
+  const colour1 = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; return i.reads >= 2 && i.inkWhy ? { ...i, why: document.getElementById('ink-why').textContent, prov: JSON.parse(document.getElementById('provenance-json').value) } : null; }), 8000, 100);
+  check(!!colour1 && colour1.colour === 'scene' && colour1.tinting && /^(one colour on screen · the site's green|nothing bright enough on screen · the site's green|the picture's main colour #[0-9a-f]{6} over #[0-9a-f]{6}|the picture's ground #[0-9a-f]{6}, nothing bright over it)$/.test(colour1.inkWhy) && (colour1.ink === null) === !/#/.test(colour1.inkWhy) && colour1.why === `SCENE · ${colour1.inkWhy}` && colour1.prov.colour === 'SCENE' && colour1.prov.ink === colour1.ink,
+        `SCENE reads the picture through the document and answers in words, the provenance carrying the choice and the ink (${colour1 ? colour1.inkWhy : 'no reading'}; ${colour1 ? colour1.reads : 0} reads)`);
+  await pg.click('#ink button[data-ink="green"]');
+  const readsAtGreen = await pg.evaluate(() => window.machinePage.instruments.reads);
+  await new Promise((r) => setTimeout(r, 2400));
+  check(await pg.evaluate((n) => { const i = window.machinePage.instruments; return i.colour === 'green' && !i.tinting && i.reads === n && document.getElementById('ink-why').textContent === 'GREEN · the site\'s green'; }, readsAtGreen), 'GREEN again: the reading stops, the words the site\'s');
   await pg.click('#inst-spectrum .isw');
   check(await pg.evaluate(() => window.machinePage.instruments.layers.join() === 'scope' && document.querySelectorAll('#layer .ipanel').length === 1 && document.getElementById('inst-spectrum').classList.contains('on') === false && window.machinePage.bays.instruments.line === 'scope · INSTRUMENTS'), 'an instrument\'s own switch takes its panel away and the line follows');
   const dragFrom = await pg.evaluate(() => { const b = document.querySelector('#layer .ipanel[data-inst="scope"] .ibar').getBoundingClientRect(); return { x: b.left + 20, y: b.top + b.height / 2 }; });
@@ -202,9 +218,9 @@ try {
           `the canary's own SID OUTPUT comes on at the top right on arrival, the work deciding (${own ? own.line : 'not on'}; ${own ? own.where : ''})`);
     await pc.close();
     const pm2 = await b.newPage({ viewport: { width: 1180, height: 900 } });
-    await pm2.goto(`${A.base}/machine/?mode=instruments`, { waitUntil: 'load' });
+    await pm2.goto(`${A.base}/machine/?mode=instruments&colour=scene`, { waitUntil: 'load' });
     await until(() => pm2.evaluate(() => document.getElementById('state').dataset.phase === 'running'), 90000, 500);
-    check(await pm2.evaluate(() => { const i = window.machinePage.instruments; return i.mode === 'instruments' && i.chosen && i.layers.join() === 'scope,spectrum'; }), 'a shared link with ?mode=instruments opens with the sound\'s two on, chosen by the address');
+    check(await pm2.evaluate(() => { const i = window.machinePage.instruments; return i.mode === 'instruments' && i.chosen && i.layers.join() === 'scope,spectrum' && i.colour === 'scene' && document.querySelector('#ink button.on').dataset.ink === 'scene'; }), 'a shared link with ?mode=instruments&colour=scene opens with the sound\'s two on and SCENE, chosen by the address');
     await pm2.close();
   }
   // the revision picker: REVISIONS on the mind's row lists every mind it has held, genesis first in the record and last in
@@ -419,6 +435,25 @@ try {
   check(!!underFw, 'LOAD under the firmware: the program runs, NOW PLAYING says firmware on, PINNED, from the chain');
   const fwProv = await pg.evaluate(() => { const p = window.machinePage.provenance(); return p && p.firmware && p.firmware.mode === 'on' && p.firmware.status === 'PINNED' && /ethereum/.test(p.firmware.source); });
   check(fwProv, 'the provenance says firmware on, PINNED, from ethereum');
+  // with a program playing under the firmware the screen keeps the boot's blue and white and the provenance exists:
+  // SCENE takes the picture's main colour and the provenance carries it
+  {
+    await pg.evaluate(() => { window.machinePage.instrumentsMode('instruments'); if (!window.machinePage.instruments.on.spectrum) window.machinePage.instrumentToggle('spectrum'); window.machinePage.instrumentsColour('scene'); });
+    const expected = await pg.evaluate(async () => { const rep = await window.machinePage.machine.request('colours'); const lum = (h) => { const n = parseInt(h.slice(1), 16), lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); }; const seen = rep.colours.filter((c) => c.inner > 0).sort((a, b) => b.inner - a.inner); const bright = (c) => lum(c.rgb) >= 0.045; const figure = seen.slice(1).find(bright); return { distinct: rep.distinct, screen: seen.map((c) => c.rgb), ground: seen[0].rgb, ink: figure ? figure.rgb : bright(seen[0]) ? seen[0].rgb : null }; });
+    const scene = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; const pv = document.getElementById('provenance-json').value; return i.ink && pv ? { ...i, prov: JSON.parse(pv) } : null; }), 8000, 100);
+    const dominant = (sel) => pg.evaluate((q) => { const cv = document.querySelector(q), d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, n = {}; for (let i = 0; i < d.length; i += 4) { if (d[i] + d[i + 1] + d[i + 2] < 90) continue; const k = `${d[i]},${d[i + 1]},${d[i + 2]}`; n[k] = (n[k] || 0) + 1; } const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0]; return top ? top[0].split(',').map(Number) : null; }, sel);
+    const near = (rgb, hex, tol) => !!rgb && !!hex && rgb.every((v, k) => Math.abs(v - parseInt(hex.slice(1 + 2 * k, 3 + 2 * k), 16)) <= tol);
+    const faceScene = await dominant('#layer .ipanel[data-inst="scope"] canvas'), barsScene = await dominant('#layer .ipanel[data-inst="spectrum"] canvas');
+    check(!!scene && expected.ink && scene.ink === expected.ink && scene.inkWhy === `the picture's main colour ${expected.ink} over ${expected.ground}` && scene.prov.colour === 'SCENE' && scene.prov.ink === expected.ink && expected.distinct >= 2 && expected.ink !== expected.ground,
+          `under the firmware with a program playing, SCENE takes the picture's main colour: the commonest colour drawn over the screen's ground in the document's count (${expected.ink} over ${expected.ground}, of ${expected.screen.join(', ')}), said and in the provenance`);
+    check(near(faceScene, expected.ink, 64) && !near(faceScene, '#39ff88', 64), `the scope's trace is drawn in it (${faceScene && faceScene.join(',')} for ${expected.ink})`);
+    console.log(`info the spectrum's bars at rest: ${barsScene ? barsScene.join(',') : 'none lit'}`);
+    await pg.evaluate(() => window.machinePage.instrumentsColour('green'));
+    await new Promise((r) => setTimeout(r, 300));
+    const faceGreen = await dominant('#layer .ipanel[data-inst="scope"] canvas');
+    check(near(faceGreen, '#39ff88', 64) && (await pg.evaluate(() => JSON.parse(document.getElementById('provenance-json').value).ink === null)), `GREEN draws the site's green again and the provenance's ink is null (${faceGreen && faceGreen.join(',')})`);
+    await pg.evaluate(() => window.machinePage.instrumentsMode('pure'));
+  }
   await pg.click('#reset');
   const readyAgain = await until(async () => (await screenHasReady()) && (await pg.evaluate(() => document.getElementById('state').textContent === 'READY')), 15000, 500);
   check(!!readyAgain, 'RESET under the firmware: READY again, the state READY');

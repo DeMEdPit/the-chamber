@@ -41,6 +41,7 @@ recorded.
 | `compact` | whether the card's row carries a readout |
 | `reads` | one line, in the page's words, of what it reads and that it writes nothing |
 | `host` | true for a status instrument over the page itself |
+| `tint` | true for an instrument that draws in the site's green or, under SCENE, in the picture's main colour |
 
 ## Rules
 
@@ -56,3 +57,18 @@ recorded.
   may drag it anywhere, and it stays there for the visit.
 - The layer over the sandboxed frame takes no pointer events but on a
   panel's title bar; the machine never sees a panel.
+- COLOUR, drawn with the group it governs: GREEN is the site's green;
+  SCENE draws every instrument marked `tint` in the picture's main colour:
+  of the machine's own screen (the border left out), the commonest colour
+  drawn over its ground (the ground being the commonest colour of all) if
+  bright enough to read on a panel (relative luminance 0.045 or more: the
+  C64's dark grey and its white pass, its black does not), else the ground
+  itself if it is bright enough; white text on the boot screen's blue
+  gives white.
+  The page reads it through the protocol's `colours`, a count of the
+  document's painted pixels that touches nothing in the emulator, about
+  once a second while INSTRUMENTS is on and such an instrument is live,
+  and adopts a colour when two readings in a row agree; a one-colour
+  screen keeps the green and says so. GREEN and PURE read nothing. The
+  lamp stays green. A shared link carries the choice (`?colour=scene`);
+  the provenance carries `colour` and the `ink` taken.
