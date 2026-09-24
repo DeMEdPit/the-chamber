@@ -85,14 +85,25 @@ recorded.
   (`scope.js` `createBeam`): the ink at the midline, its paler tint at the
   top and the bottom, so a peak reads brighter as a phosphor beam does
   where it turns. The spectrum's bars climb the ladder of the ink over the
-  ground (`colour.js` `ladder`): the lowest rung the ink darkened halfway
-  to the ground, the ink itself three fifths of the way up, its paler tint
-  at the top, one tone a rung, ten rungs in the chassis window and in the
-  card, every segment solid. The tones are mixed from the ink and the
-  ground and are not held to the C64's palette (the owner, 2026-09-24: a
-  finer gradation, matched to the scene, the retro look kept in the rungs);
-  the same ladder in the site's green over its ground fills the card's
-  readout. An instrument's `window(ctx, x, y, w, h, data, rate, {colours,
+  ground (`colour.js` `ladder`), built the way colour scales are built
+  professionally, in OKLab, the perceptually uniform space CSS Color 4
+  standardised: three anchors, the ink darkened three quarters of the way
+  to the ground, the ink itself, and the ink paled 60 percent towards
+  white; ten rungs stepped evenly in OKLab lightness from the dark anchor
+  to the light one, so every step is the same size to the eye; each rung's
+  colour on the path dark, ink, light, mapped into the screen's gamut by
+  giving up chroma alone; the bottom rung held at least 0.06 of lightness
+  above an unlit segment, so a lit rung never reads as unlit. Below the
+  ink this is close to a dimmed LED, the same colour at less light; above
+  it the bloom of an overdriven one. Every segment solid, one tone a rung,
+  in the chassis window and in the card. The tones are the ink's own and
+  are not held to the C64's palette (the owner, 2026-09-24: a finer
+  gradation, matched to the scene, the retro look kept in the rungs, his
+  ladder B built in OKLab); the same ladder in the site's green over its
+  ground fills the card's readout, and the beam's pale end is the ladder's
+  light anchor. The node gate holds the evenness (every step within 12
+  percent of the mean), the hue (where the ink has one every rung has it,
+  under 2 degrees of drift) and the floor to numbers. An instrument's `window(ctx, x, y, w, h, data, rate, {colours,
   k})` draws it in the chassis; its `draw(cv, data, rate)` the card's
   readout. In the card a group's rows share their columns (the group a CSS
   grid and each row a subgrid of it), so the name column is as wide as the

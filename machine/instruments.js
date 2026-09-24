@@ -27,7 +27,7 @@
 // machine document's `colours` about once a second while such an instrument
 // is on and adopted when two readings agree; the lamp stays green. The tones
 // between and around those colours (a meter's ladder, a trace's beam) are
-// mixed by the instruments themselves, not held to the C64's palette.
+// made by the instruments themselves in OKLab, not held to the C64's palette.
 import { createScope } from './instruments/scope.js';
 import { createSpectrum } from './instruments/spectrum.js';
 import { SITE, pickColours, createAdoption } from './instruments/scene.js';

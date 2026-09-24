@@ -13,12 +13,13 @@
 // each frame, the measurement never altered. The same bars draw in the
 // card's readout (the site's colours) and in the token's chassis window
 // over the picture (the chassis colours). A lit segment's colour is its
-// rung of the ladder (colour.js `ladder`): the ink darkened towards the
-// ground at the bottom, the ink itself three fifths of the way up, its
-// paler tint at the top, one tone a rung, so the meter climbs through the
-// ink's own shades (the owner, 2026-09-24: a finer gradation, matched to
-// the scene, not held to the C64's palette); an unlit segment is the off
-// colour, the panel's on the chassis.
+// rung of the ladder (colour.js `ladder`): from the ink darkened three
+// quarters of the way to the ground, through the ink, to its pale, the
+// rungs stepped evenly in OKLab lightness so every step is one size to the
+// eye, one tone a rung (the owner, 2026-09-24: a finer gradation, matched
+// to the scene, not held to the C64's palette, built the way colour scales
+// are built); an unlit segment is the off colour, the panel's on the
+// chassis, and the bottom rung is held a step of lightness above it.
 import { ladder } from './colour.js';
 
 export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.022, decay = 0.992, lit = '#39ff88', off = '#151515', ground = '#050505' } = {}) {
@@ -76,10 +77,10 @@ export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.02
     return disp;
   }
 
-  /** The ladder for this ink over this ground with this many rungs, kept until one of them changes. */
-  function tones(ink, over, segments) {
-    const key = `${ink}|${over}|${segments}`;
-    if (key !== rungsFor) { rungsFor = key; rungs = ladder(ink, over, segments); }
+  /** The ladder for this ink over this ground with this many rungs, floored above the off colour, kept until one of them changes. */
+  function tones(ink, over, segments, offC) {
+    const key = `${ink}|${over}|${segments}|${offC}`;
+    if (key !== rungsFor) { rungsFor = key; rungs = ladder(ink, over, segments, offC); }
     return rungs;
   }
 
@@ -89,7 +90,7 @@ export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.02
    */
   function bars(ctx, x, y, w, h, data, rate, { segments = 10, ink = lit, over = ground, offC = off } = {}) {
     const cols = Math.max(12, Math.min(48, Math.round(w / 14)));
-    const gapx = Math.max(1, Math.round(w / 220)), bw = (w - gapx * (cols + 1)) / cols, segh = (h - 4) / segments, rung = tones(ink, over, segments);
+    const gapx = Math.max(1, Math.round(w / 220)), bw = (w - gapx * (cols + 1)) / cols, segh = (h - 4) / segments, rung = tones(ink, over, segments, offC);
     let state = 'waiting', d = null;
     if (data) {
       let any = false;

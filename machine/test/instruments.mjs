@@ -8,7 +8,7 @@
 //
 //   node machine/test/instruments.mjs
 import { pickColours, createAdoption, SITE, DEFAULTS, MIN_PIXELS } from '../instruments/scene.js';
-import { shade, pale, parse, mix, ladder } from '../instruments/colour.js';
+import { shade, pale, parse, mix, ladder, toOklab, fromOklab, LADDER } from '../instruments/colour.js';
 import { wave, createScope, createBeam } from '../instruments/scope.js';
 import { createSpectrum } from '../instruments/spectrum.js';
 import { drawText, screenCode, textWidth } from '../instruments/romfont.js';
@@ -92,28 +92,46 @@ check(!a.offer(null) && a.pending === '', 'an empty reading is nothing');
   check(named(c4, 'moveTo')[0].args[1] === Math.round(30.5), 'a two pixel line sits on the grid, not a half pixel off');
   const scope = createScope(), c5 = recorder();
   const st5 = scope.window(c5, 0, 10, 350, 60, null, 48000, { colours: { ink: '#123456' }, k: 4 }), beam5 = named(c5, 'stroke')[0].strokeStyle;
-  check(st5 === 'waiting' && beam5 && beam5.gradient.join() === '0,10,0,70' && JSON.stringify(beam5.stops) === JSON.stringify([[0, pale('#123456')], [0.5, '#123456'], [1, pale('#123456')]]) && named(c5, 'stroke')[0].lineWidth === 1,
+  check(st5 === 'waiting' && beam5 && beam5.gradient.join() === '0,10,0,70' && JSON.stringify(beam5.stops) === JSON.stringify([[0, pale('#123456', LADDER.pale)], [0.5, '#123456'], [1, pale('#123456', LADDER.pale)]]) && named(c5, 'stroke')[0].lineWidth === 1,
         'the scope\'s window drawing is the wave stroked in the beam of the ink (the ink at the midline, its paler tint at the extremes, over the window\'s rows), one pixel at the token\'s scale, and reports the state');
   const c6 = recorder(); scope.window(c6, 0, 0, 350, 60, data, 48000, { colours: { ink: '#123456' }, k: 8 });
   check(named(c6, 'stroke')[0].lineWidth === 2, 'at twice the token\'s scale the line is two pixels');
   // the beam is kept per context, colour and extent: a frame builds nothing; a change of any of them builds one
   const beam = createBeam(), cb = recorder();
   const g1 = beam(cb, 0, 60, '#ff0000'), g2 = beam(cb, 0, 60, '#ff0000'), g3 = beam(cb, 0, 60, '#00ff00'), g4 = beam(recorder(), 0, 60, '#00ff00');
-  check(g1 === g2 && g3 !== g2 && g4 !== g3 && named(cb, 'createLinearGradient').length === 2 && g1.stops[0][1] === pale('#ff0000'), 'a beam is built once per context, colour and extent, and again when one of them changes');
+  check(g1 === g2 && g3 !== g2 && g4 !== g3 && named(cb, 'createLinearGradient').length === 2 && g1.stops[0][1] === pale('#ff0000', LADDER.pale), 'a beam is built once per context, colour and extent, and again when one of them changes');
   const cw = recorder(); scope.draw({ getContext: () => cw, width: 300, height: 40 }, null, 48000);
   const sw = named(cw, 'stroke').find((c) => c.lineWidth === 2);
-  check(sw && sw.strokeStyle && sw.strokeStyle.gradient.join() === '0,0,0,40' && sw.strokeStyle.stops[1][1] === '#39ff88' && sw.strokeStyle.stops[0][1] === pale('#39ff88'), 'the card\'s readout strokes its trace in the beam of the site\'s green');
+  check(sw && sw.strokeStyle && sw.strokeStyle.gradient.join() === '0,0,0,40' && sw.strokeStyle.stops[1][1] === '#39ff88' && sw.strokeStyle.stops[0][1] === pale('#39ff88', LADDER.pale), 'the card\'s readout strokes its trace in the beam of the site\'s green');
 }
 
-// 5. the ladder a meter climbs: the ink darkened halfway to the ground at the bottom, the ink three fifths of the way up, its
-// paler tint at the top, one tone a rung, mixed evenly between; the site's green, a white ink, the boot screen's lavender
+// 5. OKLab both ways, and the ladder a meter climbs: three anchors (the ink darkened three quarters of the way to the ground,
+// the ink, its 60 percent pale), the rungs stepped evenly in OKLab lightness so every step is one size to the eye, the hue
+// the ink's own, the bottom rung floored a step above an unlit segment; the site's green, a white ink, the boot screen's
+// lavender, a game's orange, the mono grey
 {
-  const green = ladder('#39ff88', '#050505', 10), white = ladder('#ffffff', '#000000', 10), boot = ladder('#706deb', '#2e2c9b', 10);
-  check(mix('#000000', '#ffffff', 0.5) === '#808080' && mix('#39ff88', '#050505', 0.5) === '#1f8247' && mix('#123456', 'nope', 0.5) === '#123456', `mix: halfway from black to white is mid grey, the site's green over its ground ${mix('#39ff88', '#050505', 0.5)}`);
-  check(green.length === 10 && green[0] === '#1f8247' && green[5] === '#39ff88' && green[9] === pale('#39ff88') && new Set(green).size === 10, `the site's green climbs ten distinct rungs from ${green[0]} through the green to ${green[9]}`);
-  const climbs = (l) => l.every((c, i) => i === 0 || parse(c).reduce((a, v) => a + v, 0) >= parse(l[i - 1]).reduce((a, v) => a + v, 0));
-  check(climbs(green) && climbs(white) && climbs(boot) && white[0] === '#808080' && white[5] === '#ffffff' && boot[5] === '#706deb' && new Set(boot).size === 10, `every ladder climbs from dark to light: white from ${white[0]}, the boot screen's lavender ${boot[0]} to ${boot[9]}`);
-  check(ladder('#ff0000', '#000000', 1).join() === '#ff0000' && ladder('#ff0000', '#000000', 2).join() === '#800000,#ff0000' && ladder('#ff0000', '#000000', 0).join() === '#ff0000', 'one rung is the ink, two the dark and the ink, none is one');
+  const L = (h) => toOklab(h).L, hue = (h) => { const o = toOklab(h); return (Math.atan2(o.b, o.a) * 180 / Math.PI + 360) % 360; };
+  const trips = ['#39ff88', '#706deb', '#7b7b7b', '#e8862a', '#2e2c9b', '#123456', '#ffffff', '#000000'];
+  check(Math.abs(L('#ffffff') - 1) < 1e-3 && Math.abs(L('#000000')) < 1e-3 && trips.every((h) => fromOklab(toOklab(h)) === h) && toOklab('nope') === null, 'OKLab: white is 1, black 0, eight colours round-trip exactly, a non-colour is null');
+  const wide = fromOklab({ L: 0.8, a: 0.3, b: 0 }), w = toOklab(wide);
+  check(/^#[0-9a-f]{6}$/.test(wide) && Math.abs(w.L - 0.8) < 0.01 && Math.abs(hue(wide)) < 1.5 && Math.hypot(w.a, w.b) < 0.3, `a colour outside sRGB is mapped in by giving up chroma alone: ${wide}, L ${w.L.toFixed(3)}, hue ${hue(wide).toFixed(1)}`);
+  check(mix('#000000', '#ffffff', 0.5) === '#808080' && mix('#39ff88', '#050505', 0.5) === '#1f8247' && mix('#123456', 'nope', 0.5) === '#123456' && LADDER.dark === 0.75 && LADDER.pale === 0.6 && LADDER.floor === 0.06, 'mix: halfway from black to white is mid grey; the ladder\'s anchors are three quarters to the ground, 60 percent to white, a floor of 0.06');
+  const steps = (l) => l.slice(1).map((h, i) => L(h) - L(l[i]));
+  const even = (l) => { const st = steps(l), mean = st.reduce((a, v) => a + v, 0) / st.length; return st.every((v) => Math.abs(v - mean) <= 0.12 * mean); };
+  const climbs = (l) => steps(l).every((v) => v > 0);
+  const cases = [['#39ff88', '#000000', '#262626'], ['#39ff88', '#050505', '#151515'], ['#ffffff', '#000000', '#262626'], ['#ffffff', '#2e2c9b', '#4d4caa'], ['#706deb', '#2e2c9b', '#4d4caa'], ['#e8862a', '#000000', '#262626'], ['#7b7b7b', '#000000', '#262626']];
+  const ladders = cases.map(([ink, g, off]) => ({ ink, g, off, l: ladder(ink, g, 10, off) }));
+  check(ladders.every(({ l }) => l.length === 10 && new Set(l).size === 10 && climbs(l) && even(l)), `every ladder climbs ten distinct rungs in even steps of lightness (${ladders.map(({ l }) => (steps(l).reduce((a, v) => a + v, 0) / 9 * 100).toFixed(1)).join(', ')} a rung)`);
+  check(ladders.every(({ off, l }) => L(l[0]) >= L(off) + LADDER.floor - 1e-6), 'the bottom rung sits at least the floor above the unlit segment on every ladder');
+  const green = ladders[0].l, grey = ladders[6].l, orange = ladders[5].l;
+  const nearL = (h, anchor) => Math.abs(L(h) - L(anchor)) < 0.006;
+  check(nearL(green[0], mix('#39ff88', '#000000', 0.75)) && nearL(green[9], pale('#39ff88', 0.6)) && L(grey[0]) > L(mix('#7b7b7b', '#000000', 0.75)) + 0.05 && L(grey[0]) < L('#7b7b7b') && nearL(grey[9], pale('#7b7b7b', 0.6)),
+        `the green's ends sit at its two anchors' lightness (${green[0]} to ${green[9]}); the grey's bottom is lifted by the floor (${grey[0]}, its anchor ${mix('#7b7b7b', '#000000', 0.75)} would sit in the unlit colour)`);
+  const drift = (l, ink) => Math.max(...l.map((h) => Math.abs(((hue(h) - hue(ink) + 540) % 360) - 180)));
+  check(drift(green, '#39ff88') < 2 && drift(orange, '#e8862a') < 2 && drift(ladders[4].l, '#706deb') < 2, `where the ink has a hue every rung has it (drift ${drift(green, '#39ff88').toFixed(1)}°, ${drift(orange, '#e8862a').toFixed(1)}°, ${drift(ladders[4].l, '#706deb').toFixed(1)}°)`);
+  const whiteBlue = ladders[3].l;
+  check(whiteBlue[9] === '#ffffff' && hue(whiteBlue[0]) > 250 && hue(whiteBlue[0]) < 300 && Math.hypot(toOklab(whiteBlue[0]).a, toOklab(whiteBlue[0]).b) > 0.05, `a white ink over the boot blue keeps the ground's tint in its dark rungs (${whiteBlue[0]}) and ends white`);
+  check(ladder('#ff0000', '#000000', 1).join() === '#ff0000' && ladder('#ff0000', '#000000', 0).join() === '#ff0000' && ladder('#ff0000', '#000000', 2).length === 2 && ladder('nope', '#000000', 3).join() === 'nope,nope,nope', 'one rung is the ink, none is one, two are two, a non-colour is itself');
 }
 
 // 6. the spectrum's window: every lit segment its rung of the ink's ladder over the picture's ground, the rest in the panel colour, nothing lit without data
@@ -124,12 +142,12 @@ check(!a.offer(null) && a.pending === '', 'an empty reading is nothing');
   check(st === 'waiting' && rects.length > 0 && rects.every((r) => r.fillStyle === '#262626' && r.globalAlpha === 1) && rects.every((r) => r.args[0] >= 5 && r.args[1] >= 7), `without data every segment is off in the panel colour, solid (${rects.length} segments inside the window)`);
   const loud = new Float32Array(4096); for (let i = 0; i < loud.length; i++) loud[i] = Math.sin(i / 12) * 0.5;
   const c2 = recorder(); sp.window(c2, 0, 0, 300, 40, loud, 48000, { colours: scene });
-  const rung = ladder('#ff0000', '#000000', 10), all = named(c2, 'fillRect'), lit = all.filter((r) => r.fillStyle !== '#262626');
+  const rung = ladder('#ff0000', '#000000', 10, '#262626'), all = named(c2, 'fillRect'), lit = all.filter((r) => r.fillStyle !== '#262626');
   const cols = Math.round(300 / 14), segh = (40 - 4) / 10, rungOf = (r) => Math.round((40 - 2 - r.args[1] + 1) / segh) - 1;   // the segment a rectangle's top names, 0 at the bottom
   check(all.length === cols * 10 && lit.length > 0 && lit.every((r) => r.fillStyle === rung[rungOf(r)] && r.globalAlpha === 1), `with a tone ${lit.length} segments light, each in its own rung of the ladder, solid`);
   check(new Set(lit.map((r) => r.fillStyle)).size >= 3 && lit.some((r) => r.fillStyle === rung[0]), `the lit segments show ${new Set(lit.map((r) => r.fillStyle)).size} tones, the lowest the darkest`);
   const cardCv = recorder(); sp.draw({ getContext: () => cardCv, width: 300, height: 40 }, loud, 48000);
-  const cardRung = ladder('#39ff88', '#050505', 10), cardLit = named(cardCv, 'fillRect').filter((r) => r.fillStyle !== '#151515' && r.fillStyle !== '#050505');
+  const cardRung = ladder('#39ff88', '#050505', 10, '#151515'), cardLit = named(cardCv, 'fillRect').filter((r) => r.fillStyle !== '#151515' && r.fillStyle !== '#050505');
   check(cardLit.length > 0 && cardLit.every((r) => cardRung.includes(r.fillStyle)), 'the card\'s readout climbs the same ladder in the site\'s green over its ground');
 }
 

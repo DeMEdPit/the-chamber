@@ -17,12 +17,13 @@
 // peak reads brighter as a phosphor beam does where it turns (the owner,
 // 2026-09-24: a finer gradation, matched to the scene); the wave's recipe
 // is untouched, the gradient is only what its line is drawn with.
-import { pale } from './colour.js';
+import { pale, LADDER } from './colour.js';
 
 /**
- * The beam: a vertical gradient over a trace's rows, the colour at the midline, its paler tint at the extremes; one is
- * kept per context, colour and extent, so a frame builds nothing. A gradient is a value of the canvas, not a colour of
- * the palette; a white ink pales to white and its beam is one colour.
+ * The beam: a vertical gradient over a trace's rows, the colour at the midline, its paler tint at the extremes (the
+ * ladder's own light anchor, `LADDER.pale` towards white, so the trace's peaks and the meter's top rung are one tone);
+ * one is kept per context, colour and extent, so a frame builds nothing. A gradient is a value of the canvas, not a
+ * colour of the palette; a white ink pales to white and its beam is one colour.
  */
 export function createBeam() {
   let ctxFor = null, keyFor = '', gradient = null;
@@ -31,7 +32,7 @@ export function createBeam() {
     if (ctx !== ctxFor || key !== keyFor) {
       ctxFor = ctx; keyFor = key;
       gradient = ctx.createLinearGradient(0, y, 0, y + h);
-      const tint = pale(colour);
+      const tint = pale(colour, LADDER.pale);
       gradient.addColorStop(0, tint); gradient.addColorStop(0.5, colour); gradient.addColorStop(1, tint);
     }
     return gradient;

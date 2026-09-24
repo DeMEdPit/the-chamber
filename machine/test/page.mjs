@@ -39,7 +39,7 @@ import { start } from './serve.mjs';
 import { makeD64 } from './make-d64.mjs';
 import { makeCRT, PROBE, probe16K } from './make-crt.mjs';
 import { pickColours, DEFAULTS } from '../instruments/scene.js';
-import { pale } from '../instruments/colour.js';
+import { pale, LADDER } from '../instruments/colour.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EVIDENCE = join(HERE, 'evidence');
@@ -123,7 +123,7 @@ try {
   // the trace: the SID's silent output sits a fraction off the midline (its own offset), so the column under the window's centre is scanned:
   // every pixel a blend of the ink and the ground, and one row at least 40 percent of the way from the ground to the ink
   // (the trace is stroked in the beam of the ink, the ink at the midline and its paler tint at the extremes, so a pixel may be paler than the ink)
-  const traced = (px, ink, ground) => { const I = rgb(ink), G = rgb(ground), P = rgb(pale(ink)); const t = (p) => Math.max(...p.map((v, k) => (I[k] === G[k] ? 0 : (v - G[k]) / (I[k] - G[k])))); const blendy = (p) => p.every((v, k) => v >= Math.min(I[k], G[k], P[k]) - 6 && v <= Math.max(I[k], G[k], P[k]) + 6); return px.column.every(blendy) && px.column.some((p) => t(p) >= 0.4); };
+  const traced = (px, ink, ground) => { const I = rgb(ink), G = rgb(ground), P = rgb(pale(ink, LADDER.pale)); const t = (p) => Math.max(...p.map((v, k) => (I[k] === G[k] ? 0 : (v - G[k]) / (I[k] - G[k])))); const blendy = (p) => p.every((v, k) => v >= Math.min(I[k], G[k], P[k]) - 6 && v <= Math.max(I[k], G[k], P[k]) + 6); return px.column.every(blendy) && px.column.some((p) => t(p) >= 0.4); };
   const strongest = (px) => px.column.reduce((a, p) => (p.reduce((x, y) => x + y, 0) > a.reduce((x, y) => x + y, 0) ? p : a), px.column[0]);
   const glyphHolds = (px, ch, ink, panel) => { const g = glyphOf(ch); return px.glyph.every((row, r) => row.every((p, b) => near(p, g[r][b] ? ink : panel, 10))); };
   const ch0 = await panelPixels('scope');
