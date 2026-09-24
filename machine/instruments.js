@@ -25,7 +25,9 @@
 // chassis; SCENE is the token's whole rule (instruments/scene.js): the
 // ground, the ink and the panel's body from the picture, read through the
 // machine document's `colours` about once a second while such an instrument
-// is on and adopted when two readings agree; the lamp stays green.
+// is on and adopted when two readings agree; the lamp stays green. The tones
+// between and around those colours (a meter's ladder, a trace's beam) are
+// mixed by the instruments themselves, not held to the C64's palette.
 import { createScope } from './instruments/scope.js';
 import { createSpectrum } from './instruments/spectrum.js';
 import { SITE, pickColours, createAdoption } from './instruments/scene.js';

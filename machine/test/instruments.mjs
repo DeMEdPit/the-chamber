@@ -8,8 +8,8 @@
 //
 //   node machine/test/instruments.mjs
 import { pickColours, createAdoption, SITE, DEFAULTS, MIN_PIXELS } from '../instruments/scene.js';
-import { shade, pale, parse } from '../instruments/colour.js';
-import { wave, createScope } from '../instruments/scope.js';
+import { shade, pale, parse, mix, ladder } from '../instruments/colour.js';
+import { wave, createScope, createBeam } from '../instruments/scope.js';
 import { createSpectrum } from '../instruments/spectrum.js';
 import { drawText, screenCode, textWidth } from '../instruments/romfont.js';
 import { glyphScale, glyphFor, titleRoom, fitTitle, lampFor, layout, drawChassis, PAD, GLYPH, MARGIN, LAMP } from '../instruments/chassis.js';
@@ -24,6 +24,7 @@ function recorder() {
     get(_, name) {
       if (name === 'calls') return calls;
       if (name in props) return props[name];
+      if (name === 'createLinearGradient') return (...args) => { const g = { gradient: args, stops: [], addColorStop(o, c) { g.stops.push([o, c]); } }; calls.push({ name, args, ...props }); return g; };
       return (...args) => { calls.push({ name, args, ...props }); };
     },
     set(_, name, v) { props[name] = v; return true; },
@@ -90,24 +91,49 @@ check(!a.offer(null) && a.pending === '', 'an empty reading is nothing');
   const c4 = recorder(); wave(c4, 0, 0, 350, 61, null, '#39ff88', 2);
   check(named(c4, 'moveTo')[0].args[1] === Math.round(30.5), 'a two pixel line sits on the grid, not a half pixel off');
   const scope = createScope(), c5 = recorder();
-  check(scope.window(c5, 0, 0, 350, 60, null, 48000, { colours: { ink: '#123456' }, k: 4 }) === 'waiting' && named(c5, 'stroke')[0].strokeStyle === '#123456' && named(c5, 'stroke')[0].lineWidth === 1, 'the scope\'s window drawing is the wave in the ink, one pixel at the token\'s scale, and reports the state');
+  const st5 = scope.window(c5, 0, 10, 350, 60, null, 48000, { colours: { ink: '#123456' }, k: 4 }), beam5 = named(c5, 'stroke')[0].strokeStyle;
+  check(st5 === 'waiting' && beam5 && beam5.gradient.join() === '0,10,0,70' && JSON.stringify(beam5.stops) === JSON.stringify([[0, pale('#123456')], [0.5, '#123456'], [1, pale('#123456')]]) && named(c5, 'stroke')[0].lineWidth === 1,
+        'the scope\'s window drawing is the wave stroked in the beam of the ink (the ink at the midline, its paler tint at the extremes, over the window\'s rows), one pixel at the token\'s scale, and reports the state');
   const c6 = recorder(); scope.window(c6, 0, 0, 350, 60, data, 48000, { colours: { ink: '#123456' }, k: 8 });
   check(named(c6, 'stroke')[0].lineWidth === 2, 'at twice the token\'s scale the line is two pixels');
+  // the beam is kept per context, colour and extent: a frame builds nothing; a change of any of them builds one
+  const beam = createBeam(), cb = recorder();
+  const g1 = beam(cb, 0, 60, '#ff0000'), g2 = beam(cb, 0, 60, '#ff0000'), g3 = beam(cb, 0, 60, '#00ff00'), g4 = beam(recorder(), 0, 60, '#00ff00');
+  check(g1 === g2 && g3 !== g2 && g4 !== g3 && named(cb, 'createLinearGradient').length === 2 && g1.stops[0][1] === pale('#ff0000'), 'a beam is built once per context, colour and extent, and again when one of them changes');
+  const cw = recorder(); scope.draw({ getContext: () => cw, width: 300, height: 40 }, null, 48000);
+  const sw = named(cw, 'stroke').find((c) => c.lineWidth === 2);
+  check(sw && sw.strokeStyle && sw.strokeStyle.gradient.join() === '0,0,0,40' && sw.strokeStyle.stops[1][1] === '#39ff88' && sw.strokeStyle.stops[0][1] === pale('#39ff88'), 'the card\'s readout strokes its trace in the beam of the site\'s green');
 }
 
-// 5. the spectrum's window: bars in the ink, the top two paler, the rest in the panel colour, nothing lit without data
+// 5. the ladder a meter climbs: the ink darkened halfway to the ground at the bottom, the ink three fifths of the way up, its
+// paler tint at the top, one tone a rung, mixed evenly between; the site's green, a white ink, the boot screen's lavender
 {
-  const sp = createSpectrum(), ctx = recorder();
-  const st = sp.window(ctx, 5, 7, 300, 40, null, 48000, { colours: { ink: '#ff0000', ground: '#000000', panel: '#262626' } });
-  const rects = named(ctx, 'fillRect');
-  check(st === 'waiting' && rects.length > 0 && rects.every((r) => r.fillStyle === '#262626') && rects.every((r) => r.args[0] >= 5 && r.args[1] >= 7), `without data every segment is off in the panel colour (${rects.length} segments inside the window)`);
-  const loud = new Float32Array(4096); for (let i = 0; i < loud.length; i++) loud[i] = Math.sin(i / 12) * 0.5;
-  const c2 = recorder(); sp.window(c2, 0, 0, 300, 40, loud, 48000, { colours: { ink: '#ff0000', ground: '#000000', panel: '#262626' } });
-  const lit = named(c2, 'fillRect').filter((r) => r.fillStyle !== '#262626');
-  check(lit.length > 0 && lit.every((r) => r.fillStyle === '#ff0000' || r.fillStyle === pale('#ff0000')), `with a tone some segments light in the ink or its paler tint (${lit.length})`);
+  const green = ladder('#39ff88', '#050505', 10), white = ladder('#ffffff', '#000000', 10), boot = ladder('#706deb', '#2e2c9b', 10);
+  check(mix('#000000', '#ffffff', 0.5) === '#808080' && mix('#39ff88', '#050505', 0.5) === '#1f8247' && mix('#123456', 'nope', 0.5) === '#123456', `mix: halfway from black to white is mid grey, the site's green over its ground ${mix('#39ff88', '#050505', 0.5)}`);
+  check(green.length === 10 && green[0] === '#1f8247' && green[5] === '#39ff88' && green[9] === pale('#39ff88') && new Set(green).size === 10, `the site's green climbs ten distinct rungs from ${green[0]} through the green to ${green[9]}`);
+  const climbs = (l) => l.every((c, i) => i === 0 || parse(c).reduce((a, v) => a + v, 0) >= parse(l[i - 1]).reduce((a, v) => a + v, 0));
+  check(climbs(green) && climbs(white) && climbs(boot) && white[0] === '#808080' && white[5] === '#ffffff' && boot[5] === '#706deb' && new Set(boot).size === 10, `every ladder climbs from dark to light: white from ${white[0]}, the boot screen's lavender ${boot[0]} to ${boot[9]}`);
+  check(ladder('#ff0000', '#000000', 1).join() === '#ff0000' && ladder('#ff0000', '#000000', 2).join() === '#800000,#ff0000' && ladder('#ff0000', '#000000', 0).join() === '#ff0000', 'one rung is the ink, two the dark and the ink, none is one');
 }
 
-// 6. the titles from the character ROM: a glyph's set bits become squares of g pixels at the right places; the stand-in without a ROM
+// 6. the spectrum's window: every lit segment its rung of the ink's ladder over the picture's ground, the rest in the panel colour, nothing lit without data
+{
+  const sp = createSpectrum(), ctx = recorder(), scene = { ink: '#ff0000', ground: '#000000', panel: '#262626' };
+  const st = sp.window(ctx, 5, 7, 300, 40, null, 48000, { colours: scene });
+  const rects = named(ctx, 'fillRect');
+  check(st === 'waiting' && rects.length > 0 && rects.every((r) => r.fillStyle === '#262626' && r.globalAlpha === 1) && rects.every((r) => r.args[0] >= 5 && r.args[1] >= 7), `without data every segment is off in the panel colour, solid (${rects.length} segments inside the window)`);
+  const loud = new Float32Array(4096); for (let i = 0; i < loud.length; i++) loud[i] = Math.sin(i / 12) * 0.5;
+  const c2 = recorder(); sp.window(c2, 0, 0, 300, 40, loud, 48000, { colours: scene });
+  const rung = ladder('#ff0000', '#000000', 10), all = named(c2, 'fillRect'), lit = all.filter((r) => r.fillStyle !== '#262626');
+  const cols = Math.round(300 / 14), segh = (40 - 4) / 10, rungOf = (r) => Math.round((40 - 2 - r.args[1] + 1) / segh) - 1;   // the segment a rectangle's top names, 0 at the bottom
+  check(all.length === cols * 10 && lit.length > 0 && lit.every((r) => r.fillStyle === rung[rungOf(r)] && r.globalAlpha === 1), `with a tone ${lit.length} segments light, each in its own rung of the ladder, solid`);
+  check(new Set(lit.map((r) => r.fillStyle)).size >= 3 && lit.some((r) => r.fillStyle === rung[0]), `the lit segments show ${new Set(lit.map((r) => r.fillStyle)).size} tones, the lowest the darkest`);
+  const cardCv = recorder(); sp.draw({ getContext: () => cardCv, width: 300, height: 40 }, loud, 48000);
+  const cardRung = ladder('#39ff88', '#050505', 10), cardLit = named(cardCv, 'fillRect').filter((r) => r.fillStyle !== '#151515' && r.fillStyle !== '#050505');
+  check(cardLit.length > 0 && cardLit.every((r) => cardRung.includes(r.fillStyle)), 'the card\'s readout climbs the same ladder in the site\'s green over its ground');
+}
+
+// 7. the titles from the character ROM: a glyph's set bits become squares of g pixels at the right places; the stand-in without a ROM
 {
   const font = new Uint8Array(4096);
   const S = screenCode('S');
@@ -124,7 +150,7 @@ check(!a.offer(null) && a.pending === '', 'an empty reading is nothing');
   check(named(c3, 'fillText').length === 1 && named(c3, 'fillRect').length === 0 && c3.font === 'bold 16px ui-monospace, Menlo, monospace', 'without the ROM a bold monospace stands in');
 }
 
-// 7. the chassis: the token's numbers in picture pixels, the glyph at whole device pixels, never under six CSS pixels
+// 8. the chassis: the token's numbers in picture pixels, the glyph at whole device pixels, never under six CSS pixels
 {
   check(PAD === 2.25 && GLYPH === 4 && MARGIN === 8, 'the token\'s pad and glyph, a quarter of its 4x canvas numbers');
   check(glyphScale(2, 1) === 1 && glyphScale(4, 2) === 2 && glyphScale(3, 1) === 2 && glyphScale(2.8, 3) === 3 && glyphScale(6, 2) === 3, 'the glyph scale: 1 at the desktop, 2 at its retina, 2 at three times, 3 on a phone at three');

@@ -377,6 +377,9 @@ textarea.json{{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;fon
 .seg button.on{{color:#050505;background:var(--accent2)}}
 .seg button:focus-visible{{outline:2px solid var(--accent);outline-offset:-2px}}
 .irow{{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:8px 0 0;padding:7px 9px;border:1px solid #2a2a2a;border-radius:6px;background:linear-gradient(180deg,#0f0f0f,#080808)}}
+/* a group's rows share their columns, so the readouts are one length, the name column as wide as the longest name (his
+   ask, 2026-09-24): the group is the grid and each row a subgrid of it; a browser without subgrid keeps a row's own grid */
+@supports(grid-template-columns:subgrid){{.igrp{{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:10px}}.igrp>.irow{{grid-column:1/-1;grid-template-columns:subgrid}}}}
 .irow .iname{{display:flex;align-items:center;gap:8px;font:700 .6rem/1.6 {MONO};letter-spacing:.16em;color:var(--ink);white-space:nowrap}}
 .lamp{{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1d1d1d;border:1px solid #333;flex:none}}
 .on>.iname>.lamp,.ipanel .lamp{{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px rgba(57,255,136,.55)}}
@@ -653,9 +656,10 @@ def instruments_card():
                          f'<canvas class="icv" width="600" height="56" aria-hidden="true"></canvas>'
                          f'<button type="button" class="isw" aria-pressed="false" aria-label="{esc(i["name"])} on or off">OFF</button>'
                          f'<span class="ireads">{esc(i["reads"])}<span class="iwhere" id="inst-{esc(i["id"])}-where"></span></span></div>')
+        block = '      <div class="igrp">\n' + "\n".join(lines) + '\n      </div>'   # the rows share their columns (see .igrp)
         if tinted:
-            lines.append("      " + COLOUR_CONTROL.format(names=esc(" and ".join(tinted))))
-        parts.append(f'      <p class="grp">{esc(g["label"])}</p>\n' + "\n".join(lines))
+            block += "\n      " + COLOUR_CONTROL.format(names=esc(" and ".join(tinted)))
+        parts.append(f'      <p class="grp">{esc(g["label"])}</p>\n' + block)
     body = "\n".join(parts)
     return f"""    <details class="panel bay instruments" id="bay-instruments" aria-labelledby="lab-instruments" data-bands="{esc(",".join(d["bands"]))}">
       <summary class="bh" aria-expanded="false" aria-controls="bay-instruments-body"><span class="lab"><span id="lab-instruments">THE INSTRUMENTS</span></span><span class="bs" id="sum-instruments"><span class="f"></span><span class="e"><span class="t"></span></span><span class="f"></span></span><span class="bm" aria-hidden="true"></span></summary>

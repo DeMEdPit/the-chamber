@@ -12,8 +12,35 @@
 // as quiet and nothing pumps. The chain's machine has no voice state to fit
 // a window to, so the window is a stated number of milliseconds. Over the
 // picture, in the token's chassis, the token's own wave (`wave`, below).
+// Either trace is stroked in a vertical gradient of its colour (`beam`):
+// the ink at the midline, its paler tint at the top and the bottom, so a
+// peak reads brighter as a phosphor beam does where it turns (the owner,
+// 2026-09-24: a finer gradation, matched to the scene); the wave's recipe
+// is untouched, the gradient is only what its line is drawn with.
+import { pale } from './colour.js';
+
+/**
+ * The beam: a vertical gradient over a trace's rows, the colour at the midline, its paler tint at the extremes; one is
+ * kept per context, colour and extent, so a frame builds nothing. A gradient is a value of the canvas, not a colour of
+ * the palette; a white ink pales to white and its beam is one colour.
+ */
+export function createBeam() {
+  let ctxFor = null, keyFor = '', gradient = null;
+  return function beam(ctx, y, h, colour) {
+    const key = `${colour}|${y}|${h}`;
+    if (ctx !== ctxFor || key !== keyFor) {
+      ctxFor = ctx; keyFor = key;
+      gradient = ctx.createLinearGradient(0, y, 0, y + h);
+      const tint = pale(colour);
+      gradient.addColorStop(0, tint); gradient.addColorStop(0.5, colour); gradient.addColorStop(1, tint);
+    }
+    return gradient;
+  };
+}
+
 export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '#39ff88', ground = '#050505', grid = '#181818', ink = '#aaa9a3' } = {}) {
   const peaks = new Float32Array(hold); let peakAt = 0, peakN = 0;
+  const cardBeam = createBeam(), panelBeam = createBeam();
 
   /** Rising-edge trigger with hysteresis: arm below the midpoint less a band, fire above it plus the band, searched only across the slack the window leaves; silence locks onto nothing. */
   function trigger(data, win) {
@@ -61,7 +88,7 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
     ctx.stroke();
     const state = judge(data);
     const mid = h / 2, amp = (h / 2) * 0.86;
-    ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.beginPath();
+    ctx.strokeStyle = cardBeam(ctx, 0, h, stroke); ctx.lineWidth = lineWidth; ctx.beginPath();
     if (state !== 'signal') {
       ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
     } else {
@@ -97,9 +124,9 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
     return state;
   }
 
-  /** The panel over the picture: the token's wave in the chassis window, in the ink, `k` device pixels per picture pixel. */
+  /** The panel over the picture: the token's wave in the chassis window, the beam of the ink, `k` device pixels per picture pixel. */
   function window(ctx, x, y, w, h, data, rate, { colours, k = 4 }) {
-    wave(ctx, x, y, w, h, data, colours.ink, Math.max(1, Math.round(k / 4)));
+    wave(ctx, x, y, w, h, data, panelBeam(ctx, y, h, colours.ink), Math.max(1, Math.round(k / 4)));
     return judge(data);
   }
 
@@ -111,7 +138,8 @@ export function createScope({ windowMs = 20, band = 0.08, hold = 150, stroke = '
  * one line through the whole buffer at one point per pixel of width, an integer stride, each sample clamped to ±1 at
  * 0.9 of the window's half height, a thin line at 0.85 alpha; no window, no trigger, no gain, no grid; a flat line
  * with no data. The midline is snapped to the pixel grid so a silent line is one crisp row. `lineWidth` in device
- * pixels; on the token it is one pixel of a canvas four times the picture.
+ * pixels; on the token it is one pixel of a canvas four times the picture. `stroke` is whatever the canvas takes as
+ * one: the token's page gives a colour, this page the beam of the ink.
  */
 export function wave(ctx, x, y, w, h, data, stroke, lineWidth = 1) {
   const n = data ? data.length : 0, mid = Math.round(y + h / 2) + (lineWidth % 2 ? 0.5 : 0);

@@ -340,6 +340,9 @@ textarea.json{width:100%;box-sizing:border-box;margin:10px 0 0;height:120px;font
 .seg button.on{color:#050505;background:var(--accent2)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .irow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:8px 0 0;padding:7px 9px;border:1px solid #2a2a2a;border-radius:6px;background:linear-gradient(180deg,#0f0f0f,#080808)}
+/* a group's rows share their columns, so the readouts are one length, the name column as wide as the longest name (his
+   ask, 2026-09-24): the group is the grid and each row a subgrid of it; a browser without subgrid keeps a row's own grid */
+@supports(grid-template-columns:subgrid){.igrp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:10px}.igrp>.irow{grid-column:1/-1;grid-template-columns:subgrid}}
 .irow .iname{display:flex;align-items:center;gap:8px;font:700 .6rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--ink);white-space:nowrap}
 .lamp{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1d1d1d;border:1px solid #333;flex:none}
 .on>.iname>.lamp,.ipanel .lamp{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px rgba(57,255,136,.55)}
@@ -506,11 +509,15 @@ select.mode{max-width:100%;box-sizing:border-box;font:500 .84rem/1.3 ui-monospac
       <div class="bb" id="bay-instruments-body"><div class="bi">
       <dl class="ctl"><dt>MODE</dt><dd><div class="seg" id="mode" role="radiogroup" aria-label="the mode"><button type="button" role="radio" aria-checked="true" data-mode="pure">PURE</button><button type="button" role="radio" aria-checked="false" data-mode="instruments">INSTRUMENTS</button></div> <span class="why" id="mode-why">PURE · nothing on this page reads or reaches into the machine</span><span class="hint" id="mode-hint">a fresh visit follows the work · a link carries it</span></dd></dl>
       <p class="grp">FROM THE SOUND</p>
+      <div class="igrp">
       <div class="irow" id="inst-scope" data-inst="scope" data-group="sound" data-needs="audio" data-requires="" data-module="scope" data-face="quarter" data-tint="1" data-title="SID OUTPUT"><span class="iname"><span class="lamp" aria-hidden="true"></span>SCOPE</span><canvas class="icv" width="600" height="56" aria-hidden="true"></canvas><button type="button" class="isw" aria-pressed="false" aria-label="SCOPE on or off">OFF</button><span class="ireads">the SID&#x27;s output, the sound this page already plays, the buffer sounding now · writes nothing<span class="iwhere" id="inst-scope-where"></span></span></div>
       <div class="irow" id="inst-spectrum" data-inst="spectrum" data-group="sound" data-needs="audio" data-requires="" data-module="spectrum" data-face="quarter" data-tint="1" data-title="SID SPECTRUM"><span class="iname"><span class="lamp" aria-hidden="true"></span>SPECTRUM</span><canvas class="icv" width="600" height="56" aria-hidden="true"></canvas><button type="button" class="isw" aria-pressed="false" aria-label="SPECTRUM on or off">OFF</button><span class="ireads">the same sound by frequency, the page&#x27;s own transform · writes nothing<span class="iwhere" id="inst-spectrum-where"></span></span></div>
+      </div>
       <dl class="ctl icol"><dt>COLOUR</dt><dd><div class="seg" id="ink" role="radiogroup" aria-label="the colour of SCOPE and SPECTRUM"><button type="button" role="radio" aria-checked="true" data-ink="green">GREEN</button><button type="button" role="radio" aria-checked="false" data-ink="scene">SCENE</button></div> <span class="why" id="ink-why">GREEN · the site's green</span><span class="hint" id="ink-hint">SCENE: the panels take the picture's colours</span></dd></dl>
       <p class="grp">FROM THE CHAIN</p>
+      <div class="igrp">
       <div class="irow nocv" id="inst-chain" data-inst="chain" data-group="chain" data-needs="" data-requires="" data-module="" data-face="" data-host="1"><span class="iname"><span class="lamp" aria-hidden="true"></span>THE CHAIN STRIP</span><canvas class="icv" width="600" height="56" aria-hidden="true"></canvas><button type="button" class="isw" aria-pressed="false" aria-label="THE CHAIN STRIP on or off">OFF</button><span class="ireads">the badge at the frame&#x27;s corner: this page&#x27;s own chain session, not a read of the machine · its switch is visibility alone<span class="iwhere" id="inst-chain-where"></span></span></div>
+      </div>
       </div></div>
     </details>
   </aside>

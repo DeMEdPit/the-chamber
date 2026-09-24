@@ -12,11 +12,17 @@
 // ballistics at draw time only, a bar rising at once and falling a little
 // each frame, the measurement never altered. The same bars draw in the
 // card's readout (the site's colours) and in the token's chassis window
-// over the picture (the chassis colours: the ink lit, the panel colour off).
-import { pale } from './colour.js';
+// over the picture (the chassis colours). A lit segment's colour is its
+// rung of the ladder (colour.js `ladder`): the ink darkened towards the
+// ground at the bottom, the ink itself three fifths of the way up, its
+// paler tint at the top, one tone a rung, so the meter climbs through the
+// ink's own shades (the owner, 2026-09-24: a finer gradation, matched to
+// the scene, not held to the C64's palette); an unlit segment is the off
+// colour, the panel's on the chassis.
+import { ladder } from './colour.js';
 
-export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.022, decay = 0.992, lit = '#39ff88', top = '#9dffd0', off = '#151515', ground = '#050505' } = {}) {
-  let re = null, im = null, ref = 1e-6, lastData = null, lastCols = 0, mags = null, disp = null, paleFor = null, paleOf = null;
+export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.022, decay = 0.992, lit = '#39ff88', off = '#151515', ground = '#050505' } = {}) {
+  let re = null, im = null, ref = 1e-6, lastData = null, lastCols = 0, mags = null, disp = null, rungsFor = '', rungs = null;
 
   function fft(r, i) {
     const n = r.length;
@@ -70,10 +76,20 @@ export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.02
     return disp;
   }
 
-  /** The bars in a rectangle of `ctx`, in device pixels: lit segments in `ink`, the top two in `topC`, the rest `offC`. Returns the state. */
-  function bars(ctx, x, y, w, h, data, rate, { segments = 10, ink = lit, topC = top, offC = off } = {}) {
+  /** The ladder for this ink over this ground with this many rungs, kept until one of them changes. */
+  function tones(ink, over, segments) {
+    const key = `${ink}|${over}|${segments}`;
+    if (key !== rungsFor) { rungsFor = key; rungs = ladder(ink, over, segments); }
+    return rungs;
+  }
+
+  /**
+   * The bars in a rectangle of `ctx`, in device pixels: a lit segment in its rung of the ladder from `ink` over `over`
+   * (the ground it climbs from), an unlit one in `offC`, every segment solid. Returns the state.
+   */
+  function bars(ctx, x, y, w, h, data, rate, { segments = 10, ink = lit, over = ground, offC = off } = {}) {
     const cols = Math.max(12, Math.min(48, Math.round(w / 14)));
-    const gapx = Math.max(1, Math.round(w / 220)), bw = (w - gapx * (cols + 1)) / cols, segh = (h - 4) / segments;
+    const gapx = Math.max(1, Math.round(w / 220)), bw = (w - gapx * (cols + 1)) / cols, segh = (h - 4) / segments, rung = tones(ink, over, segments);
     let state = 'waiting', d = null;
     if (data) {
       let any = false;
@@ -81,30 +97,27 @@ export function createSpectrum({ fmin = 40, fmax = 8000, range = 55, fall = 0.02
       state = any ? 'signal' : 'silent';
       d = ballistics(any ? magnitudes(data, rate, cols) : new Float32Array(cols));
     }
+    ctx.globalAlpha = 1;
     for (let i = 0; i < cols; i++) {
       const level = d ? d[i] : 0, n = Math.round(level * segments);
       for (let s = 0; s < segments; s++) {
-        const on = s < n;
-        ctx.fillStyle = on ? (s >= segments - 2 ? topC : ink) : offC;
-        ctx.globalAlpha = on ? 0.55 + 0.45 * (s / segments) : 1;
+        ctx.fillStyle = s < n ? rung[s] : offC;
         ctx.fillRect(x + gapx + i * (bw + gapx), y + h - 2 - (s + 1) * segh + 1, Math.max(1, bw), Math.max(1, segh - 2));
       }
     }
-    ctx.globalAlpha = 1;
     return state;
   }
 
-  /** The card's readout: a canvas sized in device pixels, the site's colours. Returns the state: waiting, silent or signal. */
+  /** The card's readout: a canvas sized in device pixels, the site's colours (the ladder from the site's green over its ground). Returns the state: waiting, silent or signal. */
   function draw(cv, data, rate, { segments = 10 } = {}) {
     const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
     ctx.fillStyle = ground; ctx.fillRect(0, 0, w, h);
     return bars(ctx, 0, 0, w, h, data, rate, { segments });
   }
 
-  /** The panel over the picture: the bars in the chassis window, the ink lit and its paler tint on top, the panel colour off. */
+  /** The panel over the picture: the bars in the chassis window, ten rungs of the ink's ladder over the picture's ground, the panel colour off. */
   function window(ctx, x, y, w, h, data, rate, { colours }) {
-    if (colours.ink !== paleFor) { paleFor = colours.ink; paleOf = pale(colours.ink); }
-    return bars(ctx, x, y, w, h, data, rate, { segments: 8, ink: colours.ink, topC: paleOf, offC: colours.panel });
+    return bars(ctx, x, y, w, h, data, rate, { segments: 10, ink: colours.ink, over: colours.ground, offC: colours.panel });
   }
 
   return { draw, window, bars };

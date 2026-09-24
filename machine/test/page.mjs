@@ -39,6 +39,7 @@ import { start } from './serve.mjs';
 import { makeD64 } from './make-d64.mjs';
 import { makeCRT, PROBE, probe16K } from './make-crt.mjs';
 import { pickColours, DEFAULTS } from '../instruments/scene.js';
+import { pale } from '../instruments/colour.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EVIDENCE = join(HERE, 'evidence');
@@ -121,7 +122,8 @@ try {
   const near = (px, h, tol = 8) => !!px && px.every((v, k) => Math.abs(v - rgb(h)[k]) <= tol);
   // the trace: the SID's silent output sits a fraction off the midline (its own offset), so the column under the window's centre is scanned:
   // every pixel a blend of the ink and the ground, and one row at least 40 percent of the way from the ground to the ink
-  const traced = (px, ink, ground) => { const I = rgb(ink), G = rgb(ground); const t = (p) => Math.max(...p.map((v, k) => (I[k] === G[k] ? 0 : (v - G[k]) / (I[k] - G[k])))); const blendy = (p) => p.every((v, k) => v >= Math.min(I[k], G[k]) - 6 && v <= Math.max(I[k], G[k]) + 6); return px.column.every(blendy) && px.column.some((p) => t(p) >= 0.4); };
+  // (the trace is stroked in the beam of the ink, the ink at the midline and its paler tint at the extremes, so a pixel may be paler than the ink)
+  const traced = (px, ink, ground) => { const I = rgb(ink), G = rgb(ground), P = rgb(pale(ink)); const t = (p) => Math.max(...p.map((v, k) => (I[k] === G[k] ? 0 : (v - G[k]) / (I[k] - G[k])))); const blendy = (p) => p.every((v, k) => v >= Math.min(I[k], G[k], P[k]) - 6 && v <= Math.max(I[k], G[k], P[k]) + 6); return px.column.every(blendy) && px.column.some((p) => t(p) >= 0.4); };
   const strongest = (px) => px.column.reduce((a, p) => (p.reduce((x, y) => x + y, 0) > a.reduce((x, y) => x + y, 0) ? p : a), px.column[0]);
   const glyphHolds = (px, ch, ink, panel) => { const g = glyphOf(ch); return px.glyph.every((row, r) => row.every((p, b) => near(p, g[r][b] ? ink : panel, 10))); };
   const ch0 = await panelPixels('scope');
@@ -133,10 +135,17 @@ try {
   // document's `colours` about once a second and takes the token's own rule, ground, ink and panel from the whole picture,
   // adopted when two readings agree (the bare machine's picture, whatever it is, judged by the same rule from a direct count);
   // the panel's lamp a touch smaller than the card's and green whatever the colour
-  const colour0 = await pg.evaluate(() => { const c = document.querySelector('#bay-instruments .icol'); const i = window.machinePage.instruments; const lamp = document.querySelector('#layer .ipanel .ibar .lamp'); return { after: c && c.previousElementSibling && c.previousElementSibling.id, group: c && c.closest('.bi') && [...c.closest('.bi').children].indexOf(c) > [...c.closest('.bi').children].findIndex((e) => e.id === 'inst-spectrum'), hint: document.getElementById('ink-hint').textContent, label: document.getElementById('ink').getAttribute('aria-label'), why: document.getElementById('ink-why').textContent, on: document.querySelector('#ink button.on').dataset.ink, colour: i.colour, reads: i.reads, tinting: i.tinting, prov: JSON.parse(document.getElementById('provenance-json').value), lamp: lamp && getComputedStyle(lamp).width, lampColour: lamp && getComputedStyle(lamp).backgroundColor, cardLamp: getComputedStyle(document.querySelector('#inst-scope .lamp')).width }; });
+  const colour0 = await pg.evaluate(() => { const c = document.querySelector('#bay-instruments .icol'); const i = window.machinePage.instruments; const lamp = document.querySelector('#layer .ipanel .ibar .lamp'); return { after: c && c.previousElementSibling && c.previousElementSibling.classList.contains('igrp') && c.previousElementSibling.lastElementChild.id, group: c && c.previousElementSibling && [...c.previousElementSibling.children].map((e) => e.dataset.inst).join() === 'scope,spectrum', hint: document.getElementById('ink-hint').textContent, label: document.getElementById('ink').getAttribute('aria-label'), why: document.getElementById('ink-why').textContent, on: document.querySelector('#ink button.on').dataset.ink, colour: i.colour, reads: i.reads, tinting: i.tinting, prov: JSON.parse(document.getElementById('provenance-json').value), lamp: lamp && getComputedStyle(lamp).width, lampColour: lamp && getComputedStyle(lamp).backgroundColor, cardLamp: getComputedStyle(document.querySelector('#inst-scope .lamp')).width }; });
   check(colour0.after === 'inst-spectrum' && colour0.group && colour0.hint === 'SCENE: the panels take the picture\'s colours' && colour0.label === 'the colour of SCOPE and SPECTRUM' && colour0.why === 'GREEN · the site\'s green' && colour0.on === 'green' && colour0.colour === 'green' && colour0.reads === 0 && !colour0.tinting && colour0.prov.colour === 'GREEN' && colour0.prov.ink === '#39ff88' && colour0.prov.ground === '#000000' && colour0.prov.panel === '#262626' && colour0.prov.from === 'site',
         `COLOUR sits under the sound's two rows it governs, GREEN by default, nothing of the picture read, the provenance saying the site's colours (${colour0.why})`);
   check(colour0.lamp === '4.5px' && colour0.cardLamp === '7px' && colour0.lampColour === 'rgb(57, 255, 136)', `the panel's lamp is 4.5 px to the card's 7, and green (${colour0.lamp}, ${colour0.lampColour})`);
+  // the card's readouts are one length: a group's rows share their columns (the group a grid, each row a subgrid of it), so
+  // the name column is as wide as the longest name and every readout starts and ends where the others do (his ask, 2026-09-24)
+  const rowsOf = (page) => page.evaluate(() => { const r = (id) => { const row = document.getElementById(id), nm = row.querySelector('.iname'), cv = row.querySelector('canvas.icv').getBoundingClientRect(), range = document.createRange(); range.selectNodeContents(nm.lastChild); return { left: cv.left, width: cv.width, name: nm.getBoundingClientRect().width, text: range.getBoundingClientRect().width, cols: getComputedStyle(row).gridTemplateColumns }; };
+    const s = r('inst-scope'), p = r('inst-spectrum'); return { s, p, subgrid: CSS.supports('grid-template-columns', 'subgrid'), groups: document.querySelectorAll('#bay-instruments .igrp').length, shared: document.getElementById('inst-scope').parentElement.classList.contains('igrp') && document.getElementById('inst-scope').parentElement === document.getElementById('inst-spectrum').parentElement && document.getElementById('inst-chain').parentElement !== document.getElementById('inst-scope').parentElement }; });
+  const oneLength = (r) => r.subgrid && r.groups === 2 && r.shared && Math.abs(r.s.left - r.p.left) < 0.5 && Math.abs(r.s.width - r.p.width) < 0.5 && r.s.width > 80 && Math.abs(r.s.name - r.p.name) < 0.5 && r.s.name >= r.p.text && r.p.text > r.s.text;
+  const same = await rowsOf(pg);
+  check(oneLength(same), `the sound's two readouts are one length on a wide screen, the name column the longest name's (SCOPE ${Math.round(same.s.width)} px from ${Math.round(same.s.left)}, SPECTRUM ${Math.round(same.p.width)} from ${Math.round(same.p.left)}; the names ${Math.round(same.s.name)} and ${Math.round(same.p.name)} wide)`);
   await pg.click('#ink button[data-ink="scene"]');
   const colour1 = await until(() => pg.evaluate(() => { const i = window.machinePage.instruments; return i.reads >= 2 && i.sceneWhy ? { ...i, why: document.getElementById('ink-why').textContent, prov: JSON.parse(document.getElementById('provenance-json').value) } : null; }), 8000, 100);
   const bareCount = await pg.evaluate(() => window.machinePage.machine.request('colours'));
@@ -746,6 +755,10 @@ try {
     const fits = (p, text) => p.title.text === text && p.title.g === 2 && p.title.x + text.length * 8 * p.title.g <= p.minus.x - 2 * p.k + 1e-6 && p.left + p.width <= fit.layer + 1;
     check(!!fit && fit.dpr === 3 && fits(fit.p.spectrum, 'SID SPECTRUM') && fits(fit.p.scope, 'SID OUTPUT') && fit.p.scope.title.g === fit.p.spectrum.title.g,
           `on a phone at three device pixels a CSS pixel both titles fit their panels whole at ${fit && fit.p.spectrum.title.g} device pixels a ROM pixel, one size, the minus clear (${fit ? Math.round(fit.p.spectrum.title.x + 96 * fit.p.spectrum.title.g) + ' of ' + Math.round(fit.p.spectrum.minus.x) : 'no panels'})`);
+    await fp.evaluate(() => window.machinePage.bay('instruments', true));
+    const sameP = await rowsOf(fp);
+    check(oneLength(sameP), `on the phone too the readouts are one length (SCOPE ${Math.round(sameP.s.width)} px from ${Math.round(sameP.s.left)}, SPECTRUM ${Math.round(sameP.p.width)} from ${Math.round(sameP.p.left)})`);
+    await fp.evaluate(() => window.machinePage.bay('instruments', false));
     const lampP = await fp.evaluate(() => { const l = document.querySelector('#layer .ipanel[data-inst="spectrum"] .ibar .lamp'), cs = getComputedStyle(l); const p = window.machinePage.instruments.panels.spectrum; return { width: cs.width, colour: cs.backgroundColor, size: p.lamp.size, gap: p.lamp.gap, x: p.lamp.x }; });
     check(Math.abs(parseFloat(lampP.width) - 3.2) < 0.05 && lampP.colour === 'rgb(57, 255, 136)' && Math.abs(lampP.size - 9.6) < 1e-6 && lampP.gap >= 6.5 && lampP.gap <= 8,   // 0.45 of the letters, 7.2 device px, less the rounding of the title's origin to a whole pixel
           `on the phone the lamp is ${lampP.width} (six tenths of the letters, under the desktop's 4.5) and green, ${(lampP.gap / 3).toFixed(1)} CSS px before the title`);

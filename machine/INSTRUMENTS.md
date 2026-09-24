@@ -81,9 +81,23 @@ recorded.
   the token's own wave (`scope.js` `wave`: the whole buffer at one point
   per pixel, raw amplitude, a thin line, no window, trigger, gain or
   grid); the card's readout beside the frame keeps the site's closer,
-  windowed drawing. An instrument's `window(ctx, x, y, w, h, data, rate,
-  {colours, k})` draws it in the chassis; its `draw(cv, data, rate)` the
-  card's readout.
+  windowed drawing. Either trace is stroked in the beam of its colour
+  (`scope.js` `createBeam`): the ink at the midline, its paler tint at the
+  top and the bottom, so a peak reads brighter as a phosphor beam does
+  where it turns. The spectrum's bars climb the ladder of the ink over the
+  ground (`colour.js` `ladder`): the lowest rung the ink darkened halfway
+  to the ground, the ink itself three fifths of the way up, its paler tint
+  at the top, one tone a rung, ten rungs in the chassis window and in the
+  card, every segment solid. The tones are mixed from the ink and the
+  ground and are not held to the C64's palette (the owner, 2026-09-24: a
+  finer gradation, matched to the scene, the retro look kept in the rungs);
+  the same ladder in the site's green over its ground fills the card's
+  readout. An instrument's `window(ctx, x, y, w, h, data, rate, {colours,
+  k})` draws it in the chassis; its `draw(cv, data, rate)` the card's
+  readout. In the card a group's rows share their columns (the group a CSS
+  grid and each row a subgrid of it), so the name column is as wide as the
+  longest name and the readouts are one length (his ask, 2026-09-24); a
+  browser without subgrid keeps each row's own grid.
 - COLOUR, drawn with the group it governs. GREEN: the site's green as the
   ink on the token's default chassis (black window, the panel `#262626`).
   SCENE: the token's own colour rule (`instruments/scene.js`, the rule its
