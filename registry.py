@@ -69,7 +69,7 @@ class Builder:
 # a post's player tags and frame the machine page, and they are not pages of
 # the shell, so they appear in no footer and change no other page.
 BUILDERS = (
-    Builder("play", "play/build.py", ("play/tony/index.html",)),
+    Builder("play", "play/build.py", ("play/tony/index.html", "play/machine/index.html")),
 )
 
 

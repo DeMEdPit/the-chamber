@@ -19,18 +19,32 @@ sys.path.insert(0, str(ROOT))
 from registry import SITE, SITE_NAME  # noqa: E402
 from page import esc, out_root, card_version  # noqa: E402
 
-# The card's frame: a width posts are shown at, and the machine's picture at that width (384 by 272) with one line under it
-WIDTH, HEIGHT = 480, 400
+# The card's frame: a width posts are shown at; for a card the machine's picture at that width (384 by 272) with one
+# line under it, for the whole page a tall frame that holds the machine, the list of programs, the doors and the switches
+WIDTH = 480
 IMAGE = "/machine/card.png"   # the machine's own share card: its boot screen, held by the site check
 
 PLAYS = (
     {
         "dir": "tony",
         "query": "work=tony&token=1",
+        "card": True,
+        "height": 400,
         "title": "Tony: Born for Adventure, from the chain",
         "description": "A Commodore 64 program read from Ethereum and run in your browser: the emulator nopsta stored on the chain in 2022, "
                        "the program from the token's own contract, held to its pins.",
         "line": "Tony: Born for Adventure (C64 demo), the first token of the series, read from Ethereum and run in your browser.",
+    },
+    {
+        "dir": "machine",
+        "query": "work=tony&token=1",
+        "card": False,
+        "height": 900,
+        "title": "The Machine, from the chain",
+        "description": "The Commodore 64 emulator nopsta stored on Ethereum in 2022, read from the chain and run in your browser: every program of "
+                       "the series, a file of your own, the firmware from its pressing on chain.",
+        "line": "The whole machine page in the post's frame: the programs of the series from the chain, a file of your own through the door, "
+                "the firmware from OpenROMs pressing 1 on chain, the controls, the chain's words and the log.",
     },
 )
 
@@ -42,9 +56,9 @@ def policy():
 
 def document(play):
     path = f"/play/{play['dir']}/"
-    player = f"/machine/?{play['query']}&card=1"
+    player = f"/machine/?{play['query']}" + ("&card=1" if play["card"] else "")
     image = f"{SITE}{IMAGE}{card_version(IMAGE)}"
-    title, desc = play["title"], play["description"]
+    title, desc, HEIGHT = play["title"], play["description"], play["height"]
     assert len(title) <= 70 and len(desc) <= 200, "a post's title is at most 70 characters and its description 200"
     return f"""<!doctype html>
 <html lang="en">
@@ -96,7 +110,7 @@ a{{color:var(--accent2)}}
 <main>
 <p class="kicker"><a href="/">THE CHAMBER</a> · PLAY</p>
 <iframe src="{esc(player)}" title="the machine, playing {esc(play['title'])}" allow="autoplay"></iframe>
-<p>{esc(play['line'])} This is the post's player; <a href="/machine/?{esc(play['query'])}">the whole page</a> has the controls, the chain's words and the log.</p>
+<p>{esc(play['line'])}{" This is the post's player; " if play["card"] else " "}<a href="/machine/?{esc(play['query'])}">{"the whole page" if play["card"] else "Open it on its own page"}</a>{" has the controls, the chain's words and the log." if play["card"] else "."}</p>
 </main>
 </body>
 </html>

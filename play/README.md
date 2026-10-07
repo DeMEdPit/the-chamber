@@ -1,11 +1,14 @@
 # The play pages (an experiment, 2026-10-07)
 
 A post on X can carry a player: a page that declares `twitter:card` `player`
-and names a secure page for the post's frame. These pages are that, one per
-token, pointing the frame at [the machine page](../machine/) in its card
-mode (`?card=1`: the machine first and alone, one line under it, everything
-else hidden), already running the token's program from the chain. They hold
-no artwork and no program.
+and names a secure page for the post's frame. These pages are that, pointing
+the frame at [the machine page](../machine/): `tony/` at the machine page in
+its card mode (`?card=1`: the machine first and alone, one line under it,
+everything else hidden), already running the token's program from the
+chain; `machine/` at the whole machine page in a tall frame, with the list
+of the series' programs, the file and paste doors, the FIRMWARE switch to
+the pressing on chain, the controls, the chain's words and the log. They
+hold no artwork and no program.
 
 What is on chain and read live: the emulator (nopsta's four 2022 contracts),
 the firmware when asked, and the program. What is not: this page and its
