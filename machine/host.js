@@ -18,6 +18,10 @@ import { createRack } from './instruments.js';
 
 const PAGE = 'machine/2b';
 const $ = (id) => document.getElementById(id);
+// CARD (`?card=1`, the play pages, 2026-10-07): the page inside a post's frame. A class on the root, set before anything
+// is laid out, and the stylesheet does the rest: the machine first and alone, one line under it, the rest hidden
+const CARD = new URLSearchParams(location.search).get('card') === '1';
+if (CARD) document.documentElement.classList.add('card');
 const els = {
   frame: $('frame'), veil: $('veil'), veilText: $('veil-text'), search: $('search'), rows: $('rows'),
   state: $('state'), log: $('log'), now: $('now'), json: $('provenance-json'), copy: $('copy'), copied: $('copied'),
@@ -997,6 +1001,7 @@ async function start() {
   const font = romFromSite('chargen').catch((e) => { say(`the instruments' titles: the site's copy of the character ROM did not load (${e.code || e.message}); a plain font stands in`); return null; });   // the titles in the machine's own letters, held to the pin
   rack = createRack({ frame: els.frame, layer: $('layer'), card: bays.instruments, audio, badge: els.link, machineOf: () => machine, font, say, onChange: () => { bayLines(); if (playing) renderNow(); } });
   const asked = new URLSearchParams(location.search), askedMode = asked.get('mode'), askedColour = asked.get('colour');
+  if (CARD && $('cardbar-open')) { const q = new URLSearchParams(location.search); q.delete('card'); $('cardbar-open').href = '/machine/' + (q.toString() ? '?' + q.toString() : ''); }   // the way out of the card: the same program on the whole page
   if (askedMode === 'pure' || askedMode === 'instruments') rack.setMode(askedMode, true);   // a shared link carries the mode; a fresh visit follows the work
   if (askedColour === 'green' || askedColour === 'scene') rack.setColour(askedColour);      // and the colour
   bayInit();

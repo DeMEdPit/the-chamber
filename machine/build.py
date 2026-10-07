@@ -244,6 +244,18 @@ h1{{font-size:clamp(1.9rem,5vw,2.6rem);margin:0 0 6px}}   /* compact on this pag
 @media(pointer:coarse){{.touch{{display:grid}}.screen{{margin-bottom:0}}}}   /* on a touch screen the badge sits over the pad's empty corner, as designed */
 @media(max-width:360px){{.touch .ring{{width:160px;height:160px}}.touch .fire{{width:104px;height:104px}}}}
 .column{{min-width:0;display:flex;flex-direction:column;gap:14px}}
+/* CARD (`?card=1`, the play pages, 2026-10-07): the page inside a post's frame. The machine first and alone; under it one
+   line of this document's own that a tap can land on, because the sound starts on a gesture in this document and a click
+   on the machine lands in the machine's own; everything else stays in the document, hidden; the touch controls stay for
+   a phone. The whole page is still here: a link takes the same program to it */
+.cardbar{{display:none}}
+html.card main{{width:100%;margin:0;padding:0}}
+html.card .kicker,html.card h1,html.card .lede,html.card .column,html.card .logbox,html.card footer{{display:none}}
+html.card .machine{{display:block}}
+html.card .frame{{border:0;border-radius:0}}
+html.card .touch{{margin:6px 0}}
+html.card .cardbar{{display:block;margin:0;padding:8px 12px;font:600 .66rem/1.5 {MONO};letter-spacing:.06em;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+html.card .cardbar a{{color:var(--accent2);text-decoration:none}}
 .logbox{{margin-top:52px}}   /* collapses with the screen's 40: the log's panel clears the badge with the air the old sentence had */
 /* on a wide screen the stage (the frame, the badge, the log) stays while the column scrolls past it, whenever the
    window is tall enough for the stage to fit: the log gives up height first, and on a short window the machine gives
@@ -708,6 +720,7 @@ def page_body():
         <span class="le" id="link-endpoints" aria-label="the endpoints, in the order they are tried"></span>
       </div>
     </div>
+    <p class="cardbar" id="cardbar">tap for sound · click the machine for keys · <a id="cardbar-open" href="/machine/" target="_blank" rel="noopener">the whole page</a></p>
     <div class="touch" id="touch" aria-label="joystick" data-ways="4">
       {ring_svg()}
       <button type="button" class="fire" data-bit="16">FIRE</button>

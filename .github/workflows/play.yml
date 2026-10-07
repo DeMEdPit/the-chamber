@@ -1,0 +1,45 @@
+name: play
+
+on:
+  push:
+    paths:
+      - 'play/**'
+      - 'machine/**'
+      - 'registry.py'
+      - 'page.py'
+      - 'build-all.py'
+      - '.github/workflows/play.yml'
+  pull_request:
+    paths:
+      - 'play/**'
+      - 'machine/**'
+      - 'registry.py'
+      - 'page.py'
+      - 'build-all.py'
+      - '.github/workflows/play.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build the play pages and hold them to the committed copies
+        run: |
+          python3 play/build.py
+          git diff --exit-code -- play/
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: The play pages' gate, the machine page framed at the card's size on a synthetic chain
+        run: node play/test/frame.mjs

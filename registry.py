@@ -64,9 +64,13 @@ class Builder:
 
 # build-all runs these after the pages; check-site rebuilds and compares every
 # generated file, so a hand edit to a built document fails the check. The
-# machine's documents are built by its page's builder (Page.generates), so
-# this is empty until a builder that is not a page exists.
-BUILDERS = ()
+# machine's documents are built by its page's builder (Page.generates). The
+# play pages (2026-10-07) are the first builder that is not a page: they carry
+# a post's player tags and frame the machine page, and they are not pages of
+# the shell, so they appear in no footer and change no other page.
+BUILDERS = (
+    Builder("play", "play/build.py", ("play/tony/index.html",)),
+)
 
 
 def page(key):
